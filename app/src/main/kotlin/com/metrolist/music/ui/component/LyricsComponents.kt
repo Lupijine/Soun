@@ -172,6 +172,7 @@ private fun TranslationCard(
 
 @Composable
 internal fun LyricsActionOverlay(
+    backdrop: com.kyant.backdrop.Backdrop? = null,
     isAutoScrollEnabled: Boolean,
     isSynced: Boolean,
     isSelectionModeActive: Boolean,
@@ -190,11 +191,7 @@ internal fun LyricsActionOverlay(
             enter = slideInVertically { it } + fadeIn(),
             exit = slideOutVertically { it } + fadeOut()
         ) {
-            FilledTonalButton(onClick = onSyncClick) {
-                Icon(painterResource(R.drawable.sync), stringResource(R.string.auto_scroll), Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.auto_scroll))
-            }
+            LyricsFollowButton(backdrop, onSyncClick)
         }
         
         AnimatedVisibility(

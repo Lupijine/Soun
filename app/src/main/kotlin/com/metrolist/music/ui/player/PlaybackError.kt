@@ -5,10 +5,14 @@
 
 package com.metrolist.music.ui.player
 
+import com.metrolist.music.ui.theme.sounSurface
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.os.Build
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import com.metrolist.music.LocalListenTogetherManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,10 +29,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -61,13 +68,7 @@ fun PlaybackError(
         remember(causes) {
             causes.mapNotNull { it.message?.takeIf(String::isNotBlank) }.distinct()
         }
-    val isExplicitRestricted =
-        rawErrorMessages.any {
-            it.contains("confirm your age", ignoreCase = true) ||
-                it.contains("age-restricted", ignoreCase = true) ||
-                it.contains("LOGIN_REQUIRED", ignoreCase = true) ||
-                it.contains("403", ignoreCase = true)
-        }
+    val isExplicitRestricted = isExplicitPlaybackRestriction(rawErrorMessages)
     val isJobCancelled =
         rawErrorMessages.any {
             it.contains("job", ignoreCase = true) &&
@@ -79,15 +80,14 @@ fun PlaybackError(
         when {
             isExplicitRestricted -> stringResource(R.string.error_explicit_login_recommended)
             isJobCancelled -> stringResource(R.string.error_job_cancelled)
+            isExpiredPlaybackStream(rawErrorMessages) -> stringResource(R.string.soun_error_stream_expired)
             else -> null
         }
-    val errorMessage =
-        playbackErrorMessages(
-            isOnline = isOnline,
-            offlineMessage = stringResource(R.string.error_offline_playback),
-            guidance = guidance,
-            rawErrorMessages = rawErrorMessages,
-        ).joinToString("\n").ifBlank { stringResource(R.string.error_unknown) }
+    var showDetails by remember(error) { mutableStateOf(false) }
+    val canSkipNext by playerConnection.canSkipNext.collectAsState()
+    val together = LocalListenTogetherManager.current
+    val errorMessage = if (!isOnline) stringResource(R.string.error_offline_playback)
+        else guidance ?: stringResource(R.string.soun_error_retry_guidance)
     val causeSummary =
         remember(causes) {
             causes
@@ -108,6 +108,8 @@ fun PlaybackError(
         modifier =
         Modifier
             .fillMaxWidth()
+            .sounSurface()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
     ) {
         Icon(
@@ -141,34 +143,48 @@ fun PlaybackError(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        Text(
-            text = "Code: $errorCodeName (${error.errorCode})",
-            style =
-            MaterialTheme.typography.bodySmall.copy(
-                fontFamily = FontFamily.Monospace,
-                fontSize = 11.sp,
-            ),
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-            textAlign = TextAlign.Center,
-        )
-
-        if (causeSummary.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(4.dp))
+        TextButton(onClick = { showDetails = !showDetails }) {
+            Text(stringResource(if (showDetails) R.string.soun_hide_error_details else R.string.soun_error_details))
+        }
+        if (showDetails) {
+            Text(rawErrorMessages.joinToString("\n"), style = MaterialTheme.typography.bodySmall)
             Text(
-                text = causeSummary,
+                text = "Code: $errorCodeName (${error.errorCode})",
                 style =
                 MaterialTheme.typography.bodySmall.copy(
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
+                    fontSize = 11.sp,
                 ),
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
             )
-        }
 
+            if (causeSummary.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = causeSummary,
+                    style =
+                    MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 10.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+
+        }
         Spacer(modifier = Modifier.height(16.dp))
+
+        if (canSkipNext && (together == null || !together.isInRoom || together.isHost)) {
+            TextButton(onClick = {
+                playerConnection.player.seekToNextMediaItem()
+                playerConnection.player.prepare()
+                playerConnection.player.play()
+            }) { Text(stringResource(R.string.soun_skip_unavailable)) }
+        }
 
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -254,3 +270,12 @@ private fun buildPlaybackErrorReport(
         appendLine("-----------")
         append(error.stackTraceToString())
     }
+
+internal fun isExplicitPlaybackRestriction(messages: List<String>): Boolean = messages.any {
+    it.contains("confirm your age", ignoreCase = true) ||
+        it.contains("age-restricted", ignoreCase = true) ||
+        it.contains("LOGIN_REQUIRED", ignoreCase = true)
+}
+
+internal fun isExpiredPlaybackStream(messages: List<String>): Boolean =
+    messages.any { Regex("\\b(403|410)\\b").containsMatchIn(it) }

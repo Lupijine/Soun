@@ -7,6 +7,10 @@
 
 package com.metrolist.music.playback
 
+import com.metrolist.music.lyrics.LyricsRepository
+import com.metrolist.music.lyrics.LyricsLoadState
+import com.metrolist.music.lyrics.LyricsLoadStatus
+
 import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Notification
 import android.app.NotificationChannel
@@ -332,6 +336,12 @@ class MusicService :
 
     private lateinit var connectivityManager: ConnectivityManager
     lateinit var connectivityObserver: NetworkConnectivityObserver
+    @Inject lateinit var lyricsRepository: LyricsRepository
+    val lyricsLoadState = MutableStateFlow<LyricsLoadState?>(null)
+    private val lyricsRetryRequests = MutableStateFlow(0)
+
+    fun retryLyrics() { lyricsRetryRequests.value += 1 }
+
     val waitingForNetworkConnection = MutableStateFlow(false)
     private val isNetworkConnected = MutableStateFlow(false)
     val currentStreamClient = MutableStateFlow<String?>(null)
@@ -869,25 +879,16 @@ class MusicService :
         combine(
             currentMediaMetadata.distinctUntilChangedBy { it?.id },
             dataStore.data.map { it[ShowLyricsKey] ?: false }.distinctUntilChanged(),
-        ) { mediaMetadata, showLyrics ->
-            mediaMetadata to showLyrics
-        }.collectLatest(scope) { (mediaMetadata, showLyrics) ->
-            if (showLyrics && mediaMetadata != null && database
-                    .lyrics(mediaMetadata.id)
-                    .first() == null
-            ) {
-                val lyricsWithProvider = lyricsHelper.getLyrics(mediaMetadata)
-                database.query {
-                    upsert(
-                        LyricsEntity(
-                            id = mediaMetadata.id,
-                            lyrics = lyricsWithProvider.lyrics,
-                            provider = lyricsWithProvider.provider,
-                        ),
-                    )
+            lyricsRetryRequests,
+            connectivityObserver.networkStatus,
+        ) { metadata, show, _, _ -> metadata to show }
+            .collectLatest(scope) { (metadata, show) ->
+                if (show && metadata != null) {
+                    lyricsLoadState.value = LyricsLoadState(metadata.id, LyricsLoadStatus.LOADING)
+                    val status = lyricsRepository.load(metadata)
+                    lyricsLoadState.value = LyricsLoadState(metadata.id, status)
                 }
             }
-        }
 
         dataStore.data
             .map { (it[SkipSilenceKey] ?: false) to (it[SkipSilenceInstantKey] ?: false) }
@@ -1505,6 +1506,24 @@ class MusicService :
                 // "waiting" and the connectivityObserver listener (not this job) is what
                 // will catch the eventual reconnection and call triggerRetry().
             }
+    }
+
+    fun retryPlayback() {
+        if (!playerInitialized.value) return
+        val mediaId = player.currentMediaItem?.mediaId ?: return
+        retryJob?.cancel()
+        initialBufferRecoveryJob?.cancel()
+        initialBufferRecoveryAttemptedMediaId = null
+        waitingForNetworkConnection.value = false
+        pausedDueToNetworkError = false
+        retryCount = 0
+        consecutivePlaybackErr = 0
+        resetRetryCount(mediaId)
+        songUrlCache.invalidate(mediaId)
+        InnerTubeXPlayer.clearStreamClientFailures()
+        // A manual retry starts a fresh attempt at the current position, including after a forced pause.
+        player.prepare()
+        player.play()
     }
 
     private fun triggerRetry() {

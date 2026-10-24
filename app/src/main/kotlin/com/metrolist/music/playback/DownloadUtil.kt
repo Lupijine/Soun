@@ -69,6 +69,7 @@ constructor(
     @ApplicationContext private val context: Context,
     val database: MusicDatabase,
     val databaseProvider: DatabaseProvider,
+    private val lyricsRepository: com.metrolist.music.lyrics.LyricsRepository,
     @DownloadCache val downloadCache: Cache,
     @PlayerCache val playerCache: Cache,
 ) {
@@ -90,6 +91,7 @@ constructor(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val downloadPreparations = Semaphore(3)
+    private val lyricsPreparations = Semaphore(2)
 
     val downloads = MutableStateFlow<Map<String, Download>>(emptyMap())
 
@@ -258,6 +260,17 @@ constructor(
                                 Download.STATE_COMPLETED -> {
                                     removeFromPlayerCache(download.request.id)
                                     database.updateDownloadedInfo(download.request.id, true, LocalDateTime.now())
+                                    lyricsPreparations.withPermit {
+                                        database.getSongByIdBlocking(download.request.id)?.let { song ->
+                                            try {
+                                                lyricsRepository.load(song.toMediaMetadata())
+                                            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                                throw cancelled
+                                            } catch (error: Exception) {
+                                                Timber.tag(TAG).w(error, "Could not retain lyrics for download")
+                                            }
+                                        }
+                                    }
                                 }
                                 Download.STATE_FAILED,
                                 Download.STATE_STOPPED,
@@ -310,6 +323,24 @@ constructor(
     }
 
     fun getDownload(songId: String): Flow<Download?> = downloads.map { it[songId] }
+
+    fun retryFailedDownloads(id: String? = null) {
+        downloads.value.values.filter {
+            it.state == Download.STATE_FAILED && (id == null || it.request.id == id)
+        }.forEach { download ->
+            songUrlCache.invalidate(download.request.id)
+            DownloadService.sendAddDownload(context, ExoDownloadService::class.java, download.request, false)
+        }
+    }
+
+    fun setDownloadsPaused(paused: Boolean) {
+        if (paused) {
+            DownloadService.sendPauseDownloads(context, ExoDownloadService::class.java, false)
+        } else {
+            DownloadService.sendSetStopReason(context, ExoDownloadService::class.java, null, Download.STOP_REASON_NONE, false)
+            DownloadService.sendResumeDownloads(context, ExoDownloadService::class.java, false)
+        }
+    }
 
     fun download(song: Song) = download(song.toMediaMetadata())
 

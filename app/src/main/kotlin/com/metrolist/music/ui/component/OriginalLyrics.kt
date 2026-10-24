@@ -5,6 +5,11 @@
 
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.lyrics.timedWordsForDisplay
+
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
@@ -487,6 +492,7 @@ fun OriginalLyrics(
             !isSelectionModeActive
 
     val lazyListState = rememberLazyListState()
+    val readingBackdrop = rememberLayerBackdrop()
 
     // Professional animation states for smooth Metrolist-style transitions
     var isAnimating by remember { mutableStateOf(false) }
@@ -804,10 +810,15 @@ fun OriginalLyrics(
                         .asPaddingValues(),
                 modifier =
                     Modifier
+                        .layerBackdrop(readingBackdrop)
                         .fadingEdge(vertical = 64.dp)
                         .nestedScroll(
                             remember {
                                 object : NestedScrollConnection {
+                                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                                        if (source == NestedScrollSource.UserInput) isAutoScrollEnabled = false
+                                        return Offset.Zero
+                                    }
                                     override fun onPostScroll(
                                         consumed: Offset,
                                         available: Offset,
@@ -846,15 +857,9 @@ fun OriginalLyrics(
                 // Show lyrics provider at the top, scrolling with content
                 if (isLyricsProviderShown) {
                     item {
-                        Text(
-                            text = "Lyrics from ${lyricsEntity?.provider}",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                            fontWeight = FontWeight.Medium,
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                        LyricsSourceLabel(
+                            lyricsEntity?.provider.orEmpty(), isSynced,
+                            lines.any { it.timedWordsForDisplay(false) != null },
                         )
                     }
                 }
@@ -1082,7 +1087,7 @@ fun OriginalLyrics(
                             val mainText = if (romanizeAsMain && isRomanizedAvailable) romanizedText else item.text
                             val subText = if (romanizeAsMain && isRomanizedAvailable) item.text else romanizedText
 
-                            val hasWordTimings = if (romanizeAsMain && isRomanizedAvailable) false else item.words?.isNotEmpty() == true
+                            val hasWordTimings = item.timedWordsForDisplay(romanizeAsMain && isRomanizedAvailable) != null
 
                             // Word-by-word animation styles
                             if (hasWordTimings && lyricsAnimationStyle == LyricsAnimationStyle.NONE) {
@@ -1725,15 +1730,7 @@ fun OriginalLyrics(
                 enter = slideInVertically { it } + fadeIn(),
                 exit = slideOutVertically { it } + fadeOut(),
             ) {
-                FilledTonalButton(onClick = latestResyncLyrics) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.sync),
-                        contentDescription = stringResource(R.string.auto_scroll),
-                        modifier = Modifier.size(20.dp),
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = stringResource(R.string.auto_scroll))
-                }
+                LyricsFollowButton(readingBackdrop, latestResyncLyrics)
             }
 
             AnimatedVisibility(

@@ -5,6 +5,11 @@
 
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.lyrics.timedWordsForDisplay
+
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
@@ -183,7 +188,7 @@ fun ExperimentalLyrics(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
     val translationStatus by LyricsTranslationHelper.status.collectAsStateWithLifecycle()
     val currentLyricsEntity by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
-    var lastValidLyricsEntity by remember { mutableStateOf<com.metrolist.music.db.entities.LyricsEntity?>(null) }
+    var lastValidLyricsEntity by remember(mediaMetadata?.id) { mutableStateOf<com.metrolist.music.db.entities.LyricsEntity?>(null) }
     
     LaunchedEffect(currentLyricsEntity) {
         if (currentLyricsEntity != null) {
@@ -317,6 +322,7 @@ fun ExperimentalLyrics(
     var showMaxSelectionToast by remember { mutableStateOf(false) }
     val isLyricsProviderShown = lyricsEntity != null && lyricsEntity.provider != "Unknown" && lyricsEntity.provider != "Manual" && !isSelectionModeActive
     var isAutoScrollEnabled by rememberSaveable { mutableStateOf(true) }
+    val readingBackdrop = rememberLayerBackdrop()
 
     BackHandler(enabled = isSelectionModeActive) {
         isSelectionModeActive = false
@@ -656,6 +662,7 @@ fun ExperimentalLyrics(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .layerBackdrop(readingBackdrop)
                     .fadingEdge(top = LYRICS_FADE_TOP_DP, bottom = LYRICS_FADE_BOTTOM_DP)
                     .clipToBounds()
                     .nestedScroll(remember {
@@ -703,7 +710,7 @@ fun ExperimentalLyrics(
                 val currentEffectivePosition = currentPositionState + lyricsOffsetVal
                 
                 if (isLyricsProviderShown) {
-                    val targetProviderBase = anchorY + (positions[0] ?: 0f) - with(density) { 32.dp.toPx() }
+                    val targetProviderBase = anchorY + (positions[0] ?: 0f) - with(density) { 64.dp.toPx() }
                     val animatedProviderBase by animateFloatAsState(
                         targetValue = targetProviderBase,
                         animationSpec = if (isInitialLayout || !isAutoScrollEnabled) snap()
@@ -712,10 +719,11 @@ fun ExperimentalLyrics(
                         },
                         label = "lyricsProviderOffset"
                     )
-                    Text(
-                        text = stringResource(R.string.lyrics_from_provider, lyricsEntity.provider),
-                        fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                        modifier = Modifier.fillMaxWidth().offset { IntOffset(0, (animatedProviderBase + userManualOffset).roundToInt()) }.padding(horizontal = 24.dp, vertical = 4.dp)
+                    LyricsSourceLabel(
+                        lyricsEntity.provider, isSynced,
+                        lines.any { it.timedWordsForDisplay(false) != null },
+                        modifier = Modifier.offset { IntOffset(0, (animatedProviderBase + userManualOffset).roundToInt()) }
+                            .padding(horizontal = 12.dp),
                     )
                 }
 
@@ -810,6 +818,7 @@ fun ExperimentalLyrics(
         }
 
         LyricsActionOverlay(
+            backdrop = readingBackdrop,
             modifier = Modifier.align(Alignment.BottomCenter),
             isAutoScrollEnabled = isAutoScrollEnabled, isSynced = isSynced,
             isSelectionModeActive = isSelectionModeActive, anySelected = selectedIndices.isNotEmpty(),

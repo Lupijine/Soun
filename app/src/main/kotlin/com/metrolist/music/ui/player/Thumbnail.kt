@@ -314,7 +314,14 @@ fun Thumbnail(
             error?.let { playbackError ->
                 PlaybackError(
                     error = playbackError,
-                    retry = playerConnection.player::prepare,
+                    retry = {
+                        if (playerConnection.service.castConnectionHandler?.isCasting?.value == true) {
+                            playerConnection.player.prepare()
+                            playerConnection.player.play()
+                        } else {
+                            playerConnection.service.retryPlayback()
+                        }
+                    },
                 )
             }
         }

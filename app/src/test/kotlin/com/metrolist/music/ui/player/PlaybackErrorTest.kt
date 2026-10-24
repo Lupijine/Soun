@@ -6,11 +6,29 @@
 package com.metrolist.music.ui.player
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.EOFException
 import java.io.IOException
 
 class PlaybackErrorTest {
+    @Test
+    fun `expired links do not imply an age restriction`() {
+        val messages = listOf("Response code: 403")
+        assertFalse(isExplicitPlaybackRestriction(messages))
+        assertTrue(isExpiredPlaybackStream(messages))
+        assertTrue(isExpiredPlaybackStream(listOf("HTTP 410 Gone")))
+        assertFalse(isExpiredPlaybackStream(listOf("Song 140310 unavailable")))
+    }
+
+    @Test
+    fun `explicit login and age requirements remain actionable`() {
+        assertTrue(isExplicitPlaybackRestriction(listOf("Please confirm your age")))
+        assertTrue(isExplicitPlaybackRestriction(listOf("LOGIN_REQUIRED")))
+        assertFalse(isExplicitPlaybackRestriction(listOf("Network timeout")))
+    }
+
     @Test
     fun `cause chain keeps each nested playback failure`() {
         val rootCause = EOFException("stream ended")
