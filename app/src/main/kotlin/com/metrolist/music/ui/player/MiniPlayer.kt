@@ -382,9 +382,11 @@ private fun NewMiniPlayer(
                     .then(if (isTabletLandscape) Modifier.width(500.dp).align(Alignment.Center) else Modifier.fillMaxWidth())
                     .height(64.dp)
                     .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
-                    // Soun: the default style is a see-through Liquid Glass pill; the
-                    // other styles keep their own fill underneath the glass rim.
-                    .sounGlass(RoundedCornerShape(32.dp), glassColors)
+                    .sounGlass(
+                        RoundedCornerShape(32.dp),
+                        glassColors,
+                        backdropEnabled = miniPlayerBackground == MiniPlayerBackgroundStyle.DEFAULT,
+                    )
                     .then(
                         if (miniPlayerBackground == MiniPlayerBackgroundStyle.DEFAULT) {
                             Modifier

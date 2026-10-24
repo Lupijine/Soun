@@ -251,6 +251,7 @@ configurations.configureEach {
 }
 
 dependencies {
+    implementation(libs.backdrop)
     implementation(libs.guava)
     implementation(libs.coroutines.guava)
 
