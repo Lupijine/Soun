@@ -197,7 +197,7 @@ import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.screens.settings.NavigationTab
 import com.metrolist.music.ui.theme.ColorSaver
 import com.metrolist.music.ui.theme.DefaultThemeColor
-import com.metrolist.music.ui.theme.PrismAccent
+import com.metrolist.music.ui.theme.SounAccent
 import com.metrolist.music.ui.theme.MetrolistTheme
 import com.metrolist.music.ui.theme.extractThemeColor
 import com.metrolist.music.ui.utils.appBarScrollBehavior
@@ -621,7 +621,7 @@ class MainActivity : FragmentActivity() {
                 pureBlackEnabled && useDarkTheme
             }
 
-        val (selectedThemeColorInt) = rememberPreference(SelectedThemeColorKey, defaultValue = PrismAccent.toArgb())
+        val (selectedThemeColorInt) = rememberPreference(SelectedThemeColorKey, defaultValue = SounAccent.toArgb())
         val selectedThemeColor = Color(selectedThemeColorInt)
 
         val showChangelog = rememberSaveable { mutableStateOf(false) }
@@ -1265,7 +1265,7 @@ class MainActivity : FragmentActivity() {
                                                             1f
                                                         }
                                                 }
-                                                // Prism: fade instead of a solid strip, so the floating
+                                                // Soun: fade instead of a solid strip, so the floating
                                                 // glass bar sits over content like the design.
                                                 .background(
                                                     Brush.verticalGradient(

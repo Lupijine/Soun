@@ -1,5 +1,5 @@
 /**
- * Prism (based on Metrolist) (C) 2026
+ * Soun (based on Metrolist) (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
 
@@ -21,14 +21,14 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 
-/** Prism's default accent, used when the user hasn't picked a theme color. */
-val PrismAccent = Color(0xFFA99BFF)
+/** Soun's default accent, used when the user hasn't picked a theme color. */
+val SounAccent = Color(0xFFA99BFF)
 
 /**
  * Liquid Glass surface colors for one theme. A strong surface (nav bar, mini player)
  * is more opaque and has a brighter rim than a regular one (cards, chips).
  */
-data class PrismGlassColors(
+data class SounGlassColors(
     val fillTop: Color,
     val fillBottom: Color,
     val rimBright: Color,
@@ -39,13 +39,13 @@ data class PrismGlassColors(
 
 @Composable
 @ReadOnlyComposable
-fun prismGlassColors(strong: Boolean = true, pureBlack: Boolean = false): PrismGlassColors {
+fun sounGlassColors(strong: Boolean = true, pureBlack: Boolean = false): SounGlassColors {
     val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     return if (dark) {
         // Glass needs something behind it to read as glass; on pure black we
         // tint it a little more so the edge still shows.
         val boost = if (pureBlack) 0.04f else 0f
-        PrismGlassColors(
+        SounGlassColors(
             fillTop = Color.White.copy(alpha = (if (strong) 0.14f else 0.09f) + boost),
             fillBottom = Color.White.copy(alpha = (if (strong) 0.06f else 0.035f) + boost),
             rimBright = Color.White.copy(alpha = if (strong) 0.62f else 0.45f),
@@ -54,7 +54,7 @@ fun prismGlassColors(strong: Boolean = true, pureBlack: Boolean = false): PrismG
             selectedPill = Color.White.copy(alpha = 0.16f),
         )
     } else {
-        PrismGlassColors(
+        SounGlassColors(
             fillTop = Color.White.copy(alpha = if (strong) 0.82f else 0.66f),
             fillBottom = Color.White.copy(alpha = if (strong) 0.58f else 0.42f),
             rimBright = Color.White,
@@ -70,9 +70,9 @@ fun prismGlassColors(strong: Boolean = true, pureBlack: Boolean = false): PrismG
  * brightest at the top-left and bottom-right corners, and a floating shadow.
  * Content drawn after this modifier is clipped to [shape].
  */
-fun Modifier.prismGlass(
+fun Modifier.sounGlass(
     shape: Shape,
-    colors: PrismGlassColors,
+    colors: SounGlassColors,
     elevation: Float = 18f,
 ): Modifier =
     this

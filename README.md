@@ -1,26 +1,26 @@
-# Prism
+# Soun
 
 A YouTube Music client for Android with a Liquid Glass look: a floating glass tab bar
 with a separate round search button, a glass mini player, and colors that follow the
 album art of the song that's playing.
 
-Prism is based on [Metrolist](https://github.com/MetrolistGroup/Metrolist) (v13.7.0),
+Soun is based on [Metrolist](https://github.com/MetrolistGroup/Metrolist) (v13.7.0),
 which itself builds on InnerTune and OuterTune. All the playback, library, lyrics and
-account features come from Metrolist; Prism changes the name, icon and design.
+account features come from Metrolist; Soun changes the name, icon and design.
 
-## What Prism changes
+## What Soun changes
 
-- **Name and package:** the app is called Prism and installs as `com.lupijine.prism`,
+- **Name and package:** the app is called Soun and installs as `com.lupijine.soun`,
   so it can sit next to Metrolist on the same phone.
-- **Icon:** a white prism on a deep violet background.
+- **Icon:** a white triangle on a deep violet background.
 - **Navigation bar:** `ui/component/AppNavigation.kt` draws a floating glass pill for
   Home, Library (and Listen Together), with Search as its own round glass button.
 - **Mini player:** `ui/player/MiniPlayer.kt` uses a see-through glass pill by default.
-- **Glass style:** `ui/theme/PrismGlass.kt` holds the shared glass surface
-  (`Modifier.prismGlass`) and its dark/light colors.
-- **Accent:** Prism violet (`#A99BFF`) is the default theme color, and is listed first
+- **Glass style:** `ui/theme/SounGlass.kt` holds the shared glass surface
+  (`Modifier.sounGlass`) and its dark/light colors.
+- **Accent:** Soun violet (`#A99BFF`) is the default theme color, and is listed first
   in Settings › Appearance › Theme.
-- **Updater:** turned off in every build flavor, so Prism never offers to install
+- **Updater:** turned off in every build flavor, so Soun never offers to install
   a Metrolist update.
 
 ## Building
