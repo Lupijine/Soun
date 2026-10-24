@@ -5,6 +5,9 @@
 
 package com.metrolist.music.ui.player
 
+import com.metrolist.music.ui.theme.AlbumGlow
+
+import com.metrolist.music.ui.theme.sounSurface
 import androidx.activity.compose.BackHandler
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -184,7 +187,6 @@ import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.utils.safeDataStoreEdit
-import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -399,58 +401,46 @@ fun BottomSheetPlayer(
     var gradientColors by remember {
         mutableStateOf<List<Color>>(emptyList())
     }
-    val gradientColorsCache = remember { mutableMapOf<String, List<Color>>() }
+    val gradientColorsCache = remember { android.util.LruCache<String, List<Color>>(24) }
 
     if (!canSkipNext && automix.isNotEmpty()) {
         playerConnection.service.addToQueueAutomix(automix[0], 0)
     }
 
-    val defaultGradientColors = listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surfaceVariant)
     val fallbackColor = MaterialTheme.colorScheme.surface.toArgb()
 
-    LaunchedEffect(mediaMetadata?.id, playerBackground) {
-        if (playerBackground == PlayerBackgroundStyle.GRADIENT) {
-            val currentMetadata = mediaMetadata
-            if (currentMetadata != null && currentMetadata.thumbnailUrl != null) {
-                val cachedColors = gradientColorsCache[currentMetadata.id]
-                if (cachedColors != null) {
-                    gradientColors = cachedColors
-                    return@LaunchedEffect
-                }
-                withContext(Dispatchers.IO) {
-                    val request =
-                        ImageRequest
-                            .Builder(context)
-                            .data(currentMetadata.thumbnailUrl)
-                            .size(100, 100)
-                            .allowHardware(false)
-                            .memoryCacheKey("gradient_${currentMetadata.id}")
-                            .build()
-
-                    val result = runCatching { context.imageLoader.execute(request) }.getOrNull()
-                    if (result != null) {
-                        val bitmap = result.image?.toBitmap()
-                        if (bitmap != null) {
-                            val palette =
-                                withContext(Dispatchers.Default) {
-                                    Palette
-                                        .from(bitmap)
-                                        .maximumColorCount(8)
-                                        .resizeBitmapArea(100 * 100)
-                                        .generate()
-                                }
-                            val extractedColors =
-                                PlayerColorExtractor.extractGradientColors(
-                                    palette = palette,
-                                    fallbackColor = fallbackColor,
-                                )
-                            gradientColorsCache[currentMetadata.id] = extractedColors
-                            withContext(Dispatchers.Main) { gradientColors = extractedColors }
-                        }
-                    }
-                }
+    LaunchedEffect(mediaMetadata?.thumbnailUrl, playerBackground, fallbackColor, useBlackBackground) {
+        val artworkUrl = mediaMetadata?.thumbnailUrl
+        if (playerBackground == PlayerBackgroundStyle.BLUR ||
+            (playerBackground == PlayerBackgroundStyle.DEFAULT && useBlackBackground) || artworkUrl == null
+        ) {
+            gradientColors = emptyList()
+            return@LaunchedEffect
+        }
+        gradientColorsCache.get(artworkUrl)?.let {
+            gradientColors = it
+            return@LaunchedEffect
+        }
+        gradientColors = emptyList()
+        try {
+            val bitmap = withContext(Dispatchers.IO) {
+                val request = ImageRequest.Builder(context).data(artworkUrl)
+                    .size(100, 100).allowHardware(false).build()
+                context.imageLoader.execute(request).image?.toBitmap()
             }
-        } else {
+            if (bitmap != null) {
+                val colors = withContext(Dispatchers.Default) {
+                    PlayerColorExtractor.extractGradientColors(
+                        Palette.from(bitmap).maximumColorCount(8).resizeBitmapArea(100 * 100).generate(),
+                        fallbackColor,
+                    )
+                }
+                gradientColorsCache.put(artworkUrl, colors)
+                gradientColors = colors
+            }
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
             gradientColors = emptyList()
         }
     }
@@ -910,8 +900,14 @@ fun BottomSheetPlayer(
                         }
                     }
 
-                    else -> {
-                        PlayerBackgroundStyle.DEFAULT
+                    PlayerBackgroundStyle.DEFAULT -> {
+                        if (!useBlackBackground) {
+                            AlbumGlow(
+                                colors = gradientColors,
+                                dark = useDarkTheme,
+                                modifier = Modifier.fillMaxSize().alpha(backgroundAlpha),
+                            )
+                        }
                     }
                 }
             }
@@ -1525,7 +1521,9 @@ fun BottomSheetPlayer(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = PlayerHorizontalPadding),
+                                    .padding(horizontal = PlayerHorizontalPadding)
+                                    .then(if (playerBackground == PlayerBackgroundStyle.DEFAULT) Modifier.sounSurface(RoundedCornerShape(32.dp)) else Modifier)
+                                    .padding(8.dp),
                         ) {
                             val backInteractionSource = remember { MutableInteractionSource() }
                             val nextInteractionSource = remember { MutableInteractionSource() }
@@ -2000,10 +1998,6 @@ fun InlineLyricsView(
     val currentLyrics by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
     val queueWindows by playerConnection.queueWindows.collectAsStateWithLifecycle(initialValue = emptyList())
     val currentWindowIndex by playerConnection.currentWindowIndex.collectAsStateWithLifecycle(initialValue = -1)
-    val lyrics = remember(currentLyrics) { currentLyrics?.lyrics?.trim() }
-    val context = LocalContext.current
-    val database = LocalDatabase.current
-    val coroutineScope = rememberCoroutineScope()
 
     var appInForeground by remember {
         mutableStateOf(
@@ -2029,28 +2023,6 @@ fun InlineLyricsView(
             }
         }
 
-    LaunchedEffect(mediaMetadata?.id, currentLyrics) {
-        if (mediaMetadata != null && currentLyrics == null) {
-            delay(500)
-            coroutineScope.launch(Dispatchers.IO) {
-                try {
-                    val entryPoint =
-                        EntryPointAccessors.fromApplication(
-                            context.applicationContext,
-                            com.metrolist.music.di.LyricsHelperEntryPoint::class.java,
-                        )
-                    val lyricsHelper = entryPoint.lyricsHelper()
-                    val fetchedLyricsWithProvider = lyricsHelper.getLyrics(mediaMetadata)
-                    database.query {
-                        upsert(LyricsEntity(mediaMetadata.id, fetchedLyricsWithProvider.lyrics, fetchedLyricsWithProvider.provider))
-                    }
-                } catch (e: Exception) {
-                    // Handle error
-                }
-            }
-        }
-    }
-
     // Prefetch lyrics for the next queue item only while the lyrics pane is visible, the app is in the
     // foreground, and the current track's lyrics row has finished loading (avoids competing with the
     // active fetch).
@@ -2067,23 +2039,13 @@ fun InlineLyricsView(
                 mediaMetadata == null || lyrics.id == mediaMetadata.id
             } == true
         if (mediaMetadata != null && !loadedForCurrent) return@LaunchedEffect
-        val nextId = nextMetadata.id
         delay(400)
         if (!showLyrics || !appInForeground || !isActive) return@LaunchedEffect
         withContext(Dispatchers.IO) {
             try {
-                val existing = database.lyrics(nextId).first()
-                if (existing != null) return@withContext
-                val entryPoint =
-                    EntryPointAccessors.fromApplication(
-                        context.applicationContext,
-                        com.metrolist.music.di.LyricsHelperEntryPoint::class.java,
-                    )
-                val lyricsHelper = entryPoint.lyricsHelper()
-                val fetched = lyricsHelper.getLyrics(nextMetadata)
-                database.query {
-                    upsert(LyricsEntity(nextId, fetched.lyrics, fetched.provider))
-                }
+                playerConnection.service.lyricsRepository.load(nextMetadata)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
             } catch (_: Exception) {
             }
         }
@@ -2096,39 +2058,11 @@ fun InlineLyricsView(
                 .clip(RoundedCornerShape(12.dp)),
         contentAlignment = Alignment.Center,
     ) {
-        when {
-            lyrics == null -> {
-                ContainedLoadingIndicator()
-            }
-
-            lyrics == LyricsEntity.LYRICS_NOT_FOUND -> {
-                Text(
-                    text = stringResource(R.string.lyrics_not_found),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                    textAlign = TextAlign.Center,
-                )
-            }
-
-            else -> {
-                val lyricsContent: @Composable () -> Unit = {
-                    Lyrics(
-                        sliderPositionProvider = positionProvider,
-                        modifier = Modifier.padding(horizontal = 24.dp),
-                        showLyrics = showLyrics,
-                    )
-                }
-                ProvideTextStyle(
-                    value =
-                        MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 14.sp,
-                            textAlign = TextAlign.Center,
-                        ),
-                ) {
-                    lyricsContent()
-                }
-            }
-        }
+        Lyrics(
+            sliderPositionProvider = positionProvider,
+            modifier = Modifier.padding(horizontal = 24.dp),
+            showLyrics = showLyrics,
+        )
     }
 }
 

@@ -64,7 +64,7 @@ constructor(
         }
 
         if (!isNetworkAvailable) {
-            return LyricsWithProvider(LYRICS_NOT_FOUND, PROVIDER_NONE)
+            return LyricsWithProvider(LYRICS_NOT_FOUND, PROVIDER_NONE, LyricsLoadStatus.OFFLINE)
         }
 
         val result = withTimeoutOrNull(MAX_LYRICS_FETCH_MS) {
@@ -74,6 +74,7 @@ constructor(
             Timber.tag("LyricsHelper").d("Starting sequential fetch for: $cleanedTitle by ${mediaMetadata.artists.joinToString { it.name }}")
             Timber.tag("LyricsHelper").d("Enabled providers in order: ${enabledProviders.joinToString { it.name }}")
 
+            var hadProviderError = false
             for (provider in enabledProviders) {
                 Timber.tag("LyricsHelper").d("Trying provider: ${provider.name}")
                 val providerResult = try {
@@ -97,18 +98,21 @@ constructor(
                 if (providerResult != null && providerResult.isSuccess) {
                     Timber.tag("LyricsHelper").i("Got lyrics from ${provider.name}")
                     val filtered = LyricsUtils.filterLyricsCreditLines(providerResult.getOrNull()!!)
+                    if (!usableLyrics(filtered)) continue
+                    cache.put(mediaMetadata.id, listOf(LyricsResult(provider.name, filtered)))
                     return@withTimeoutOrNull LyricsWithProvider(filtered, provider.name)
                 } else {
+                    if (providerResult == null || providerResult.exceptionOrNull() is java.io.IOException) hadProviderError = true
                     val errorMsg = providerResult?.exceptionOrNull()?.message ?: "timeout or exception"
                     Timber.tag("LyricsHelper").w("${provider.name} failed: $errorMsg")
                 }
             }
 
             Timber.tag("LyricsHelper").w("No lyrics found after checking all providers")
-            LyricsWithProvider(LYRICS_NOT_FOUND, PROVIDER_NONE)
+            LyricsWithProvider(LYRICS_NOT_FOUND, PROVIDER_NONE, if (hadProviderError) LyricsLoadStatus.ERROR else LyricsLoadStatus.NOT_FOUND)
         }
 
-        return result ?: LyricsWithProvider(LYRICS_NOT_FOUND, PROVIDER_NONE)
+        return result ?: LyricsWithProvider(LYRICS_NOT_FOUND, PROVIDER_NONE, LyricsLoadStatus.ERROR)
     }
 
     suspend fun getAllLyrics(
@@ -121,7 +125,7 @@ constructor(
     ) {
         currentLyricsJob?.cancel()
 
-        val cacheKey = "$songArtists-$songTitle".replace(" ", "")
+        val cacheKey = "search:$mediaId"
         cache.get(cacheKey)?.let { results ->
             results.forEach { callback(it) }
             return
@@ -188,7 +192,7 @@ constructor(
                 }.join()
             }
 
-            cache.put(cacheKey, allResult)
+            if (allResult.isNotEmpty()) cache.put(cacheKey, allResult)
         }
 
         currentLyricsJob?.join()
@@ -217,4 +221,5 @@ data class LyricsResult(
 data class LyricsWithProvider(
     val lyrics: String,
     val provider: String,
+    val status: LyricsLoadStatus = if (usableLyrics(lyrics)) LyricsLoadStatus.FOUND else LyricsLoadStatus.NOT_FOUND,
 )

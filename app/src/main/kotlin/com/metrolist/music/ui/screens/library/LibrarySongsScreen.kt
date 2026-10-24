@@ -79,6 +79,7 @@ import com.metrolist.music.extensions.normalizeForSearch
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.ui.component.ChipsRow
+import com.metrolist.music.ui.component.DownloadOverviewCard
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
@@ -361,6 +362,12 @@ fun LibrarySongsScreen(
                         },
                         modifier = Modifier.weight(1f),
                     )
+                }
+            }
+
+            if (filter == SongFilter.DOWNLOADED) {
+                item(key = "download_overview", contentType = CONTENT_TYPE_HEADER) {
+                    DownloadOverviewCard(onStorageClick = { navController.navigate("settings/storage") })
                 }
             }
 

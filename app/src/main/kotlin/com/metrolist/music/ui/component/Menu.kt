@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.theme.sounSurface
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -45,10 +46,11 @@ fun Material3MenuGroup(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .animateContentSize(),
+                    .animateContentSize()
+                    .then(if (item.cardColors == null) Modifier.sounSurface(shape) else Modifier),
                 shape = shape,
                 colors = item.cardColors ?: CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    containerColor = androidx.compose.ui.graphics.Color.Transparent
                 ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {

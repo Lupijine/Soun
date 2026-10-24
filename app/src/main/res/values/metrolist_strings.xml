@@ -991,4 +991,25 @@
     <string name="stream_source_android_vr_desc">Android VR clients (all versions).</string>
     <string name="stream_source_web_creator">WEB_CREATOR</string>
     <string name="stream_source_web_creator_desc">Creator web client.</string>
+    <string name="soun_offline_library">Offline library</string>
+    <string name="soun_download_summary">%1$d ready · %2$d pending · %3$d failed</string>
+    <string name="soun_downloads_paused">Downloads paused</string>
+    <string name="soun_downloads_waiting">Downloading or waiting for a connection</string>
+    <string name="soun_resume_downloads">Resume downloads</string>
+    <string name="soun_pause_downloads">Pause downloads</string>
+    <string name="soun_retry_failed_downloads">Retry all failed downloads</string>
+    <string name="soun_download_storage">Download storage: %1$s · Manage</string>
+    <string name="soun_error_details">Technical details</string>
+    <string name="soun_hide_error_details">Hide details</string>
+    <string name="soun_error_stream_expired">The stream link expired. Retry to request a fresh link.</string>
+    <string name="soun_skip_unavailable">Skip this song</string>
+    <string name="soun_error_retry_guidance">This song could not be played. Retry or skip to the next song.</string>
+    <string name="soun_more_failed_downloads">%1$d more failed downloads. Retry all to restart them.</string>
+    <string name="soun_lyrics_loading">Finding lyrics…</string>
+    <string name="soun_lyrics_offline">No saved lyrics for this song. Connect to the internet and retry.</string>
+    <string name="soun_lyrics_error">Lyrics could not be loaded. Please try again.</string>
+    <string name="soun_lyrics_follow">Return to current line</string>
+    <string name="soun_lyrics_words">Word-synced lyrics</string>
+    <string name="soun_lyrics_lines">Line-synced lyrics</string>
+    <string name="soun_lyrics_plain">Plain lyrics</string>
 </resources>

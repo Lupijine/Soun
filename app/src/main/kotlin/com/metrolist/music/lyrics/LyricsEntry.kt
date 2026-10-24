@@ -29,3 +29,10 @@ data class LyricsEntry(
         val HEAD_LYRICS_ENTRY = LyricsEntry(0L, "")
     }
 }
+
+internal fun LyricsEntry.timedWordsForDisplay(romanized: Boolean): List<WordTimestamp>? =
+    words?.takeIf { timestamps ->
+        !romanized && timestamps.isNotEmpty() && timestamps.all {
+            it.startTime.isFinite() && it.endTime.isFinite() && it.startTime >= 0 && it.endTime > it.startTime
+        }
+    }
