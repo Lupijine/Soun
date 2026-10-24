@@ -1,0 +1,45 @@
+name: Build debug APK
+
+# Runs only when started by hand: Actions › Build debug APK › Run workflow.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build debug APK
+        run: |
+          chmod +x gradlew
+          ./gradlew --console=plain :app:assembleFossDebug -x lint
+        env:
+          METROLIST_BUILD_COMMIT: ${{ github.sha }}
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: soun-debug-apk
+          path: app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
