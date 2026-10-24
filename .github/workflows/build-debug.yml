@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -17,16 +17,16 @@ jobs:
     timeout-minutes: 60
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: "21"
           distribution: "temurin"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
 
       - name: Build debug APK
         run: |
@@ -37,9 +37,18 @@ jobs:
           LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
           LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: soun-debug-apk
-          path: app/build/outputs/apk/**/*.apk
-          if-no-files-found: error
+      # Artifact storage can run out account-wide, so the APK goes on a rolling
+      # pre-release instead: Releases › "Debug build" always holds the latest one.
+      - name: Publish APK to the "debug" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK=$(find app/build/outputs/apk -name "*.apk" | head -n 1)
+          test -n "$APK"
+          cp "$APK" soun-debug.apk
+          gh release delete debug --yes --cleanup-tag 2>/dev/null || true
+          gh release create debug soun-debug.apk \
+            --prerelease \
+            --target "${{ github.sha }}" \
+            --title "Debug build" \
+            --notes "Debug APK built from ${{ github.sha }}. Install soun-debug.apk on your phone."
