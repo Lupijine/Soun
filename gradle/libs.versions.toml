@@ -34,8 +34,10 @@ kuromojiIpadic = "0.9.0"
 innertubex = "v0.5.2"
 tinypinyin = "2.0.3"
 protobuf = "4.36.0"
+backdrop = "2.0.1"
 
 [libraries]
+backdrop = { module = "io.github.kyant0:backdrop", version.ref = "backdrop" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
 coroutines-guava = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-guava", version.ref = "coroutinesGuava" }
 
