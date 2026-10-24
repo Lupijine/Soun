@@ -88,6 +88,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
@@ -196,6 +197,7 @@ import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.screens.settings.NavigationTab
 import com.metrolist.music.ui.theme.ColorSaver
 import com.metrolist.music.ui.theme.DefaultThemeColor
+import com.metrolist.music.ui.theme.PrismAccent
 import com.metrolist.music.ui.theme.MetrolistTheme
 import com.metrolist.music.ui.theme.extractThemeColor
 import com.metrolist.music.ui.utils.appBarScrollBehavior
@@ -619,7 +621,7 @@ class MainActivity : FragmentActivity() {
                 pureBlackEnabled && useDarkTheme
             }
 
-        val (selectedThemeColorInt) = rememberPreference(SelectedThemeColorKey, defaultValue = DefaultThemeColor.toArgb())
+        val (selectedThemeColorInt) = rememberPreference(SelectedThemeColorKey, defaultValue = PrismAccent.toArgb())
         val selectedThemeColor = Color(selectedThemeColorInt)
 
         val showChangelog = rememberSaveable { mutableStateOf(false) }
@@ -1262,7 +1264,14 @@ class MainActivity : FragmentActivity() {
                                                         } else {
                                                             1f
                                                         }
-                                                }.background(baseBg),
+                                                }
+                                                // Prism: fade instead of a solid strip, so the floating
+                                                // glass bar sits over content like the design.
+                                                .background(
+                                                    Brush.verticalGradient(
+                                                        listOf(baseBg.copy(alpha = 0f), baseBg.copy(alpha = 0.85f)),
+                                                    ),
+                                                ),
                                     )
                                 }
                             } else {

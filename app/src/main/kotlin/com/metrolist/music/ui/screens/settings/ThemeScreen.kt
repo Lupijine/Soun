@@ -79,6 +79,7 @@ import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.PureBlackMiniPlayerKey
 import com.metrolist.music.constants.SelectedThemeColorKey
 import com.metrolist.music.ui.theme.DefaultThemeColor
+import com.metrolist.music.ui.theme.PrismAccent
 import com.metrolist.music.ui.theme.MetrolistTheme
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
@@ -90,6 +91,7 @@ data class ThemePalette(
 
 val PaletteColors = listOf(
     ThemePalette(R.string.palette_dynamic, Color.Transparent), // Sentinel for System/Dynamic colors
+    ThemePalette(R.string.palette_prism, PrismAccent),
     ThemePalette(R.string.palette_crimson, Color(0xFFEC5464)), // Slightly shifted from DefaultThemeColor (0xFFED5564) to avoid conflict
     ThemePalette(R.string.palette_rose, Color(0xFFD81B60)),
     ThemePalette(R.string.palette_purple, Color(0xFF8E24AA)),
@@ -129,7 +131,7 @@ fun ThemeScreen(
     }
     val (selectedThemeColorInt, onSelectedThemeColorChange) = rememberPreference(
         SelectedThemeColorKey,
-        DefaultThemeColor.toArgb()
+        PrismAccent.toArgb()
     )
     val (_, onDynamicThemeChange) = rememberPreference(DynamicThemeKey, defaultValue = true)
 
