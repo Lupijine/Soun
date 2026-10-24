@@ -1,5 +1,5 @@
 /**
- * Prism (based on Metrolist) (C) 2026
+ * Soun (based on Metrolist) (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
 
@@ -32,17 +32,17 @@ import com.kyant.backdrop.isRenderEffectSupported
 import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
 
-/** Prism's default accent, used when the user hasn't picked a theme color. */
-val PrismAccent = Color(0xFFA99BFF)
+/** Soun's default accent, used when the user hasn't picked a theme color. */
+val SounAccent = Color(0xFFA99BFF)
 
 // Capture only screen content: including the floating controls would create a feedback loop.
-val LocalPrismBackdrop = staticCompositionLocalOf<Backdrop?> { null }
+val LocalSounBackdrop = staticCompositionLocalOf<Backdrop?> { null }
 
 /**
  * Liquid Glass surface colors for one theme. A strong surface (nav bar, mini player)
  * is more opaque and has a brighter rim than a regular one (cards, chips).
  */
-data class PrismGlassColors(
+data class SounGlassColors(
     val fillTop: Color,
     val fillBottom: Color,
     val rimBright: Color,
@@ -55,13 +55,13 @@ data class PrismGlassColors(
 
 @Composable
 @ReadOnlyComposable
-fun prismGlassColors(strong: Boolean = true, pureBlack: Boolean = false): PrismGlassColors {
+fun sounGlassColors(strong: Boolean = true, pureBlack: Boolean = false): SounGlassColors {
     val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     return if (dark) {
         // Glass needs something behind it to read as glass; on pure black we
         // tint it a little more so the edge still shows.
         val boost = if (pureBlack) 0.04f else 0f
-        PrismGlassColors(
+        SounGlassColors(
             fillTop = Color.White.copy(alpha = (if (strong) 0.10f else 0.07f) + boost),
             fillBottom = Color.White.copy(alpha = 0.02f + boost),
             rimBright = Color.White.copy(alpha = if (strong) 0.62f else 0.45f),
@@ -72,7 +72,7 @@ fun prismGlassColors(strong: Boolean = true, pureBlack: Boolean = false): PrismG
             fallback = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainerHigh,
         )
     } else {
-        PrismGlassColors(
+        SounGlassColors(
             fillTop = Color.White.copy(alpha = if (strong) 0.32f else 0.22f),
             fillBottom = Color.White.copy(alpha = 0.08f),
             rimBright = Color.White,
@@ -90,13 +90,13 @@ fun prismGlassColors(strong: Boolean = true, pureBlack: Boolean = false): PrismG
  * The library gates lens refraction to API 33; blur is available from API 31.
  */
 @Composable
-fun Modifier.prismGlass(
+fun Modifier.sounGlass(
     shape: Shape,
-    colors: PrismGlassColors,
+    colors: SounGlassColors,
     elevation: Float = 18f,
     backdropEnabled: Boolean = true,
 ): Modifier {
-    val backdrop = LocalPrismBackdrop.current
+    val backdrop = LocalSounBackdrop.current
     if (backdropEnabled && backdrop != null && isRenderEffectSupported()) {
         return this
             .drawBackdrop(

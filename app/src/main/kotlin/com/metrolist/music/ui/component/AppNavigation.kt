@@ -36,8 +36,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.constants.NavigationBarHeight
 import com.metrolist.music.constants.SlimNavBarHeight
-import com.metrolist.music.ui.theme.prismGlass
-import com.metrolist.music.ui.theme.prismGlassColors
+import com.metrolist.music.ui.theme.sounGlass
+import com.metrolist.music.ui.theme.sounGlassColors
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -164,7 +164,7 @@ fun AppNavigationRail(
 }
 
 /**
- * Prism's floating Liquid Glass navigation: a glass pill holding the main tabs, with
+ * Soun's floating Liquid Glass navigation: a glass pill holding the main tabs, with
  * Search split out into its own round glass button on the right (iOS 26 style).
  * Keeps the same signature and height as the Material bar it replaces, so the
  * surrounding layout in MainActivity is unchanged.
@@ -180,7 +180,7 @@ fun AppNavigationBar(
     onSearchLongClick: (() -> Unit)? = null,
     onHomeLongHold: (() -> Unit)? = null,
 ) {
-    val glass = prismGlassColors(strong = true, pureBlack = pureBlack)
+    val glass = sounGlassColors(strong = true, pureBlack = pureBlack)
     val barHeight = (if (slimNav) SlimNavBarHeight else NavigationBarHeight) - 16.dp
     val pillShape = RoundedCornerShape(percent = 50)
 
@@ -203,7 +203,7 @@ fun AppNavigationBar(
                     Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .prismGlass(pillShape, glass)
+                        .sounGlass(pillShape, glass)
                         .selectableGroup()
                         .padding(if (slimNav) 0.dp else 5.dp),
             ) {
@@ -231,7 +231,7 @@ fun AppNavigationBar(
                 }
                 Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                     tabItems.forEach { screen ->
-                        PrismNavItem(
+                        SounNavItem(
                             screen = screen,
                             isSelected = isRouteSelected(currentRoute, screen.route, navigationItems),
                             showLabel = !slimNav,
@@ -250,7 +250,7 @@ fun AppNavigationBar(
                     modifier =
                         Modifier
                             .size(barHeight)
-                            .prismGlass(CircleShape, glass)
+                            .sounGlass(CircleShape, glass)
                             .then(
                                 if (isSelected) {
                                     Modifier.background(
@@ -266,7 +266,7 @@ fun AppNavigationBar(
                                 },
                             ),
                 ) {
-                    PrismNavItem(
+                    SounNavItem(
                         screen = searchItem,
                         isSelected = isSelected,
                         showLabel = false,
@@ -282,7 +282,7 @@ fun AppNavigationBar(
 }
 
 @Composable
-private fun PrismNavItem(
+private fun SounNavItem(
     screen: Screens,
     isSelected: Boolean,
     showLabel: Boolean,

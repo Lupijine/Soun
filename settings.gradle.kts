@@ -37,6 +37,6 @@ dependencyResolutionManagement {
 }
 
 // F-Droid doesn't support foojay-resolver plugin
-rootProject.name = "Prism"
+rootProject.name = "Soun"
 include(":app")
 include(":innertube")

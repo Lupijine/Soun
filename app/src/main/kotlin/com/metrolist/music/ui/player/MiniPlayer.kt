@@ -122,8 +122,8 @@ import coil3.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.metrolist.music.ui.theme.PlayerColorExtractor
-import com.metrolist.music.ui.theme.prismGlass
-import com.metrolist.music.ui.theme.prismGlassColors
+import com.metrolist.music.ui.theme.sounGlass
+import com.metrolist.music.ui.theme.sounGlassColors
 
 /**
  * Stable wrapper for progress state - reads values only during draw phase
@@ -375,14 +375,14 @@ private fun NewMiniPlayer(
                 },
     ) {
         val interactionSource = remember { MutableInteractionSource() }
-        val glassColors = prismGlassColors(strong = true)
+        val glassColors = sounGlassColors(strong = true)
         Box(
             modifier =
                 Modifier
                     .then(if (isTabletLandscape) Modifier.width(500.dp).align(Alignment.Center) else Modifier.fillMaxWidth())
                     .height(64.dp)
                     .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
-                    .prismGlass(
+                    .sounGlass(
                         RoundedCornerShape(32.dp),
                         glassColors,
                         backdropEnabled = miniPlayerBackground == MiniPlayerBackgroundStyle.DEFAULT,
