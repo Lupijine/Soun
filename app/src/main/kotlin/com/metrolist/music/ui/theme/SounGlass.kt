@@ -165,3 +165,33 @@ fun Modifier.sounGlass(
             shape,
         )
 }
+
+/**
+ * Full-screen glass for the Now Playing sheet: shows the live app behind it, softly
+ * blurred and tinted so the controls stay readable. Falls back to a solid [tint]
+ * where the live backdrop isn't available (Android 11 and older).
+ */
+@Composable
+fun Modifier.sounSheetGlass(tint: Color, enabled: Boolean = true): Modifier {
+    val backdrop = LocalSounBackdrop.current
+    if (!enabled || backdrop == null || !isRenderEffectSupported()) return this.background(tint)
+    return this.drawBackdrop(
+        backdrop = backdrop,
+        shape = { androidx.compose.ui.graphics.RectangleShape },
+        effects = {
+            vibrancy()
+            blur(14.dp.toPx())
+        },
+        highlight = {
+            Highlight(
+                width = 0.dp,
+                blurRadius = 0.dp,
+                style = HighlightStyle.Default(color = Color.Transparent, angle = 0f, falloff = 1f),
+            )
+        },
+        shadow = { Shadow(radius = 0.dp, color = Color.Transparent) },
+        onDrawSurface = {
+            drawRect(tint.copy(alpha = tint.alpha * 0.55f))
+        },
+    )
+}

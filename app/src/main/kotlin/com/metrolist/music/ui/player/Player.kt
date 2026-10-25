@@ -8,6 +8,7 @@ package com.metrolist.music.ui.player
 import com.metrolist.music.ui.theme.AlbumGlow
 
 import com.metrolist.music.ui.theme.sounGlass
+import com.metrolist.music.ui.theme.sounSheetGlass
 import com.metrolist.music.ui.theme.rememberArtworkColors
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.IconButton
@@ -798,7 +799,11 @@ fun BottomSheetPlayer(
                     Modifier
                         .fillMaxSize()
                         .layerBackdrop(playerBackdrop)
-                        .background(bottomSheetBackgroundColor),
+                        // Soun: in the default style the sheet is glass over the live app.
+                        .sounSheetGlass(
+                            tint = bottomSheetBackgroundColor,
+                            enabled = playerBackground == PlayerBackgroundStyle.DEFAULT && !useBlackBackground,
+                        ),
             ) {
                 when (playerBackground) {
                     PlayerBackgroundStyle.BLUR -> {
