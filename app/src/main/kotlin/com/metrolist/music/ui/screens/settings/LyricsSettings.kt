@@ -5,6 +5,9 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.graphics.Color
+import com.metrolist.music.ui.theme.sounPanel
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -481,6 +484,9 @@ fun LyricsSettings(navController: NavController) {
 
     }
     TopAppBar(
+        modifier = Modifier.sounPanel(androidx.compose.foundation.shape.RoundedCornerShape(0.dp)),
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent),
+
         title = { Text(stringResource(R.string.lyrics)) },
         navigationIcon = {
             IconButton(onClick = navController::navigateUp, onLongClick = navController::backToMain) {

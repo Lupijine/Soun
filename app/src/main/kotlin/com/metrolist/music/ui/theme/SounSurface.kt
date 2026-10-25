@@ -85,6 +85,9 @@ fun SounGlassDialog(
     onDismiss: () -> Unit,
     content: @Composable () -> Unit,
 ) {
+    val panelColors = sounGlassColors(strong = true).copy(
+        surfaceTint = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.58f),
+    )
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
@@ -119,8 +122,7 @@ fun SounGlassDialog(
                         .padding(horizontal = 20.dp, vertical = 24.dp)
                         .widthIn(max = 480.dp)
                         .fillMaxWidth()
-                        .sounGlass(RoundedCornerShape(32.dp), sounGlassColors(strong = true), elevation = 24f)
-                        .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.16f))
+                        .sounGlass(RoundedCornerShape(32.dp), panelColors, elevation = 24f, fullPanel = true)
                         // Swallow taps so touching the dialog doesn't dismiss it.
                         .clickable(interactionSource = null, indication = null, onClick = {}),
             ) {

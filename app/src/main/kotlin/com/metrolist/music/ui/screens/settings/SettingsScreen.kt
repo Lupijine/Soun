@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import androidx.compose.ui.graphics.Color
+import com.metrolist.music.ui.theme.sounPanel
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Build
@@ -133,7 +135,7 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
         }
-        
+
         // Privacy & Security Section
         Material3SettingsGroup(
             title = stringResource(R.string.settings_section_privacy),
@@ -276,6 +278,9 @@ fun SettingsScreen(
     }
 
     TopAppBar(
+        modifier = Modifier.sounPanel(androidx.compose.foundation.shape.RoundedCornerShape(0.dp)),
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent),
+
         title = { Text(stringResource(R.string.settings)) },
         navigationIcon = {
             IconButton(

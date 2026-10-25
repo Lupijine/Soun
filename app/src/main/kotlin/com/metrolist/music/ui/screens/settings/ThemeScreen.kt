@@ -159,7 +159,10 @@ fun ThemeScreen(navController: NavController) {
             }
         }
     }
-    TopAppBar(title = { Text(stringResource(R.string.theme)) }, navigationIcon = {
+    TopAppBar(
+        modifier = Modifier.sounPanel(androidx.compose.foundation.shape.RoundedCornerShape(0.dp)),
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent),
+        title = { Text(stringResource(R.string.theme)) }, navigationIcon = {
         IconButton(onClick = { navController.navigateUp() }) {
             Icon(painterResource(R.drawable.arrow_back), stringResource(R.string.cd_back))
         }

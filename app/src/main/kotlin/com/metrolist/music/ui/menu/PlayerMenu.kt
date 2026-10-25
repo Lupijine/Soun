@@ -60,6 +60,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -241,13 +244,27 @@ fun PlayerMenu(
         )
     }
 
+    Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        AsyncImage(model = mediaMetadata.thumbnailUrl, contentDescription = null, contentScale = ContentScale.Crop,
+            modifier = Modifier.size(56.dp).clip(RoundedCornerShape(18.dp)))
+        Column(Modifier.weight(1f)) {
+            Text(mediaMetadata.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(mediaMetadata.artists.joinToString { it.name }, style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        IconButton(onClick = onDismiss) {
+            Icon(painterResource(R.drawable.close), contentDescription = stringResource(R.string.dismiss))
+        }
+    }
+
     if (isQueueTrigger != true) {
         Column(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .padding(top = 24.dp, bottom = 6.dp),
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
         ) {
             // Show Cast indicator when casting
             if (isCasting && castDeviceName != null) {
@@ -294,11 +311,7 @@ fun PlayerMenu(
         }
     }
 
-    Spacer(modifier = Modifier.height(20.dp))
-
-    HorizontalDivider()
-
-    Spacer(modifier = Modifier.height(12.dp))
+    Spacer(modifier = Modifier.height(8.dp))
 
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
@@ -323,7 +336,7 @@ fun PlayerMenu(
                                     Icon(
                                         painter = painterResource(R.drawable.radio),
                                         contentDescription = null,
-                                        modifier = Modifier.size(32.dp),
+                                        modifier = Modifier.size(24.dp),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 },
@@ -342,7 +355,7 @@ fun PlayerMenu(
                                 Icon(
                                     painter = painterResource(R.drawable.playlist_add),
                                     contentDescription = null,
-                                    modifier = Modifier.size(32.dp),
+                                    modifier = Modifier.size(24.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             },
@@ -354,7 +367,7 @@ fun PlayerMenu(
                                 Icon(
                                     painter = painterResource(R.drawable.link),
                                     contentDescription = null,
-                                    modifier = Modifier.size(32.dp),
+                                    modifier = Modifier.size(24.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             },

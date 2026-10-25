@@ -2124,7 +2124,7 @@ private fun PlayerMoreMenuButton(
                 .size(48.dp)
                 .sounGlass(CircleShape, sounGlassColors(), backdrop = backdrop ?: com.metrolist.music.ui.theme.LocalSounBackdrop.current)
                 .clickable {
-                    menuState.show {
+                    menuState.show(backdrop) {
                         PlayerMenu(
                             mediaMetadata = mediaMetadata,
                             playerBottomSheetState = state,

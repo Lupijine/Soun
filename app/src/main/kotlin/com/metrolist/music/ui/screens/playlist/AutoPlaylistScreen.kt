@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens.playlist
 
+import androidx.compose.material3.TopAppBarDefaults
+import com.metrolist.music.ui.theme.sounPanel
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -711,6 +713,9 @@ fun AutoPlaylistScreen(
         }
 
         TopAppBar(
+        modifier = Modifier.sounPanel(androidx.compose.foundation.shape.RoundedCornerShape(0.dp)),
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent),
+
             title = {
                 when {
                     inSelectMode -> {
@@ -864,13 +869,13 @@ private fun AutoPlaylistHeader(
             androidx.compose.material3.Surface(
                 modifier =
                     Modifier
-                        .size(240.dp)
+                        .size(200.dp)
                         .shadow(
                             elevation = 24.dp,
-                            shape = RoundedCornerShape(3.dp),
+                            shape = RoundedCornerShape(24.dp),
                             spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                         ),
-                shape = RoundedCornerShape(3.dp),
+                shape = RoundedCornerShape(24.dp),
             ) {
                 AsyncImage(
                     model = songs[0].song.thumbnailUrl,

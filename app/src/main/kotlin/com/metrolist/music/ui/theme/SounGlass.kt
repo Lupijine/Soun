@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.DpOffset
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.runtimeShaderEffect
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
@@ -34,6 +35,23 @@ import com.kyant.backdrop.highlight.HighlightStyle
 import com.kyant.backdrop.isRenderEffectSupported
 import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
+
+// A convex pane magnifies the centre and curves the image across the entire surface.
+internal const val SounPanelLensShader = """
+uniform shader content;
+uniform float2 size;
+half4 main(float2 coord) {
+    float2 centre = size * 0.5;
+    float2 local = coord - centre;
+    float2 normalized = local / max(centre, float2(1.0));
+    float scale = 0.78 + 0.12 * min(dot(normalized, normalized), 2.0);
+    float2 samplePoint = centre + local * scale;
+    half4 colour = content.eval(samplePoint);
+    colour.r = content.eval(samplePoint + local * 0.002).r;
+    colour.b = content.eval(samplePoint - local * 0.002).b;
+    return colour;
+}
+"""
 
 /** Soun's default accent, used when the user hasn't picked a theme color. */
 val SounAccent = Color(0xFFA99BFF)
@@ -108,6 +126,7 @@ fun Modifier.sounGlass(
     elevation: Float = 18f,
     backdropEnabled: Boolean = true,
     backdrop: Backdrop? = LocalSounBackdrop.current,
+    fullPanel: Boolean = false,
 ): Modifier {
     val fill = remember(colors.fillTop, colors.fillBottom) {
         Brush.verticalGradient(listOf(colors.fillTop, colors.fillBottom))
@@ -119,7 +138,11 @@ fun Modifier.sounGlass(
                 shape = { shape },
                 effects = {
                     vibrancy()
-                    // Keep detail in the centre; the curved edge does the optical work.
+                    if (fullPanel) {
+                        runtimeShaderEffect("SounPanelLens", SounPanelLensShader, "content") {
+                            setFloatUniform("size", size.width, size.height)
+                        }
+                    }
                     if (Build.VERSION.SDK_INT < 33) blur(5.dp.toPx())
                     lens(18.dp.toPx(), 32.dp.toPx(), depthEffect = true, chromaticAberration = true)
                 },

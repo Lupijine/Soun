@@ -43,17 +43,17 @@ private fun NewActionButton(
     onClick: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    backgroundColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.28f),
     contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
 ) {
     val animatedBackground by animateColorAsState(
-        targetValue = if (enabled) backgroundColor else backgroundColor.copy(alpha = 0.5f),
+        targetValue = if (enabled) backgroundColor else backgroundColor.copy(alpha = backgroundColor.alpha * 0.5f),
         animationSpec = tween(200),
         label = "background",
     )
 
     val animatedContent by animateColorAsState(
-        targetValue = if (enabled) contentColor else contentColor.copy(alpha = 0.5f),
+        targetValue = if (enabled) contentColor else contentColor.copy(alpha = contentColor.alpha * 0.5f),
         animationSpec = tween(200),
         label = "content",
     )
@@ -75,7 +75,7 @@ private fun NewActionButton(
             CardDefaults.cardColors(
                 containerColor = animatedBackground,
             ),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(22.dp),
         elevation =
             CardDefaults.cardElevation(),
     ) {
@@ -83,7 +83,7 @@ private fun NewActionButton(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
+                    .padding(horizontal = 10.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
@@ -103,7 +103,7 @@ private fun NewActionButton(
                 textAlign = TextAlign.Center,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.basicMarquee(),
+                modifier = Modifier,
             )
         }
     }
@@ -138,7 +138,7 @@ fun NewActionGrid(
                             ) {
                                 action.backgroundColor
                             } else {
-                                MaterialTheme.colorScheme.surfaceVariant
+                                MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.28f)
                             },
                         contentColor =
                             if (action.contentColor !=

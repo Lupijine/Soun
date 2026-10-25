@@ -15,6 +15,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.kyant.backdrop.Backdrop
+import com.metrolist.music.ui.theme.LocalSounBackdrop
+import com.metrolist.music.ui.theme.sounGlass
+import com.metrolist.music.ui.theme.sounGlassColors
 import com.metrolist.music.ui.theme.SounWindowBlur
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,9 +54,16 @@ class MenuState(
     content: @Composable ColumnScope.() -> Unit = {},
 ) {
     var isVisible by mutableStateOf(isVisible)
+    var backdrop by mutableStateOf<Backdrop?>(null)
+        private set
     var content by mutableStateOf(content)
 
     fun show(content: @Composable ColumnScope.() -> Unit) {
+        show(null, content)
+    }
+
+    fun show(backdrop: Backdrop?, content: @Composable ColumnScope.() -> Unit) {
+        this.backdrop = backdrop
         isVisible = true
         this.content = content
     }
@@ -137,7 +148,7 @@ fun BottomSheetMenu(
             state.isVisible = false
         },
         sheetState = sheetState,
-        containerColor = background,
+        containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
         dragHandle = {
             Box(
@@ -148,7 +159,12 @@ fun BottomSheetMenu(
                     .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
             )
         },
-        modifier = modifier.fillMaxHeight()
+        modifier = modifier.fillMaxHeight(0.9f).sounGlass(
+            RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+            sounGlassColors().copy(surfaceTint = background.copy(alpha = 0.78f)),
+            backdrop = state.backdrop ?: LocalSounBackdrop.current,
+            fullPanel = true,
+        )
     ) {
         Column(
             modifier = Modifier

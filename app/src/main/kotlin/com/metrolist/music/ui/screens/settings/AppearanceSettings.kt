@@ -5,6 +5,9 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.graphics.Color
+import com.metrolist.music.ui.theme.sounPanel
 import android.os.Build
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -1307,6 +1310,9 @@ fun AppearanceSettings(
     }
 
     TopAppBar(
+        modifier = Modifier.sounPanel(androidx.compose.foundation.shape.RoundedCornerShape(0.dp)),
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent),
+
         title = { Text(stringResource(R.string.appearance)) },
         navigationIcon = {
             IconButton(

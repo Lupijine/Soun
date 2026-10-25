@@ -94,6 +94,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -696,6 +697,8 @@ fun Queue(
 
         val coroutineScope = rememberCoroutineScope()
 
+        val headerHeight = 80.dp
+        val footerHeight = 80.dp
         val headerItems = 1
         val lazyListState = rememberLazyListState()
         var dragInfo by remember { mutableStateOf<Pair<Int, Int>?>(null) }
@@ -785,8 +788,8 @@ fun Queue(
                     WindowInsets.systemBars
                         .add(
                             WindowInsets(
-                                top = ListItemHeight + 8.dp,
-                                bottom = ListItemHeight + 8.dp,
+                                top = headerHeight + 8.dp + if (inSelectMode) 48.dp else 0.dp,
+                                bottom = footerHeight + 8.dp,
                             ),
                         ).asPaddingValues(),
                 modifier = Modifier.nestedScroll(state.preUpPostDownNestedScrollConnection),
@@ -917,6 +920,8 @@ fun Queue(
                                     modifier =
                                         Modifier
                                             .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 3.dp)
+                                            .clip(RoundedCornerShape(20.dp))
                                             .background(background)
                                             .combinedClickable(
                                                 onClick = {
@@ -1068,9 +1073,7 @@ fun Queue(
                         if (pureBlack) {
                             Color.Black
                         } else {
-                            MaterialTheme.colorScheme
-                                .secondaryContainer
-                                .copy(alpha = 0.90f)
+                            background
                         },
                     ).windowInsetsPadding(
                         WindowInsets.systemBars
@@ -1082,16 +1085,19 @@ fun Queue(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier =
                     Modifier
-                        .height(ListItemHeight)
-                        .padding(horizontal = 12.dp),
+                        .height(headerHeight)
+                        .padding(horizontal = 20.dp),
             ) {
-                Text(
-                    text = queueTitle.orEmpty(),
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(queueTitle?.takeIf { it.isNotBlank() } ?: stringResource(R.string.queue),
+                        style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(pluralStringResource(R.plurals.n_song, queueWindows.size, queueWindows.size) +
+                        " · " + makeTimeString(queueLength * 1000L),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
 
                 AnimatedVisibility(
                     visible = !inSelectMode,
@@ -1101,7 +1107,7 @@ fun Queue(
                     Row {
                         IconButton(
                             onClick = { locked = !locked },
-                            modifier = Modifier.padding(horizontal = 6.dp),
+                            modifier = Modifier.size(48.dp).sounGlass(CircleShape, sounGlassColors(), backdrop = backdrop),
                         ) {
                             Icon(
                                 painter = painterResource(if (locked) R.drawable.lock else R.drawable.lock_open),
@@ -1111,25 +1117,11 @@ fun Queue(
                     }
                 }
 
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    horizontalAlignment = Alignment.End,
-                ) {
-                    Text(
-                        text =
-                            pluralStringResource(
-                                R.plurals.n_song,
-                                queueWindows.size,
-                                queueWindows.size,
-                            ),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-
-                    Text(
-                        text = makeTimeString(queueLength * 1000L),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                IconButton(onClick = { state.collapseSoft() },
+                    modifier = Modifier.size(48.dp).sounGlass(CircleShape, sounGlassColors(), backdrop = backdrop)) {
+                    Icon(painterResource(R.drawable.expand_more), contentDescription = stringResource(R.string.dismiss))
                 }
+
             }
 
             AnimatedVisibility(
@@ -1214,23 +1206,23 @@ fun Queue(
                         if (pureBlack) {
                             Color.Black
                         } else {
-                            MaterialTheme.colorScheme
-                                .secondaryContainer
-                                .copy(alpha = 0.90f)
+                            background
                         },
                     ).fillMaxWidth()
                     .height(
-                        ListItemHeight +
+                        footerHeight +
                             WindowInsets.systemBars
                                 .asPaddingValues()
                                 .calculateBottomPadding(),
                     ).align(Alignment.BottomCenter)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .sounGlass(RoundedCornerShape(28.dp), sounGlassColors(), backdrop = backdrop)
                     .clickable {
                         state.collapseSoft()
                     }.windowInsetsPadding(
                         WindowInsets.systemBars
                             .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
-                    ).padding(12.dp),
+                    ).padding(8.dp),
         ) {
             IconButton(
                 enabled = !isListenTogetherGuest,
