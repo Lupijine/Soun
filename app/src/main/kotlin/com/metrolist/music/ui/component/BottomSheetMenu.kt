@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.SounWindowBlur
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -70,7 +71,7 @@ fun AnimatedBottomSheet(
     sheetState: SheetState = rememberMaterialBottomSheetState(initialValue = SheetValue.Hidden),
     sheetMaxWidth: Dp = BottomSheetDefaults.SheetMaxWidth,
     shape: Shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp), // Soun: rounder sheets
-    containerColor: Color = BottomSheetDefaults.ContainerColor,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.72f), // Soun: glass sheet
     contentColor: Color = contentColorFor(containerColor),
     tonalElevation: Dp = 0.dp,
     scrimColor: Color = BottomSheetDefaults.ScrimColor,
@@ -112,7 +113,10 @@ fun AnimatedBottomSheet(
         dragHandle = dragHandle,
         contentWindowInsets = contentWindowInsets,
         properties = properties,
-        content = lastContent,
+        content = {
+            SounWindowBlur()
+            lastContent()
+        },
     )
 }
 
@@ -121,7 +125,7 @@ fun AnimatedBottomSheet(
 fun BottomSheetMenu(
     modifier: Modifier = Modifier,
     state: MenuState,
-    background: Color = MaterialTheme.colorScheme.surface,
+    background: Color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f), // Soun: glass sheet
 ) {
     val focusManager = LocalFocusManager.current
     val sheetState = rememberMaterialBottomSheetState(initialValue = SheetValue.Hidden)
