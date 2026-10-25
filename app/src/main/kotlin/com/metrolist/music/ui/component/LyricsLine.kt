@@ -149,10 +149,8 @@ internal fun LyricsLine(
         .fillMaxWidth()
         .onSizeChanged { onSizeChanged(it.height) }
         .clip(RoundedCornerShape(8.dp))
-        .combinedClickable(
-            onClick = onClick,
-            onLongClick = onLongClick
-        )
+        // Soun: taps register even while the lyrics are auto-scrolling.
+        .lyricsTap(onClick = onClick, onLongClick = onLongClick)
         .background(if (isSelected && isSelectionModeActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else Color.Transparent)
         .padding(
             start = when (lyricsTextPosition) { LyricsPosition.LEFT, LyricsPosition.RIGHT -> 11.dp; LyricsPosition.CENTER -> 24.dp },

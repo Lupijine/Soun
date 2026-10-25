@@ -898,8 +898,8 @@ fun OriginalLyrics(
                             Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp)) // Clip for background
-                                .combinedClickable(
-                                    enabled = true,
+                                // Soun: taps register even while the lyrics are auto-scrolling.
+                                .lyricsTap(
                                     onClick = {
                                         if (isSelectionModeActive) {
                                             // Toggle selection

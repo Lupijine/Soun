@@ -7,6 +7,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -77,3 +81,33 @@ internal fun LyricsFollowButton(backdrop: Backdrop?, onClick: () -> Unit) {
         }
     }
 }
+
+/**
+ * Tap and long-press for a lyric line that still fire while the list is scrolling.
+ *
+ * The lyrics scroll themselves almost constantly. With a normal clickable, a tap
+ * during that animation is first used to stop the scroll and never becomes a click,
+ * so tapping a line to jump there only worked sometimes (or on the second tap).
+ * Listening with requireUnconsumed = false lets the tap through; a real drag still
+ * cancels it, so scrolling the lyrics by hand doesn't seek.
+ */
+internal fun Modifier.lyricsTap(onClick: () -> Unit, onLongClick: () -> Unit): Modifier =
+    pointerInput(onClick, onLongClick) {
+        awaitEachGesture {
+            awaitFirstDown(requireUnconsumed = false)
+            var timedOut = true
+            val up = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                waitForUpOrCancellation().also { timedOut = false }
+            }
+            when {
+                up != null -> {
+                    up.consume()
+                    onClick()
+                }
+                timedOut -> {
+                    onLongClick()
+                    waitForUpOrCancellation()?.consume()
+                }
+            }
+        }
+    }
