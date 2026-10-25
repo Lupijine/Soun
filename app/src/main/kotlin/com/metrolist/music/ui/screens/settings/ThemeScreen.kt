@@ -66,7 +66,8 @@ fun ThemeScreen(navController: NavController) {
     var sourceDialog by rememberSaveable { mutableStateOf(false) }
     val player = LocalPlayerConnection.current
     val metadata by player?.mediaMetadata?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(null) }
-    val artworkColors = rememberArtworkColors(metadata?.thumbnailUrl, enabled = !pureBlack)
+    val artworkColors = rememberArtworkColors(metadata?.thumbnailUrl,
+        enabled = !pureBlack || MaterialTheme.colorScheme.surface.luminance() >= 0.5f)
     val source = when {
         artworkAccent -> ThemeSource.ARTWORK
         seed == SounAccent.toArgb() -> ThemeSource.SOUN
