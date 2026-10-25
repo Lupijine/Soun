@@ -1101,8 +1101,10 @@ class MainActivity : FragmentActivity() {
                                             Box(Modifier.padding(end = 16.dp)) {
                                                 IconButton(onClick = { showPageMenu = true }, modifier = Modifier.sounPanel(CircleShape)) {
                                                     if (accountImageUrl != null) {
+                                                        // Soun: the photo fills the glass circle, leaving only a thin rim.
                                                         AsyncImage(accountImageUrl, stringResource(R.string.account),
-                                                            modifier = Modifier.size(28.dp).clip(CircleShape))
+                                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                                            modifier = Modifier.fillMaxSize().padding(2.dp).clip(CircleShape))
                                                     } else Icon(painterResource(R.drawable.account), stringResource(R.string.account))
                                                 }
                                                 DropdownMenu(
