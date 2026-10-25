@@ -52,14 +52,18 @@ fun MetrolistTheme(
         )
     }
 
-    val styledScheme = if (themeColor == SounAccent) baseColorScheme.copy(
-        primary = if (darkTheme) SounAccent else Color(0xFF5B48D9),
-        onPrimary = if (darkTheme) Color(0xFF0B0D14) else Color.White,
+    val styledScheme = baseColorScheme.copy(
+        primary = if (themeColor == SounAccent) { if (darkTheme) SounAccent else Color(0xFF5B48D9) } else baseColorScheme.primary,
+        onPrimary = if (themeColor == SounAccent) { if (darkTheme) Color(0xFF0B0D14) else Color.White } else baseColorScheme.onPrimary,
         surface = if (darkTheme) Color(0xFF07070B) else Color(0xFFF4F2F9),
         background = if (darkTheme) Color(0xFF07070B) else Color(0xFFF4F2F9),
         onSurface = if (darkTheme) Color.White else Color(0xFF0B0D14),
         onSurfaceVariant = (if (darkTheme) Color.White else Color(0xFF0B0D14)).copy(alpha = 0.72f),
-    ) else baseColorScheme
+        surfaceContainer = if (darkTheme) Color(0xFF0F1118) else Color(0xFFEDEAF4),
+        surfaceContainerLow = if (darkTheme) Color(0xFF0B0D13) else Color(0xFFF4F2F9),
+        surfaceContainerHigh = if (darkTheme) Color(0xFF191C25) else Color(0xFFE6E2EF),
+        surfaceContainerHighest = if (darkTheme) Color(0xFF222631) else Color(0xFFDDD8E9),
+    )
 
     // Apply pureBlack modification if needed, similar to original logic
     val colorScheme = remember(styledScheme, pureBlack, darkTheme) {

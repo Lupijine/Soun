@@ -41,7 +41,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -55,7 +54,6 @@ import com.metrolist.music.constants.CropAlbumArtKey
 import com.metrolist.music.constants.DefaultOpenTabKey
 import com.metrolist.music.constants.DensityScale
 import com.metrolist.music.constants.DensityScaleKey
-import com.metrolist.music.constants.DynamicThemeKey
 import com.metrolist.music.constants.EnableDynamicIconKey
 import com.metrolist.music.constants.EnableHighRefreshRateKey
 import com.metrolist.music.constants.EnableLandscapeScalingKey
@@ -70,7 +68,6 @@ import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PlayerButtonsStyle
 import com.metrolist.music.constants.PlayerButtonsStyleKey
-import com.metrolist.music.constants.SelectedThemeColorKey
 import com.metrolist.music.constants.ShowCachedPlaylistKey
 import com.metrolist.music.constants.ShowDownloadedPlaylistKey
 import com.metrolist.music.constants.ShowLikedPlaylistKey
@@ -94,8 +91,6 @@ import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.PlayerSliderTrack
 import com.metrolist.music.ui.component.SquigglySlider
 import com.metrolist.music.ui.component.WavySlider
-import com.metrolist.music.ui.theme.DefaultThemeColor
-import com.metrolist.music.ui.theme.SounAccent
 import com.metrolist.music.ui.theme.PlayerSliderColors
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.IconUtils
@@ -109,11 +104,6 @@ fun AppearanceSettings(
     navController: NavController,
     snackbarHostState: SnackbarHostState,
 ) {
-    val (dynamicTheme, onDynamicThemeChange) =
-        rememberPreference(
-            DynamicThemeKey,
-            defaultValue = true,
-        )
     val (enableDynamicIcon, onEnableDynamicIconPrefChange) =
         rememberPreference(
             EnableDynamicIconKey,
@@ -134,14 +124,6 @@ fun AppearanceSettings(
             EnableLandscapeScalingKey,
             defaultValue = false,
         )
-    val (selectedThemeColorInt) =
-        rememberPreference(
-            SelectedThemeColorKey,
-            defaultValue = SounAccent.toArgb(),
-        )
-    // Check if user has selected a custom color (not the default/dynamic color)
-    val isUsingCustomColor = selectedThemeColorInt != DefaultThemeColor.toArgb()
-
     val (useNewPlayerDesign, onUseNewPlayerDesignChange) =
         rememberPreference(
             UseNewPlayerDesignKey,
@@ -803,33 +785,6 @@ fun AppearanceSettings(
                                 onClick = { onEnableLandscapeScalingChange(!enableLandscapeScaling) },
                             ),
                         )
-                        // Only show dynamic theme option when using the default/dynamic color
-                        // When a custom color is selected, dynamic theme is automatically disabled
-                        if (!isUsingCustomColor) {
-                            add(
-                                Material3SettingsItem(
-                                    icon = painterResource(R.drawable.palette),
-                                    title = { Text(stringResource(R.string.enable_dynamic_theme)) },
-                                    trailingContent = {
-                                        Switch(
-                                            checked = dynamicTheme,
-                                            onCheckedChange = onDynamicThemeChange,
-                                            thumbContent = {
-                                                Icon(
-                                                    painter =
-                                                        painterResource(
-                                                            id = if (dynamicTheme) R.drawable.check else R.drawable.close,
-                                                        ),
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(SwitchDefaults.IconSize),
-                                                )
-                                            },
-                                        )
-                                    },
-                                    onClick = { onDynamicThemeChange(!dynamicTheme) },
-                                ),
-                            )
-                        }
                         add(
                             Material3SettingsItem(
                                 icon = painterResource(R.drawable.palette),

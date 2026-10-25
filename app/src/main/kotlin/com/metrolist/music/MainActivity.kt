@@ -642,7 +642,7 @@ class MainActivity : FragmentActivity() {
             mutableStateOf(selectedThemeColor)
         }
 
-        val themeColorCache = remember { mutableMapOf<String, Color>() }
+        val themeColorCache = remember { android.util.LruCache<String, Color>(24) }
 
         LaunchedEffect(selectedThemeColor) {
             if (!enableDynamicTheme) {
@@ -661,7 +661,7 @@ class MainActivity : FragmentActivity() {
                 .distinctUntilChanged { old, new -> old?.id == new?.id }
                 .collectLatest { song ->
                     if (song?.thumbnailUrl != null) {
-                        val cached = themeColorCache[song.thumbnailUrl]
+                        val cached = themeColorCache.get(song.thumbnailUrl)
                         if (cached != null) {
                             withFrameNanos { }
                             themeColor = cached
@@ -674,6 +674,7 @@ class MainActivity : FragmentActivity() {
                                         ImageRequest
                                             .Builder(this@MainActivity)
                                             .data(song.thumbnailUrl)
+                                            .size(100, 100)
                                             .allowHardware(false)
                                             .memoryCachePolicy(CachePolicy.ENABLED)
                                             .diskCachePolicy(CachePolicy.ENABLED)
@@ -682,7 +683,7 @@ class MainActivity : FragmentActivity() {
                                             .build(),
                                     )
                                 val extractedColor = result.image?.toBitmap()?.extractThemeColor() ?: selectedThemeColor
-                                themeColorCache[song.thumbnailUrl] = extractedColor
+                                themeColorCache.put(song.thumbnailUrl, extractedColor)
                                 withFrameNanos { }
                                 themeColor = extractedColor
                             } catch (e: Exception) {

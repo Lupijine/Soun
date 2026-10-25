@@ -1050,4 +1050,14 @@
     <string name="soun_together_account_menu">Together in account menu</string>
     <string name="soun_together_account_menu_desc">Access Together from your profile menu. Turn off to show it in the navigation bar.</string>
     <string name="soun_library_browser_shortcuts">Shortcuts in Manage library</string>
+    <string name="soun_theme_source">Accent source</string>
+    <string name="soun_theme_artwork">Current album</string>
+    <string name="soun_theme_wallpaper">System wallpaper</string>
+    <string name="soun_theme_custom">Custom accent</string>
+    <string name="soun_theme_source_desc">Choose the accent for controls. Album glow continues to follow the playing song.</string>
+    <string name="soun_theme_system">System</string>
+    <string name="soun_theme_light">Light</string>
+    <string name="soun_theme_dark">Dark</string>
+    <string name="soun_theme_black_desc">Use a black background in dark mode and turn off album glow.</string>
+    <string name="soun_theme_preview">Live theme preview</string>
 </resources>
