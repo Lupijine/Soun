@@ -167,31 +167,34 @@ fun Modifier.sounGlass(
 }
 
 /**
- * Full-screen glass for the Now Playing sheet: shows the live app behind it, softly
- * blurred and tinted so the controls stay readable. Falls back to a solid [tint]
- * where the live backdrop isn't available (Android 11 and older).
+ * Full-screen Liquid Glass for the Now Playing sheet: the live app behind it is
+ * refracted by a thick glass slab with rounded corners (bent at the edges, with a
+ * light-catching rim), lightly diffused and tinted so the controls stay readable.
+ * Falls back to a solid [tint] where the live backdrop isn't available.
  */
 @Composable
 fun Modifier.sounSheetGlass(tint: Color, enabled: Boolean = true): Modifier {
     val backdrop = LocalSounBackdrop.current
     if (!enabled || backdrop == null || !isRenderEffectSupported()) return this.background(tint)
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(36.dp)
     return this.drawBackdrop(
         backdrop = backdrop,
-        shape = { androidx.compose.ui.graphics.RectangleShape },
+        shape = { shape },
         effects = {
             vibrancy()
-            blur(14.dp.toPx())
+            blur(6.dp.toPx())
+            lens(36.dp.toPx(), 72.dp.toPx(), depthEffect = true, chromaticAberration = true)
         },
         highlight = {
             Highlight(
-                width = 0.dp,
-                blurRadius = 0.dp,
-                style = HighlightStyle.Default(color = Color.Transparent, angle = 0f, falloff = 1f),
+                width = 1.2.dp,
+                blurRadius = 0.5.dp,
+                style = HighlightStyle.Default(color = Color.White.copy(alpha = 0.55f), angle = 35f, falloff = 1.5f),
             )
         },
         shadow = { Shadow(radius = 0.dp, color = Color.Transparent) },
         onDrawSurface = {
-            drawRect(tint.copy(alpha = tint.alpha * 0.55f))
+            drawRect(tint.copy(alpha = tint.alpha * 0.45f))
         },
     )
 }
