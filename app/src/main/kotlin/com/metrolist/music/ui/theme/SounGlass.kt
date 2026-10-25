@@ -84,8 +84,9 @@ fun sounGlassColors(strong: Boolean = true, pureBlack: Boolean = false): SounGla
             // glass, not as white pills; the bright rim carries the shape.
             fillTop = Color.White.copy(alpha = if (strong) 0.18f else 0.08f),
             fillBottom = Color.White.copy(alpha = if (strong) 0.08f else 0f),
-            // Soft rim: a full-white edge read as a white outline around every button.
-            rimBright = Color.White.copy(alpha = if (strong) 0.45f else 0.35f),
+            // On light backgrounds a white rim reads as a white outline; a faint dark
+            // edge defines the glass the way it looks on a white surface.
+            rimBright = Color(0xFF1E143C).copy(alpha = if (strong) 0.16f else 0.12f),
             rimDim = Color(0xFF1E143C).copy(alpha = 0.07f),
             shadow = Color(0xFF281E5A).copy(alpha = 0.16f),
             selectedPill = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
