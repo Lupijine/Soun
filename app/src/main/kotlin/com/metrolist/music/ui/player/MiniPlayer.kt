@@ -94,7 +94,6 @@ import com.metrolist.music.constants.SwipeSensitivityKey
 import com.metrolist.music.constants.SwipeThumbnailKey
 import com.metrolist.music.constants.ThumbnailCornerRadius
 import com.metrolist.music.constants.UseNewMiniPlayerDesignKey
-import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.listentogether.ListenTogetherManager
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.CastConnectionHandler
@@ -300,7 +299,6 @@ private fun NewMiniPlayer(
             miniPlayerBackground == MiniPlayerBackgroundStyle.GRADIENT)
 
     val primaryColor = if (forceLightColors) Color.White else MaterialTheme.colorScheme.primary
-    val outlineColor = if (forceLightColors) Color.White else MaterialTheme.colorScheme.outline
     val onSurfaceColor = if (forceLightColors) Color.White else MaterialTheme.colorScheme.onSurface
     val errorColor = if (forceLightColors) Color(0xFFFF6B6B) else MaterialTheme.colorScheme.error
 
@@ -441,20 +439,14 @@ private fun NewMiniPlayer(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 8.dp),
             ) {
-                // Play button with progress - isolated composable
-                NewMiniPlayerPlayButton(
-                    progressState = progressState,
-                    playbackState = playbackState,
-                    isCasting = isCasting,
-                    castHandler = castHandler,
-                    playerConnection = playerConnection,
-                    mediaMetadata = mediaMetadata,
-                    primaryColor = primaryColor,
-                    outlineColor = outlineColor,
-                    listenTogetherManager = listenTogetherManager,
+                AsyncImage(
+                    model = mediaMetadata?.thumbnailUrl?.resize(144, 144),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)),
                 )
 
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
                 // Song info - isolated composable
                 NewMiniPlayerSongInfo(
@@ -477,46 +469,35 @@ private fun NewMiniPlayer(
                     Spacer(modifier = Modifier.width(12.dp))
                 }
 
-// Subscribe button - isolated composable
-                mediaMetadata?.artists?.firstOrNull()?.id?.let { artistId ->
-                    SubscribeButton(
-                        artistId = artistId,
-                        metadata = mediaMetadata!!,
-                        primaryColor = primaryColor,
-                        outlineColor = outlineColor,
-                        onSurfaceColor = onSurfaceColor,
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-// Favorite button - isolated composable
-                mediaMetadata?.let { FavoriteButton(
-                    songId = it.id,
-                    errorColor = errorColor,
-                    outlineColor = outlineColor,
-                    onSurfaceColor = onSurfaceColor,
+                NewMiniPlayerPlayButton(
+                    playbackState = playbackState,
+                    isCasting = isCasting,
+                    castHandler = castHandler,
+                    playerConnection = playerConnection,
+                    primaryColor = onSurfaceColor,
+                    listenTogetherManager = listenTogetherManager,
                 )
+
+                IconButton(onClick = playerConnection::seekToNext, enabled = canSkipNext && !isListenTogetherGuest) {
+                    Icon(painterResource(R.drawable.skip_next), stringResource(R.string.next), tint = onSurfaceColor)
                 }
             }
+            Box(Modifier.align(Alignment.BottomCenter).padding(horizontal = 22.dp).fillMaxWidth().height(2.dp)
+                .drawWithContent {
+                    drawRect(onSurfaceColor.copy(alpha = 0.14f))
+                    drawRect(primaryColor, size = Size(size.width * progressState.progress, size.height))
+                })
         }
     }
 }
 
-/**
- * Play button with circular progress indicator
- * Uses drawWithContent to update progress without recomposition
- */
 @Composable
 private fun NewMiniPlayerPlayButton(
-    progressState: ProgressState,
     playbackState: Int,
     isCasting: Boolean,
     castHandler: CastConnectionHandler?,
     playerConnection: PlayerConnection,
-    mediaMetadata: MediaMetadata?,
     primaryColor: Color,
-    outlineColor: Color,
     listenTogetherManager: ListenTogetherManager?,
 ) {
     val isPlaying by playerConnection.isPlaying.collectAsState()
@@ -525,54 +506,13 @@ private fun NewMiniPlayerPlayButton(
     val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
     val isMuted by playerConnection.isMuted.collectAsStateWithLifecycle()
 
-    val trackColor = outlineColor.copy(alpha = 0.2f)
-    val strokeWidth = 3.dp
-
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier =
-            Modifier
-                .size(48.dp)
-                .drawWithContent {
-                    drawContent()
-                    // Draw progress arc - this reads progressState.progress during draw phase only
-                    val progress = progressState.progress
-                    val stroke = Stroke(width = strokeWidth.toPx(), cap = StrokeCap.Round)
-                    val startAngle = -90f
-                    val sweepAngle = 360f * progress
-                    val diameter = size.minDimension
-                    val topLeft = Offset((size.width - diameter) / 2, (size.height - diameter) / 2)
-
-                    // Draw track
-                    drawArc(
-                        color = trackColor,
-                        startAngle = 0f,
-                        sweepAngle = 360f,
-                        useCenter = false,
-                        topLeft = topLeft,
-                        size = Size(diameter, diameter),
-                        style = stroke,
-                    )
-                    // Draw progress
-                    drawArc(
-                        color = primaryColor,
-                        startAngle = startAngle,
-                        sweepAngle = sweepAngle,
-                        useCenter = false,
-                        topLeft = topLeft,
-                        size = Size(diameter, diameter),
-                        style = stroke,
-                    )
-                },
-    ) {
-        // Thumbnail with play/pause overlay
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(48.dp)) {
         Box(
             contentAlignment = Alignment.Center,
             modifier =
                 Modifier
-                    .size(40.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
-                    .border(1.dp, outlineColor.copy(alpha = 0.3f), CircleShape)
                     .clickable {
                         if (isListenTogetherGuest) {
                             playerConnection.toggleMute()
@@ -588,45 +528,27 @@ private fun NewMiniPlayerPlayButton(
                         }
                     },
         ) {
-            mediaMetadata?.let { metadata ->
-                val thumbnailUrl =
-                    remember(metadata.thumbnailUrl) {
-                        metadata.thumbnailUrl?.resize(120, 120)
-                    }
-                AsyncImage(
-                    model = thumbnailUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                )
-            }
-
-            // Overlay for paused state or muted (guest)
-            if (isListenTogetherGuest && isMuted ||
-                (!isListenTogetherGuest && (!effectiveIsPlaying || playbackState == Player.STATE_ENDED))
-            ) {
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.4f), CircleShape),
-                )
-                Icon(
-                    painter =
-                        painterResource(
-                            if (isListenTogetherGuest) {
-                                if (isMuted) R.drawable.volume_off else R.drawable.volume_up
-                            } else if (playbackState == Player.STATE_ENDED) {
-                                R.drawable.replay
-                            } else {
-                                R.drawable.play
-                            },
-                        ),
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
+            Icon(
+                painter =
+                    painterResource(
+                        if (isListenTogetherGuest) {
+                            if (isMuted) R.drawable.volume_off else R.drawable.volume_up
+                        } else if (playbackState == Player.STATE_ENDED) {
+                            R.drawable.replay
+                        } else if (effectiveIsPlaying) {
+                            R.drawable.pause
+                        } else {
+                            R.drawable.play
+                        },
+                    ),
+                contentDescription = stringResource(
+                    if (isListenTogetherGuest) {
+                        if (isMuted) R.string.unmute else R.string.mute
+                    } else if (effectiveIsPlaying) R.string.pause else R.string.play,
+                ),
+                tint = primaryColor,
+                modifier = Modifier.size(24.dp),
+            )
         }
     }
 }
@@ -1039,96 +961,3 @@ private fun LegacyMiniMediaInfo(
 // ============================================================================
 // ISOLATED BUTTON COMPOSABLES - Prevent parent recomposition
 // ============================================================================
-
-@Composable
-private fun SubscribeButton(
-    artistId: String,
-    metadata: MediaMetadata,
-    primaryColor: Color,
-    outlineColor: Color,
-    onSurfaceColor: Color,
-) {
-    val database = LocalDatabase.current
-    val libraryArtist by database.artist(artistId).collectAsStateWithLifecycle(initialValue = null)
-    val isSubscribed = libraryArtist?.artist?.bookmarkedAt != null
-
-
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier =
-            Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .border(
-                    width = 1.dp,
-                    color = if (isSubscribed) primaryColor.copy(alpha = 0.5f) else outlineColor.copy(alpha = 0.3f),
-                    shape = CircleShape,
-                ).background(
-                    color = if (isSubscribed) primaryColor.copy(alpha = 0.1f) else Color.Transparent,
-                    shape = CircleShape,
-                ).clickable {
-                    database.transaction {
-                        val artist = libraryArtist?.artist
-                        if (artist != null) {
-                            update(artist.toggleLike())
-                        } else {
-                            metadata.artists.firstOrNull()?.let { artistInfo ->
-                                insert(
-                                    ArtistEntity(
-                                        id = artistInfo.id ?: "",
-                                        name = artistInfo.name,
-                                        channelId = null,
-                                        thumbnailUrl = null,
-                                    ).toggleLike(),
-                                )
-                            }
-                        }
-                    }
-                },
-    ) {
-        Icon(
-            painter = painterResource(if (isSubscribed) R.drawable.subscribed else R.drawable.subscribe),
-            contentDescription = null,
-            tint = if (isSubscribed) primaryColor else onSurfaceColor.copy(alpha = 0.7f),
-            modifier = Modifier.size(20.dp),
-        )
-    }
-}
-
-@Composable
-private fun FavoriteButton(
-    songId: String,
-    errorColor: Color,
-    outlineColor: Color,
-    onSurfaceColor: Color,
-) {
-    val database = LocalDatabase.current
-    val playerConnection = LocalPlayerConnection.current ?: return
-    val librarySong by database.song(songId).collectAsStateWithLifecycle(initialValue = null)
-    // For episodes, show saved state (inLibrary); for songs, show liked state
-    val isEpisode = librarySong?.song?.isEpisode == true
-    val isLiked = if (isEpisode) librarySong?.song?.inLibrary != null else librarySong?.song?.liked == true
-
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier =
-            Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .border(
-                    width = 1.dp,
-                    color = if (isLiked) errorColor.copy(alpha = 0.5f) else outlineColor.copy(alpha = 0.3f),
-                    shape = CircleShape,
-                ).background(
-                    color = if (isLiked) errorColor.copy(alpha = 0.1f) else Color.Transparent,
-                    shape = CircleShape,
-                ).clickable { playerConnection.service.toggleLike() },
-    ) {
-        Icon(
-            painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
-            contentDescription = null,
-            tint = if (isLiked) errorColor else onSurfaceColor.copy(alpha = 0.7f),
-            modifier = Modifier.size(20.dp),
-        )
-    }
-}

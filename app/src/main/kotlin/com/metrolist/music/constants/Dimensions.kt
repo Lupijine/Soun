@@ -33,9 +33,9 @@ val SmallGridThumbnailHeight = 104.dp
 val GridThumbnailHeight = 128.dp
 val AlbumThumbnailSize = 144.dp
 
-val ThumbnailCornerRadius = 3.dp
+val ThumbnailCornerRadius = 14.dp
 
-val PlayerHorizontalPadding = 32.dp
+val PlayerHorizontalPadding = 24.dp
 
 val NavigationBarAnimationSpec = spring<Dp>(
     dampingRatio = Spring.DampingRatioNoBouncy,

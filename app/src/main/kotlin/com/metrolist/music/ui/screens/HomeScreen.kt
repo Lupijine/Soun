@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens
 
+import com.metrolist.music.ui.theme.sounPanel
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -50,6 +51,7 @@ import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
@@ -652,7 +654,16 @@ fun HomeScreen(
     val menuState = LocalMenuState.current
     val bottomSheetPageState = LocalBottomSheetPageState.current
     val database = LocalDatabase.current
-    val playerConnection = LocalPlayerConnection.current ?: return
+    val playerConnection = LocalPlayerConnection.current
+    LaunchedEffect(Unit) { viewModel.loadHomeData() }
+    if (playerConnection == null) {
+        Column(Modifier.fillMaxSize().padding(LocalPlayerAwareWindowInsets.current.asPaddingValues()).padding(24.dp)) {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+            Text(stringResource(R.string.soun_music_starting), modifier = Modifier.padding(top = 16.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        return
+    }
     val haptic = LocalHapticFeedback.current
     val listenTogetherManager = LocalListenTogetherManager.current
     val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
@@ -694,8 +705,6 @@ fun HomeScreen(
     val innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
     val (randomizeHomeOrder) = rememberPreference(RandomizeHomeOrderKey, true)
     val autoRadioQueue by rememberPreference(AutoRadioQueueKey, defaultValue = true)
-
-    LaunchedEffect(Unit) { viewModel.loadHomeData() }
 
     val shouldShowWrappedCard by viewModel.showWrappedCard.collectAsStateWithLifecycle()
     val wrappedState by viewModel.wrappedManager.state.collectAsStateWithLifecycle()
@@ -912,6 +921,7 @@ fun HomeScreen(
     val ytGridItem: @Composable (YTItem) -> Unit = { item ->
         YouTubeGridItem(
             item = item,
+            roundedArtwork = true,
             isActive = item.id in listOf(mediaMetadata?.album?.id, mediaMetadata?.id),
             isPlaying = isPlaying,
             coroutineScope = scope,
@@ -1191,7 +1201,7 @@ fun HomeScreen(
             ) {
                 item {
                     ChipsRow(
-                        chips = homePage?.chips?.map { it to it.title } ?: emptyList(),
+                        chips = listOf(null to stringResource(R.string.filter_all)) + (homePage?.chips?.map { it to it.title } ?: emptyList()),
                         currentValue = selectedChip,
                         onValueUpdate = {
                             viewModel.toggleChip(it)
@@ -1435,7 +1445,15 @@ fun HomeScreen(
                     }
                 }
 
-                homeSections.forEach { section ->
+                homeSections.sortedBy {
+                    when (it) {
+                        HomeSection.QuickPicks -> 0
+                        HomeSection.AccountPlaylists -> 1
+                        HomeSection.KeepListening -> 2
+                        is HomeSection.HomePageSection -> 3
+                        else -> 4
+                    }
+                }.forEach { section ->
                     when (section) {
                         HomeSection.SpeedDial -> {
                             speedDialItems.takeIf { it.isNotEmpty() }?.let { items ->
@@ -1762,107 +1780,40 @@ fun HomeScreen(
                         }
 
                         HomeSection.QuickPicks -> {
-                            quickPicks?.takeIf { it.isNotEmpty() }?.let { quickPicks ->
+                            quickPicks?.takeIf { it.isNotEmpty() }?.let { picks ->
                                 item(key = "quick_picks_title") {
-                                    val quickPicksTitle = stringResource(R.string.quick_picks)
-                                    NavigationTitle(
-                                        title = quickPicksTitle,
-                                        onPlayAllClick =
-                                            if (!isListenTogetherGuest) {
-                                                {
-                                                    playerConnection.playQueue(
-                                                        ListQueue(
-                                                            title = quickPicksTitle,
-                                                            items = quickPicks.distinctBy { it.id }.map { it.toMediaItem() },
-                                                        ),
-                                                    )
-                                                }
-                                            } else {
-                                                null
-                                            },
-                                    )
+                                    val title = stringResource(R.string.quick_picks)
+                                    NavigationTitle(title, onPlayAllClick = if (isListenTogetherGuest) null else {
+                                        { playerConnection.playQueue(ListQueue(title, picks.distinctBy { it.id }.map { it.toMediaItem() })) }
+                                    })
                                 }
-
                                 item(key = "quick_picks_list") {
-                                    LazyHorizontalGrid(
-                                        state = quickPicksLazyGridState,
-                                        rows = GridCells.Fixed(4),
-                                        flingBehavior = rememberSnapFlingBehavior(quickPicksSnapLayoutInfoProvider),
-                                        contentPadding =
-                                            WindowInsets.systemBars
-                                                .only(WindowInsetsSides.Horizontal)
-                                                .asPaddingValues(),
-                                        modifier =
-                                            Modifier
-                                                .fillMaxWidth()
-                                                .height(ListItemHeight * 4),
-                                        ) {
-                                            items(
-                                                items = quickPicks.distinctBy { it.id },
-                                                key = { "home_quickpick_${it.id}" },
-                                            ) { originalSong ->
-                                            // fetch song from database to keep updated
-                                            val song by database
-                                                .song(originalSong.id)
-                                                .collectAsStateWithLifecycle(initialValue = originalSong)
-
+                                    Column(Modifier.padding(horizontal = 20.dp).sounPanel().padding(vertical = 6.dp)) {
+                                        picks.distinctBy { it.id }.take(4).forEach { original ->
+                                            val current by database.song(original.id).collectAsStateWithLifecycle(initialValue = original)
+                                            val song = current ?: original
                                             SongListItem(
-                                                song = song!!,
-                                                showInLibraryIcon = true,
-                                                isActive = song!!.id == mediaMetadata?.id,
-                                                isPlaying = isPlaying,
-                                                isSwipeable = false,
+                                                song = song, isActive = song.id == mediaMetadata?.id, isPlaying = isPlaying,
+                                                isSwipeable = false, showInLibraryIcon = false, showLikedIcon = false, showDownloadIcon = false,
                                                 trailingContent = {
-                                                    IconButton(
-                                                        onClick = {
-                                                            menuState.show {
-                                                                SongMenu(
-                                                                    originalSong = song!!,
-                                                                    onDismiss = menuState::dismiss,
-                                                                )
-                                                            }
-                                                        },
-                                                    ) {
-                                                        Icon(
-                                                            painter = painterResource(R.drawable.more_vert),
-                                                            contentDescription = null,
-                                                        )
-                                                    }
+                                                    Text(makeTimeString(song.song.duration * 1000L), style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 8.dp))
                                                 },
-                                                modifier =
-                                                    Modifier
-                                                        .width(horizontalLazyGridItemWidth)
-                                                        .combinedClickable(
-                                                            onClick = {
-                                                                if (!isListenTogetherGuest) {
-                                                                    if (song!!.id == mediaMetadata?.id) {
-                                                                        playerConnection.togglePlayPause()
-                                                                    } else {
-                                                                        playerConnection.playQueue(
-                                                                            if (autoRadioQueue) {
-                                                                                YouTubeQueue.radio(
-                                                                                    song!!.toMediaMetadata(),
-                                                                                )
-                                                                            } else {
-                                                                                ListQueue(
-                                                                                    title = song!!.title,
-                                                                                    items = listOf(song!!.toMediaItem())
-                                                                                )
-                                                                            }
-                                                                        )
-                                                                    }
-                                                                }
-                                                            },
-                                                            onLongClick = {
-                                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                                menuState.show {
-                                                                    SongMenu(
-                                                                        originalSong = song!!,
-                                                                        onDismiss = menuState::dismiss,
-                                                                    )
-                                                                }
-                                                            },
-                                                        ),
+                                                modifier = Modifier.fillMaxWidth().combinedClickable(
+                                                    onClick = {
+                                                        if (!isListenTogetherGuest) {
+                                                            if (song.id == mediaMetadata?.id) playerConnection.togglePlayPause()
+                                                            else playerConnection.playQueue(
+                                                                if (autoRadioQueue) YouTubeQueue.radio(song.toMediaMetadata())
+                                                                else ListQueue(song.title, listOf(song.toMediaItem())),
+                                                            )
+                                                        }
+                                                    },
+                                                    onLongClick = {
+                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        menuState.show { SongMenu(originalSong = song, onDismiss = menuState::dismiss) }
+                                                    },
+                                                ),
                                             )
                                         }
                                     }

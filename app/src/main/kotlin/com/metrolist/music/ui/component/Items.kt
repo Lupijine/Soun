@@ -352,7 +352,7 @@ fun ListItem(
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.secondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -383,7 +383,7 @@ fun ListItem(
         if (!subtitle.isNullOrEmpty()) {
             Text(
                 text = subtitle,
-                color = MaterialTheme.colorScheme.secondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -406,6 +406,7 @@ fun GridItem(
     thumbnailContent: @Composable BoxWithConstraintsScope.() -> Unit,
     thumbnailRatio: Float = 1f,
     fillMaxWidth: Boolean = false,
+    roundedArtwork: Boolean = false,
 ) {
     val gridHeight = currentGridThumbnailHeight()
     Column(
@@ -416,7 +417,7 @@ fun GridItem(
         } else {
             modifier
                 .padding(12.dp)
-                .width(gridHeight * thumbnailRatio)
+                .width(gridHeight * thumbnailRatio * if (roundedArtwork) 1.22f else 1f)
         }
     ) {
         BoxWithConstraints(
@@ -424,7 +425,7 @@ fun GridItem(
             modifier = if (fillMaxWidth) {
                 Modifier.fillMaxWidth()
             } else {
-                Modifier.height(gridHeight)
+                Modifier.height(gridHeight * if (roundedArtwork) 1.22f else 1f)
             }
                 .aspectRatio(thumbnailRatio)
         ) {
@@ -469,7 +470,7 @@ fun GridItem(
         Text(
             text = subtitle,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.secondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -527,7 +528,7 @@ fun SongListItem(
                               makeTimeString(song.song.duration * 1000L)
                           ),
                           style = MaterialTheme.typography.bodySmall,
-                          color = MaterialTheme.colorScheme.secondary,
+                          color = MaterialTheme.colorScheme.onSurfaceVariant,
                           maxLines = 1,
                           overflow = TextOverflow.Ellipsis,
                       )
@@ -535,7 +536,7 @@ fun SongListItem(
                      Text(
                          text = subtitleOverride,
                          style = MaterialTheme.typography.bodySmall,
-                         color = MaterialTheme.colorScheme.secondary,
+                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                          maxLines = 1,
                          overflow = TextOverflow.Ellipsis,
                      )
@@ -617,7 +618,7 @@ fun SongGridItem(
                 makeTimeString(song.song.duration * 1000L)
             ),
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.secondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
@@ -767,7 +768,7 @@ fun AlbumListItem(
                 album.album.year?.toString()
             ),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.secondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -842,7 +843,7 @@ fun AlbumGridItem(
          Text(
              text = album.artists.joinToArtistString(" ${stringResource(R.string.and)} ") { it.name },
              style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.secondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
@@ -1025,7 +1026,7 @@ fun PlaylistGridItem(
         Text(
             text = subtitle,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.secondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
@@ -1259,6 +1260,7 @@ fun YouTubeGridItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
+    roundedArtwork: Boolean = false,
 ) = GridItem(
     title = {
         Text(
@@ -1267,12 +1269,12 @@ fun YouTubeGridItem(
             } else {
                 item.title
             },
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
+            style = if (roundedArtwork) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = if (item is ArtistItem) TextAlign.Center else TextAlign.Start,
-            modifier = Modifier.basicMarquee().fillMaxWidth()
+            modifier = Modifier.fillMaxWidth()
         )
     },
      subtitle = {
@@ -1290,7 +1292,7 @@ fun YouTubeGridItem(
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.secondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1299,14 +1301,15 @@ fun YouTubeGridItem(
     badges = badges,
     thumbnailContent = {
         val database = LocalDatabase.current
-        val playerConnection = LocalPlayerConnection.current ?: return@GridItem
+        val playerConnection = LocalPlayerConnection.current
         val scope = rememberCoroutineScope()
 
         ItemThumbnail(
             thumbnailUrl = item.thumbnail,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(ThumbnailCornerRadius),
+            shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(if (roundedArtwork) 24.dp else ThumbnailCornerRadius),
+            forceCrop = roundedArtwork,
         )
 
         if (item is SongItem && !isActive) {
@@ -1316,7 +1319,8 @@ fun YouTubeGridItem(
         }
 
         AlbumPlayButton(
-            visible = item is AlbumItem && !isActive,
+            visible = item is AlbumItem && !isActive && playerConnection != null,
+            alignment = if (roundedArtwork) Alignment.BottomStart else Alignment.BottomEnd,
             onClick = {
                 scope.launch(Dispatchers.IO) {
                     var albumWithSongs = database.albumWithSongs(item.id).first()
@@ -1328,7 +1332,7 @@ fun YouTubeGridItem(
                     }
                     albumWithSongs?.let {
                         withContext(Dispatchers.Main) {
-                            playerConnection.playQueue(LocalAlbumRadio(it))
+                            playerConnection?.playQueue(LocalAlbumRadio(it))
                         }
                     }
                 }
@@ -1337,6 +1341,7 @@ fun YouTubeGridItem(
     },
     thumbnailRatio = thumbnailRatio,
     fillMaxWidth = fillMaxWidth,
+    roundedArtwork = roundedArtwork && item !is ArtistItem,
     modifier = modifier
 )
 
@@ -1356,7 +1361,7 @@ fun LocalSongsGrid(
         Text(
             text = subtitle,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.secondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.basicMarquee(
@@ -1398,7 +1403,7 @@ fun LocalArtistsGrid(
         Text(
             text = subtitle,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.secondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.basicMarquee(
@@ -1440,7 +1445,7 @@ fun LocalAlbumsGrid(
         Text(
             text = subtitle,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.secondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.basicMarquee(
@@ -1475,7 +1480,8 @@ fun ItemThumbnail(
     modifier: Modifier = Modifier,
     albumIndex: Int? = null,
     isSelected: Boolean = false,
-    thumbnailRatio: Float = 1f
+    thumbnailRatio: Float = 1f,
+    forceCrop: Boolean = false,
 ) {
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
     
@@ -1495,9 +1501,9 @@ fun ItemThumbnail(
                     .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
                     .build(),
                 contentDescription = null,
-                contentScale = if (cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
+                contentScale = if (forceCrop || cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .then(if (forceCrop) Modifier.fillMaxSize() else Modifier.fillMaxWidth())
                     .clip(shape)
             )
         }
@@ -1790,13 +1796,14 @@ fun BoxScope.OverlayEditButton(
 fun BoxScope.AlbumPlayButton(
     visible: Boolean,
     onClick: () -> Unit,
+    alignment: Alignment = Alignment.BottomEnd,
 ) {
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn(),
         exit = fadeOut(),
         modifier = Modifier
-            .align(Alignment.BottomEnd)
+            .align(alignment)
             .padding(8.dp)
     ) {
         Box(
@@ -1861,7 +1868,7 @@ fun SwipeToSongBox(
             val (iconRes, bg, tint, align) = if (offset.floatValue > 0)
                 Quadruple(
                     R.drawable.playlist_play,
-                    MaterialTheme.colorScheme.secondary,
+                    MaterialTheme.colorScheme.onSurfaceVariant,
                     MaterialTheme.colorScheme.onSecondary,
                     Alignment.CenterStart
                 ) else

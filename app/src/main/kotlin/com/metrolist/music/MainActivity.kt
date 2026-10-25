@@ -29,6 +29,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -53,6 +54,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import com.metrolist.music.ui.theme.sounPanel
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -198,7 +202,10 @@ import com.metrolist.music.ui.screens.settings.NavigationTab
 import com.metrolist.music.ui.theme.ColorSaver
 import com.metrolist.music.ui.theme.DefaultThemeColor
 import com.metrolist.music.ui.theme.SounAccent
+import com.metrolist.music.ui.theme.LocalSounSurfaceBackdrop
+import com.metrolist.music.ui.theme.rememberArtworkColors
 import com.metrolist.music.ui.theme.LocalSounBackdrop
+import com.metrolist.music.ui.theme.sounAmbientBackground
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.isRenderEffectSupported
@@ -983,7 +990,7 @@ class MainActivity : FragmentActivity() {
                         currentRoute == Screens.ListenTogether.route ||
                             currentRoute == "listen_together_from_topbar"
                     shouldShowTopBar = currentRoute in topLevelScreens &&
-                        currentRoute != "settings" &&
+                        currentRoute != "settings" && currentRoute != Screens.Library.route &&
                         !(isListenTogetherScreen && listenTogetherInTopBar)
                 }
 
@@ -1021,7 +1028,11 @@ class MainActivity : FragmentActivity() {
                 val currentTitleRes =
                     remember(navBackStackEntry) {
                         when (navBackStackEntry?.destination?.route) {
-                            Screens.Home.route -> R.string.home
+                            Screens.Home.route -> when (java.time.LocalTime.now().hour) {
+                                in 5..11 -> R.string.soun_good_morning
+                                in 12..17 -> R.string.soun_good_afternoon
+                                else -> R.string.soun_good_evening
+                            }
                             Screens.Search.route -> R.string.search
                             Screens.Library.route -> R.string.filter_library
                             Screens.ListenTogether.route -> R.string.together
@@ -1030,6 +1041,7 @@ class MainActivity : FragmentActivity() {
                     }
 
                 var showAccountDialog by remember { mutableStateOf(false) }
+                var showPageMenu by remember { mutableStateOf(false) }
 
                 val pauseListenHistory by rememberPreference(PauseListenHistoryKey, defaultValue = false)
                 val eventCount by database.eventCount().collectAsStateWithLifecycle(initialValue = 0)
@@ -1040,10 +1052,14 @@ class MainActivity : FragmentActivity() {
 
                 val baseBg = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
                 val glassBackdrop = rememberLayerBackdrop()
+                val ambientBackdrop = rememberLayerBackdrop()
+                val ambientMedia by activePlayerConnection?.mediaMetadata?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(null) }
+                val ambientArtwork = rememberArtworkColors(ambientMedia?.thumbnailUrl, enabled = !pureBlack)
                 val artistNameAliases by ArtistNameAliases.aliases.collectAsStateWithLifecycle()
 
                 CompositionLocalProvider(
                     LocalSounBackdrop provides glassBackdrop,
+                    LocalSounSurfaceBackdrop provides ambientBackdrop,
                     LocalDatabase provides database,
                     LocalNavController provides navController,
                     LocalContentColor provides if (pureBlack) Color.White else contentColorFor(MaterialTheme.colorScheme.surface),
@@ -1073,62 +1089,41 @@ class MainActivity : FragmentActivity() {
                                         title = {
                                             Text(
                                                 text = currentTitleRes?.let { stringResource(it) } ?: "",
-                                                style = MaterialTheme.typography.titleLarge,
+                                                style = MaterialTheme.typography.headlineLarge,
+                                                fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+                                                maxLines = 1,
+                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                             )
                                         },
                                         actions = {
-                                            if (showHistoryButton) {
-                                                IconButton(onClick = { navController.navigate("history") }) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.history),
-                                                        contentDescription = stringResource(R.string.history),
-                                                    )
-                                                }
-                                            }
-                                            IconButton(onClick = { navController.navigate("stats") }) {
-                                                Icon(
-                                                    painter = painterResource(R.drawable.stats),
-                                                    contentDescription = stringResource(R.string.stats),
-                                                )
-                                            }
-                                            if (listenTogetherInTopBar) {
-                                                IconButton(onClick = { navController.navigate("listen_together_from_topbar") }) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.group_outlined),
-                                                        contentDescription = stringResource(R.string.together),
-                                                    )
-                                                }
-                                            }
-                                            IconButton(onClick = { showAccountDialog = true }) {
-                                                BadgedBox(badge = {
-                                                    if (latestVersionName != BuildConfig.BASE_VERSION_NAME) {
-                                                        Badge()
-                                                    }
-                                                }) {
+                                            Box(Modifier.padding(end = 16.dp)) {
+                                                IconButton(onClick = { showPageMenu = true }, modifier = Modifier.sounPanel(CircleShape)) {
                                                     if (accountImageUrl != null) {
-                                                        AsyncImage(
-                                                            model = accountImageUrl,
-                                                            contentDescription = stringResource(R.string.account),
-                                                            modifier =
-                                                                Modifier
-                                                                    .size(24.dp)
-                                                                    .clip(CircleShape),
-                                                        )
-                                                    } else {
-                                                        Icon(
-                                                            painter = painterResource(R.drawable.account),
-                                                            contentDescription = stringResource(R.string.account),
-                                                            modifier = Modifier.size(24.dp),
-                                                        )
-                                                    }
+                                                        AsyncImage(accountImageUrl, stringResource(R.string.account),
+                                                            modifier = Modifier.size(28.dp).clip(CircleShape))
+                                                    } else Icon(painterResource(R.drawable.account), stringResource(R.string.account))
+                                                }
+                                                DropdownMenu(expanded = showPageMenu, onDismissRequest = { showPageMenu = false }) {
+                                                    DropdownMenuItem(text = { Text(stringResource(R.string.account)) }, onClick = {
+                                                        showPageMenu = false; showAccountDialog = true
+                                                    })
+                                                    if (showHistoryButton) DropdownMenuItem(text = { Text(stringResource(R.string.history)) }, onClick = {
+                                                        showPageMenu = false; navController.navigate("history")
+                                                    })
+                                                    DropdownMenuItem(text = { Text(stringResource(R.string.stats)) }, onClick = {
+                                                        showPageMenu = false; navController.navigate("stats")
+                                                    })
+                                                    DropdownMenuItem(text = { Text(stringResource(R.string.together)) }, onClick = {
+                                                        showPageMenu = false; navController.navigate("listen_together_from_topbar")
+                                                    })
                                                 }
                                             }
                                         },
                                         scrollBehavior = topAppBarScrollBehavior,
                                         colors =
                                             TopAppBarDefaults.topAppBarColors(
-                                                containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
-                                                scrolledContainerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
+                                                containerColor = Color.Transparent,
+                                                scrolledContainerColor = Color.Transparent,
                                                 titleContentColor = MaterialTheme.colorScheme.onSurface,
                                                 actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1357,9 +1352,9 @@ class MainActivity : FragmentActivity() {
                             }
                             Box(
                                 Modifier.weight(1f)
-                                    .then(if (isRenderEffectSupported()) Modifier.layerBackdrop(glassBackdrop) else Modifier)
-                                    .background(baseBg),
+                                    .then(if (isRenderEffectSupported()) Modifier.layerBackdrop(glassBackdrop) else Modifier),
                             ) {
+                                Box(Modifier.fillMaxSize().layerBackdrop(ambientBackdrop).sounAmbientBackground(pureBlack, ambientArtwork))
                                 // NavHost with animations (Material 3 Expressive style)
                                 NavHost(
                                     navController = navController,

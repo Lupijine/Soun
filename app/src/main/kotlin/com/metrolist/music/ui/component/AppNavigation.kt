@@ -225,8 +225,11 @@ fun AppNavigationBar(
                             .fillMaxHeight()
                             .padding(horizontal = 2.dp, vertical = if (slimNav) 3.dp else 0.dp)
                             .graphicsLayer { alpha = indicatorAlpha }
-                            .background(glass.selectedPill, pillShape)
-                            .border(0.5.dp, glass.rimBright.copy(alpha = 0.35f), pillShape),
+                            .sounGlass(
+                                pillShape,
+                                glass.copy(surfaceTint = glass.selectedPill, fillTop = Color.White.copy(alpha = 0.18f)),
+                                elevation = 0f,
+                            ),
                     )
                 }
                 Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
