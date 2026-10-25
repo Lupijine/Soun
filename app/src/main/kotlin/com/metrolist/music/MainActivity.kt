@@ -93,6 +93,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
@@ -1085,6 +1086,7 @@ class MainActivity : FragmentActivity() {
                                 exit = fadeOut(animationSpec = tween(durationMillis = 200)),
                             ) {
                                 Row {
+                                    val titleFadeColor = MaterialTheme.colorScheme.surface
                                     TopAppBar(
                                         title = {
                                             Text(
@@ -1128,15 +1130,29 @@ class MainActivity : FragmentActivity() {
                                         colors =
                                             TopAppBarDefaults.topAppBarColors(
                                                 containerColor = Color.Transparent,
-                                                // Soun: once content scrolls under the title, back it so the
-                                                // headings underneath don't show through the greeting.
-                                                scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                                                // Soun: no solid band when scrolled; a soft fade (below)
+                                                // keeps the title readable over the album glow.
+                                                scrolledContainerColor = Color.Transparent,
                                                 titleContentColor = MaterialTheme.colorScheme.onSurface,
                                                 actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                             ),
                                         modifier =
-                                            Modifier.windowInsetsPadding(
+                                            Modifier
+                                                .drawBehind {
+                                                    val scrolled = topAppBarScrollBehavior.state.overlappedFraction
+                                                    if (scrolled > 0f) {
+                                                        drawRect(
+                                                            Brush.verticalGradient(
+                                                                listOf(
+                                                                    titleFadeColor.copy(alpha = 0.85f * scrolled.coerceIn(0f, 1f)),
+                                                                    titleFadeColor.copy(alpha = 0f),
+                                                                ),
+                                                            ),
+                                                        )
+                                                    }
+                                                }
+                                                .windowInsetsPadding(
                                                 if (showRail) {
                                                     WindowInsets(left = NavigationBarHeight)
                                                         .add(cutoutInsets.only(WindowInsetsSides.Start))
