@@ -43,7 +43,8 @@ import androidx.compose.ui.unit.dp
 fun Material3SettingsGroup(
     title: String? = null,
     items: List<Material3SettingsItem>,
-    useLowContrast: Boolean = false
+    useLowContrast: Boolean = false,
+    compact: Boolean = false,
 ) {
     Column(
         modifier = Modifier
@@ -79,14 +80,14 @@ fun Material3SettingsGroup(
                     shape = shape,
                     colors = CardDefaults.cardColors(
                         containerColor = if (!useLowContrast) {
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (compact) 0.14f else 0.3f)
                         } else {
                             MaterialTheme.colorScheme.surfaceContainerLow
                         }
                     ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
-                    Material3SettingsItemRow(item = item)
+                    Material3SettingsItemRow(item = item, compact = compact)
                 }
             }
         }
@@ -98,7 +99,8 @@ fun Material3SettingsGroup(
  */
 @Composable
 private fun Material3SettingsItemRow(
-    item: Material3SettingsItem
+    item: Material3SettingsItem,
+    compact: Boolean,
 ) {
     Row(
         modifier = Modifier
@@ -107,17 +109,17 @@ private fun Material3SettingsItemRow(
                 enabled = item.enabled && item.onClick != null,
                 onClick = { item.onClick?.invoke() }
             )
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(horizontal = if (compact) 16.dp else 20.dp, vertical = if (compact) 10.dp else 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Custom leading content or Icon with background
         if (item.leadingContent != null) {
             item.leadingContent.invoke()
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(if (compact) 12.dp else 16.dp))
         } else if (item.icon != null) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(if (compact) 36.dp else 40.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(
                         MaterialTheme.colorScheme.primary.copy(
@@ -143,7 +145,7 @@ private fun Material3SettingsItemRow(
                                 MaterialTheme.colorScheme.primary
                             else
                                 MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(if (compact) 20.dp else 24.dp)
                         )
                     }
                 } else {
@@ -156,12 +158,12 @@ private fun Material3SettingsItemRow(
                             MaterialTheme.colorScheme.primary
                         else
                             MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(if (compact) 20.dp else 24.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(if (compact) 12.dp else 16.dp))
         }
 
         // Title and description
@@ -170,7 +172,7 @@ private fun Material3SettingsItemRow(
         ) {
             // Title content
             ProvideTextStyle(
-                MaterialTheme.typography.titleMedium.copy(
+                (if (compact) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.titleMedium).copy(
                     color = if (!item.enabled) 
                         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                     else

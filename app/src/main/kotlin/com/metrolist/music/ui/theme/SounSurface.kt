@@ -9,6 +9,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalView
@@ -103,14 +109,18 @@ fun SounGlassDialog(
                 Modifier
                     .fillMaxSize()
                     .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.28f))
-                    .clickable(interactionSource = null, indication = null, onClick = onDismiss),
+                    .clickable(interactionSource = null, indication = null, onClick = onDismiss)
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .imePadding(),
         ) {
             Box(
                 modifier =
                     Modifier
-                        .padding(24.dp)
+                        .padding(horizontal = 20.dp, vertical = 24.dp)
+                        .widthIn(max = 480.dp)
+                        .fillMaxWidth()
                         .sounGlass(RoundedCornerShape(32.dp), sounGlassColors(strong = true), elevation = 24f)
-                        .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.35f))
+                        .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.16f))
                         // Swallow taps so touching the dialog doesn't dismiss it.
                         .clickable(interactionSource = null, indication = null, onClick = {}),
             ) {

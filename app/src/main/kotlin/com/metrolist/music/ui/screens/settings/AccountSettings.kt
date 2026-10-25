@@ -5,7 +5,6 @@
 
 package com.metrolist.music.ui.screens.settings
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -39,6 +38,8 @@ import com.metrolist.music.utils.reportException
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import com.metrolist.music.ui.theme.sounPanel
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -108,7 +109,6 @@ fun AccountSettings(
 
     Column(
         modifier = Modifier
-            .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
@@ -124,8 +124,8 @@ fun AccountSettings(
                 modifier = Modifier.padding(start = 4.dp)
             )
             Spacer(modifier = Modifier.weight(1f))
-            IconButton(onClick = onClose) {
-                Icon(painterResource(R.drawable.close), contentDescription = null)
+            IconButton(onClick = onClose, modifier = Modifier.sounPanel(CircleShape)) {
+                Icon(painterResource(R.drawable.close), contentDescription = stringResource(R.string.dismiss), modifier = Modifier.size(20.dp))
             }
         }
 
@@ -284,7 +284,7 @@ fun AccountSettings(
                                     showLogoutDialog = true
                                 },
                                 colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                    containerColor = Color.Transparent,
                                     contentColor = MaterialTheme.colorScheme.onSurface
                                 )
                             ) {
@@ -312,7 +312,7 @@ fun AccountSettings(
                     )
                 } else null,
             ),
-            useLowContrast = true
+            compact = true
         )
 
         Spacer(Modifier.height(8.dp))
@@ -382,7 +382,7 @@ fun AccountSettings(
                     enabled = isLoggedIn
                 )
             ),
-            useLowContrast = true
+            compact = true
         )
 
         Spacer(Modifier.height(12.dp))
@@ -428,7 +428,7 @@ fun AccountSettings(
                     }
                 }
             },
-            useLowContrast = true
+            compact = true
         )
     }
 }
