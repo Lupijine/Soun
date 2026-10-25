@@ -132,6 +132,8 @@ object YouTube {
             innerTube.useLoginForBrowse = value
         }
 
+    fun refreshTransportOnNetworkChange() = innerTube.refreshTransportOnNetworkChange()
+
     fun extractionTransport(): InnerTube.ExtractionTransport = innerTube.extractionTransport()
 
     suspend fun searchSuggestions(query: String): Result<SearchSuggestions> =

@@ -15,6 +15,7 @@ import com.metrolist.innertube.models.ArtistItem
 import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.SongItem
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectLatest
 import com.metrolist.innertube.models.WatchEndpoint
 import com.metrolist.innertube.models.BrowseEndpoint
 import com.metrolist.innertube.models.YTItem
@@ -743,12 +744,17 @@ class HomeViewModel @Inject constructor(
         }
 
         var wasOffline = !networkConnectivity.networkStatus.value
+        var previousNetwork = networkConnectivity.defaultNetwork.value
         viewModelScope.launch(Dispatchers.IO) {
-            networkConnectivity.networkStatus.collect { isConnected ->
+            combine(networkConnectivity.defaultNetwork, networkConnectivity.networkStatus) { network, connected ->
+                network to connected
+            }.collectLatest { (network, isConnected) ->
                 if (!isConnected) {
                     wasOffline = true
-                } else if (wasOffline) {
+                } else if (wasOffline || network != previousNetwork) {
                     wasOffline = false
+                    previousNetwork = network
+                    isLoading.first { !it }
                     refresh()
                 }
             }

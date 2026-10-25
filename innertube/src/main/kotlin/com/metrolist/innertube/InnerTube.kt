@@ -105,6 +105,8 @@ class InnerTube {
             innerTubeX.useLoginForBrowse = value
         }
 
+    fun refreshTransportOnNetworkChange() = recreateTransport()
+
     @Synchronized
     private fun recreateTransport() {
         val session = innerTubeX.sessionSnapshot()

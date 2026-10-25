@@ -780,8 +780,18 @@ class MusicService :
         }
 
         scope.launch {
-            connectivityObserver.networkStatus.collect { isConnected ->
+            var previousNetwork = connectivityObserver.defaultNetwork.value
+            var wasConnected = connectivityObserver.networkStatus.value
+            combine(connectivityObserver.defaultNetwork, connectivityObserver.networkStatus) { network, connected ->
+                network to connected
+            }.collect { (network, isConnected) ->
                 isNetworkConnected.value = isConnected
+                if (isConnected && network != null && (network != previousNetwork || !wasConnected)) {
+                    // Rebuild once here, before retrying playback; UI collectors only refresh their data.
+                    YouTube.refreshTransportOnNetworkChange()
+                    previousNetwork = network
+                }
+                wasConnected = isConnected
                 if (isConnected && waitingForNetworkConnection.value) {
                     triggerRetry()
                 }

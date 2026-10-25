@@ -9,7 +9,6 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import android.net.NetworkRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -24,28 +23,35 @@ class NetworkConnectivityObserver(context: Context) {
     private val _networkStatus = MutableStateFlow(isCurrentlyConnected())
     val networkStatus = _networkStatus.asStateFlow()
 
+    private val _defaultNetwork = MutableStateFlow(connectivityManager.activeNetwork)
+    val defaultNetwork = _defaultNetwork.asStateFlow()
+    private var registered = false
+
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
-            _networkStatus.value = isCurrentlyConnected()
+            if (_defaultNetwork.value != network) _networkStatus.value = false
+            _defaultNetwork.value = network
         }
 
         override fun onLost(network: Network) {
-            _networkStatus.value = isCurrentlyConnected()
+            // The old route can disappear after the replacement is already available.
+            if (_defaultNetwork.value == network) {
+                _networkStatus.value = false
+                _defaultNetwork.value = null
+            }
         }
 
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
-            _networkStatus.value = isCurrentlyConnected()
+            if (_defaultNetwork.value == network) {
+                _networkStatus.value = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            }
         }
     }
 
     init {
-        val request = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
-            .build()
-        
         try {
-            connectivityManager.registerNetworkCallback(request, networkCallback)
+            connectivityManager.registerDefaultNetworkCallback(networkCallback)
+            registered = true
         } catch (e: Exception) {
             // Fallback: assume connected if registration fails
             _networkStatus.value = true
@@ -53,7 +59,10 @@ class NetworkConnectivityObserver(context: Context) {
     }
 
     fun unregister() {
-        connectivityManager.unregisterNetworkCallback(networkCallback)
+        if (registered) {
+            connectivityManager.unregisterNetworkCallback(networkCallback)
+            registered = false
+        }
     }
     
     /**
