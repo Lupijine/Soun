@@ -102,7 +102,8 @@ constructor(
                 .setCache(playerCache)
                 .setCacheWriteDataSinkFactory(null)
                 .setUpstreamDataSourceFactory(
-                    OkHttpDataSource.Factory(streamHttpClient),
+                    // Soun: fetch in small ranged pieces so long tracks don't stall.
+                    ChunkedDataSource.Factory(OkHttpDataSource.Factory(streamHttpClient)),
                 ),
         ) { dataSpec ->
             val mediaId = dataSpec.key ?: error("No media id")
