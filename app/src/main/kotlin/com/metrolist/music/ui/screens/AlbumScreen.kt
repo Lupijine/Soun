@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import com.metrolist.music.ui.theme.sounPanel
 import com.metrolist.music.ui.theme.sounGlassColors
 import com.metrolist.music.ui.theme.sounGlass
+import com.metrolist.music.ui.theme.LocalSounSurfaceBackdrop
 import com.metrolist.music.ui.theme.rememberArtworkColors
 import com.metrolist.music.ui.theme.AlbumGlow
 import androidx.compose.foundation.layout.Column
@@ -362,7 +363,13 @@ fun AlbumScreen(
                             // Soun: glass play button tinted with the accent.
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
                             shape = CircleShape,
-                            modifier = Modifier.size(76.dp).sounGlass(CircleShape, sounGlassColors()),
+                            // In-page glass must sample the ambient layer: the main backdrop
+                            // contains this page, and sampling it from inside crashes rendering.
+                            modifier = Modifier.size(76.dp).sounGlass(
+                                CircleShape,
+                                sounGlassColors(),
+                                backdrop = LocalSounSurfaceBackdrop.current,
+                            ),
                         ) {
                             Box(
                                 contentAlignment = Alignment.Center,
