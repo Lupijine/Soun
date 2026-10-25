@@ -5,6 +5,15 @@
 
 package com.metrolist.music.ui.screens.search
 
+import com.metrolist.music.ui.theme.sounPanel
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.font.FontWeight
+import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.db.entities.SearchHistory
+import com.metrolist.music.ui.component.NavigationTitle
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -123,13 +132,18 @@ fun OnlineSearchScreen(
         }
     }
 
+    if (query.isBlank()) {
+        SearchHistoryPanel(viewState.history, onSearch, onQueryChange)
+        return
+    }
+
     LazyColumn(
         state = lazyListState,
         contentPadding = WindowInsets.systemBars.only(WindowInsetsSides.Bottom).asPaddingValues(),
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background),
+                .background(Color.Transparent),
     ) {
         // Show parsed URL item at the top if present
         if (viewState.isUrlQuery && viewState.parsedUrlItem != null) {
@@ -360,7 +374,7 @@ fun OnlineSearchScreen(
                                         }
                                     }
                                 },
-                            ).background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface)
+                            ).background(Color.Transparent)
                             .animateItem(),
                 )
             }
@@ -633,7 +647,7 @@ fun OnlineSearchScreen(
                                     }
                                 }
                             },
-                        ).background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface)
+                        ).background(Color.Transparent)
                         .animateItem(),
             )
         }
@@ -655,8 +669,8 @@ fun SuggestionItem(
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(SuggestionItemHeight)
-                .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface)
+                .height(60.dp)
+                .background(Color.Transparent)
                 .clickable(onClick = onClick)
                 .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)),
     ) {
@@ -693,6 +707,47 @@ fun SuggestionItem(
                 painter = painterResource(R.drawable.arrow_top_left),
                 contentDescription = null,
             )
+        }
+    }
+}
+
+
+@Composable
+private fun SearchHistoryPanel(
+    history: List<SearchHistory>,
+    onSearch: (String) -> Unit,
+    onQueryChange: (TextFieldValue) -> Unit,
+) {
+    val database = LocalDatabase.current
+    LazyColumn(contentPadding = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom).asPaddingValues()) {
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(end = 20.dp)) {
+                NavigationTitle(stringResource(R.string.soun_recent_searches), modifier = Modifier.weight(1f))
+                if (history.isNotEmpty()) TextButton(onClick = { database.query { clearSearchHistory() } }) {
+                    Text(stringResource(R.string.clear))
+                }
+            }
+            if (history.isEmpty()) Text(stringResource(R.string.soun_no_recent_searches),
+                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp))
+            else Column(Modifier.padding(horizontal = 20.dp).sounPanel().padding(vertical = 4.dp)) {
+                history.forEach { entry ->
+                    SuggestionItem(query = entry.query, online = false, onClick = { onSearch(entry.query) },
+                        onDelete = { database.query { delete(entry) } },
+                        onFillTextField = { onQueryChange(TextFieldValue(entry.query, TextRange(entry.query.length))) },
+                        pureBlack = false)
+                }
+            }
+            NavigationTitle(stringResource(R.string.soun_try_searching), modifier = Modifier.padding(top = 12.dp))
+            FlowRow(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(R.string.soun_search_album, R.string.soun_search_live, R.string.soun_search_acoustic,
+                    R.string.soun_search_chill, R.string.soun_search_workout).forEach { label ->
+                    val text = stringResource(label)
+                    TextButton(onClick = { onSearch(text) }, modifier = Modifier.sounPanel(RoundedCornerShape(50)),
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)) { Text(text) }
+                }
+            }
         }
     }
 }

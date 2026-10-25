@@ -5,6 +5,9 @@
 
 package com.metrolist.music.ui.player
 
+import com.kyant.backdrop.Backdrop
+import com.metrolist.music.ui.theme.sounGlass
+import com.metrolist.music.ui.theme.sounGlassColors
 import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -158,6 +161,7 @@ fun Queue(
     showInlineLyrics: Boolean,
     playerBackground: PlayerBackgroundStyle = PlayerBackgroundStyle.DEFAULT,
     onToggleLyrics: () -> Unit = {},
+    backdrop: Backdrop? = null,
 ) {
     val navController = LocalNavController.current
     val context = LocalContext.current
@@ -195,6 +199,7 @@ fun Queue(
         }
     val isCasting by castHandler?.isCasting?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(false) }
     val castIsPlaying by castHandler?.castIsPlaying?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(false) }
+    val castDeviceName by castHandler?.castDeviceName?.collectAsStateWithLifecycle() ?: remember { mutableStateOf<String?>(null) }
 
     var inSelectMode by rememberSaveable { mutableStateOf(false) }
     val selection =
@@ -263,7 +268,32 @@ fun Queue(
             Box(Modifier.fillMaxSize().background(Color.Unspecified))
         },
         collapsedContent = {
-            if (useNewPlayerDesign) {
+            if (useNewPlayerDesign && !showInlineLyrics) {
+                Box(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp)
+                    .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))) {
+                    Row(Modifier.fillMaxWidth().height(56.dp).sounGlass(RoundedCornerShape(28.dp), sounGlassColors(), backdrop = backdrop)
+                        .padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = onToggleLyrics) {
+                            Icon(painterResource(R.drawable.lyrics), stringResource(R.string.lyrics), tint = TextBackgroundColor)
+                        }
+                        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                            Icon(painterResource(if (isCasting) R.drawable.cast_connected else R.drawable.volume_up), null,
+                                tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(if (isCasting) castDeviceName.orEmpty() else stringResource(R.string.soun_this_phone),
+                                style = MaterialTheme.typography.labelMedium, color = TextBackgroundColor.copy(alpha = 0.72f),
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        IconButton(onClick = { if (sleepTimerEnabled) playerConnection.service.sleepTimer?.clear() else showSleepTimerDialog = true }, enabled = !isListenTogetherGuest) {
+                            Icon(painterResource(R.drawable.bedtime), stringResource(R.string.sleep_timer),
+                                tint = if (sleepTimerEnabled) MaterialTheme.colorScheme.primary else TextBackgroundColor)
+                        }
+                        IconButton(onClick = { state.expandSoft() }) {
+                            Icon(painterResource(R.drawable.queue_music), stringResource(R.string.queue), tint = TextBackgroundColor)
+                        }
+                    }
+                }
+            } else if (useNewPlayerDesign) {
                 // New design
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),

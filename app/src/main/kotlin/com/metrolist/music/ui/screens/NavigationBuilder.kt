@@ -77,6 +77,16 @@ fun NavGraphBuilder.navigationBuilder(
         HomeScreen(snackbarHostState = snackbarHostState)
     }
 
+    composable(Screens.Explore.route) { ExploreScreen() }
+
+    composable("library/manage") {
+        com.metrolist.music.ui.screens.library.LibraryBrowserScreen()
+    }
+
+    composable("library/podcasts") {
+        com.metrolist.music.ui.screens.library.LibraryPodcastsScreen(navController, { navController.navigateUp() })
+    }
+
     composable(Screens.Search.route) { backStackEntry ->
         val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
         val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)

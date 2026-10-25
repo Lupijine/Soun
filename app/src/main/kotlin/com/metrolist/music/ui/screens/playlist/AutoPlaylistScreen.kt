@@ -507,6 +507,9 @@ fun AutoPlaylistScreen(
             state = state,
             contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
         ) {
+            if (playlistId == "downloaded") item(key = "download_overview") {
+                com.metrolist.music.ui.component.DownloadOverviewCard(onStorageClick = { navController.navigate("settings/storage") })
+            }
             if (songs != null) {
                 if (songs!!.isEmpty()) {
                     item(key = "empty_placeholder") {

@@ -30,6 +30,11 @@ import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.IconButton
+import com.metrolist.music.ui.theme.sounGlass
+import com.metrolist.music.ui.theme.sounGlassColors
+import com.kyant.backdrop.Backdrop
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -202,6 +207,9 @@ fun Thumbnail(
     isPlayerExpanded: () -> Boolean = { true },
     isLandscape: Boolean = false,
     isListenTogetherGuest: Boolean = false,
+    onCollapse: () -> Unit = {},
+    moreAction: @Composable () -> Unit = {},
+    backdrop: Backdrop? = null,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
@@ -345,7 +353,10 @@ fun Thumbnail(
                     ThumbnailHeader(
                         queueTitle = queueTitle,
                         albumTitle = mediaMetadata?.album?.title,
-                        textColor = textBackgroundColor
+                        textColor = textBackgroundColor,
+                        backdrop = backdrop,
+                        onCollapse = onCollapse,
+                        moreAction = moreAction,
                     )
                 }
                 
@@ -445,7 +456,10 @@ private fun ThumbnailHeader(
     queueTitle: String?,
     albumTitle: String?,
     textColor: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onCollapse: () -> Unit,
+    moreAction: @Composable () -> Unit,
+    backdrop: Backdrop?,
 ) {
     val listenTogetherManager = LocalListenTogetherManager.current
     val listenTogetherRoleState = listenTogetherManager?.role?.collectAsStateWithLifecycle(initialValue = RoomRole.NONE)
@@ -453,8 +467,12 @@ private fun ThumbnailHeader(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 24.dp, vertical = 8.dp)
     ) {
+        IconButton(onClick = onCollapse, modifier = Modifier.align(Alignment.CenterStart).sounGlass(CircleShape, sounGlassColors(), backdrop = backdrop)) {
+            Icon(painterResource(R.drawable.expand_more), stringResource(R.string.dismiss), tint = textColor)
+        }
+        Box(Modifier.align(Alignment.CenterEnd)) { moreAction() }
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
@@ -470,9 +488,9 @@ private fun ThumbnailHeader(
                 )
             } else {
                 Text(
-                    text = stringResource(R.string.now_playing),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = textColor
+                    text = stringResource(R.string.soun_playing_from).uppercase(java.util.Locale.getDefault()),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = textColor.copy(alpha = 0.72f)
                 )
             }
             val playingFrom = queueTitle ?: albumTitle

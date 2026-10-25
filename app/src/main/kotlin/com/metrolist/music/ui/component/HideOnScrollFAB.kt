@@ -11,6 +11,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.height
@@ -29,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.CircleShape
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.ui.utils.isScrollingUp
@@ -53,8 +55,8 @@ fun BoxScope.HideOnScrollFAB(
                     .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
             ),
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(16.dp)
         ) {
             if (onRecognitionClick != null) {
@@ -62,7 +64,8 @@ fun BoxScope.HideOnScrollFAB(
                     onClick = onRecognitionClick,
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(48.dp),
+                    shape = CircleShape,
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.mic),
@@ -70,14 +73,15 @@ fun BoxScope.HideOnScrollFAB(
                         modifier = Modifier.size(20.dp)
                     )
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.size(8.dp))
             }
             FloatingActionButton(
                 onClick = onClick,
+                shape = CircleShape,
             ) {
                 Icon(
                     painter = painterResource(icon),
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.shuffle),
                 )
             }
         }

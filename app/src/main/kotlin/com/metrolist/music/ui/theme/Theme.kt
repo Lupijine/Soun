@@ -52,18 +52,28 @@ fun MetrolistTheme(
         )
     }
 
+    val styledScheme = if (themeColor == SounAccent) baseColorScheme.copy(
+        primary = if (darkTheme) SounAccent else Color(0xFF5B48D9),
+        onPrimary = if (darkTheme) Color(0xFF0B0D14) else Color.White,
+        surface = if (darkTheme) Color(0xFF07070B) else Color(0xFFF4F2F9),
+        background = if (darkTheme) Color(0xFF07070B) else Color(0xFFF4F2F9),
+        onSurface = if (darkTheme) Color.White else Color(0xFF0B0D14),
+        onSurfaceVariant = (if (darkTheme) Color.White else Color(0xFF0B0D14)).copy(alpha = 0.72f),
+    ) else baseColorScheme
+
     // Apply pureBlack modification if needed, similar to original logic
-    val colorScheme = remember(baseColorScheme, pureBlack, darkTheme) {
+    val colorScheme = remember(styledScheme, pureBlack, darkTheme) {
         if (darkTheme && pureBlack) {
-            baseColorScheme.pureBlack(true)
+            styledScheme.pureBlack(true)
         } else {
-            baseColorScheme
+            styledScheme
         }
     }
 
     // Use standard MaterialTheme instead of MaterialExpressiveTheme
     MaterialTheme(
         colorScheme = colorScheme,
+        typography = SounTypography,
         content = content,
     )
 }

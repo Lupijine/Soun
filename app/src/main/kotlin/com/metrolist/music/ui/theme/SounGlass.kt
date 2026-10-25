@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.theme
 
+import android.os.Build
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,6 +29,7 @@ import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
+import com.kyant.backdrop.highlight.HighlightStyle
 import com.kyant.backdrop.isRenderEffectSupported
 import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
@@ -37,6 +39,11 @@ val SounAccent = Color(0xFFA99BFF)
 
 // Capture only screen content: including the floating controls would create a feedback loop.
 val LocalSounBackdrop = staticCompositionLocalOf<Backdrop?> { null }
+val LocalSounSurfaceBackdrop = staticCompositionLocalOf<Backdrop?> { null }
+
+@Composable
+fun Modifier.sounPanel(shape: Shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)): Modifier =
+    sounGlass(shape, sounGlassColors(strong = false), elevation = 0f, backdrop = LocalSounSurfaceBackdrop.current)
 
 /**
  * Liquid Glass surface colors for one theme. A strong surface (nav bar, mini player)
@@ -62,13 +69,13 @@ fun sounGlassColors(strong: Boolean = true, pureBlack: Boolean = false): SounGla
         // tint it a little more so the edge still shows.
         val boost = if (pureBlack) 0.04f else 0f
         SounGlassColors(
-            fillTop = Color.White.copy(alpha = (if (strong) 0.10f else 0.07f) + boost),
+            fillTop = Color.White.copy(alpha = (if (strong) 0.14f else 0.08f) + boost),
             fillBottom = Color.White.copy(alpha = 0.02f + boost),
             rimBright = Color.White.copy(alpha = if (strong) 0.62f else 0.45f),
             rimDim = Color.White.copy(alpha = 0.06f),
             shadow = Color.Black.copy(alpha = 0.30f),
             selectedPill = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f),
-            surfaceTint = (if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer).copy(alpha = 0.62f),
+            surfaceTint = (if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface).copy(alpha = if (strong) 0.24f else 0.12f),
             fallback = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainerHigh,
         )
     } else {
@@ -79,7 +86,7 @@ fun sounGlassColors(strong: Boolean = true, pureBlack: Boolean = false): SounGla
             rimDim = Color(0xFF1E143C).copy(alpha = 0.07f),
             shadow = Color(0xFF281E5A).copy(alpha = 0.16f),
             selectedPill = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-            surfaceTint = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.50f),
+            surfaceTint = MaterialTheme.colorScheme.surface.copy(alpha = 0.30f),
             fallback = MaterialTheme.colorScheme.surfaceContainerHigh,
         )
     }
@@ -95,8 +102,8 @@ fun Modifier.sounGlass(
     colors: SounGlassColors,
     elevation: Float = 18f,
     backdropEnabled: Boolean = true,
+    backdrop: Backdrop? = LocalSounBackdrop.current,
 ): Modifier {
-    val backdrop = LocalSounBackdrop.current
     if (backdropEnabled && backdrop != null && isRenderEffectSupported()) {
         return this
             .drawBackdrop(
@@ -104,10 +111,17 @@ fun Modifier.sounGlass(
                 shape = { shape },
                 effects = {
                     vibrancy()
-                    blur(8.dp.toPx())
-                    lens(14.dp.toPx(), 20.dp.toPx(), depthEffect = true)
+                    // Keep detail in the centre; the curved edge does the optical work.
+                    if (Build.VERSION.SDK_INT < 33) blur(5.dp.toPx())
+                    lens(18.dp.toPx(), 32.dp.toPx(), depthEffect = true, chromaticAberration = true)
                 },
-                highlight = { Highlight(width = 0.8.dp, blurRadius = 0.4.dp, alpha = 0.8f) },
+                highlight = {
+                    Highlight(
+                        width = 1.dp,
+                        blurRadius = 0.35.dp,
+                        style = HighlightStyle.Default(color = colors.rimBright, angle = 35f, falloff = 1.5f),
+                    )
+                },
                 shadow = { Shadow(radius = elevation.dp, color = colors.shadow) },
                 innerShadow = {
                     InnerShadow(radius = 3.dp, offset = DpOffset(0.dp, 1.dp), color = Color.Black.copy(alpha = 0.08f))
