@@ -75,18 +75,20 @@ fun sounGlassColors(strong: Boolean = true, pureBlack: Boolean = false): SounGla
             rimDim = Color.White.copy(alpha = 0.06f),
             shadow = Color.Black.copy(alpha = 0.30f),
             selectedPill = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f),
-            surfaceTint = (if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface).copy(alpha = if (strong) 0.24f else 0.12f),
+            surfaceTint = (if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface).copy(alpha = if (strong) 0.24f else 0.04f),
             fallback = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainerHigh,
         )
     } else {
         SounGlassColors(
-            fillTop = Color.White.copy(alpha = if (strong) 0.32f else 0.22f),
-            fillBottom = Color.White.copy(alpha = 0.08f),
+            // Small controls (chips, round buttons) stay almost clear so they read as
+            // glass, not as white pills; the bright rim carries the shape.
+            fillTop = Color.White.copy(alpha = if (strong) 0.32f else 0.08f),
+            fillBottom = Color.White.copy(alpha = if (strong) 0.08f else 0f),
             rimBright = Color.White,
             rimDim = Color(0xFF1E143C).copy(alpha = 0.07f),
             shadow = Color(0xFF281E5A).copy(alpha = 0.16f),
             selectedPill = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-            surfaceTint = MaterialTheme.colorScheme.surface.copy(alpha = 0.30f),
+            surfaceTint = MaterialTheme.colorScheme.surface.copy(alpha = if (strong) 0.30f else 0f),
             fallback = MaterialTheme.colorScheme.surfaceContainerHigh,
         )
     }
