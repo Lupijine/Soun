@@ -38,3 +38,8 @@ supported region.
 
 GPL-3.0, the same as Metrolist. See [LICENSE](LICENSE). This project is not affiliated
 with YouTube, Google LLC, or the Metrolist team.
+
+## Icons
+
+Most interface icons are from [Lucide](https://lucide.dev) (ISC license), converted to
+Android vector drawables with a 1.75 stroke.
