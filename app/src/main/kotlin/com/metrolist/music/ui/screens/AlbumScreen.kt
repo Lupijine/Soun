@@ -10,6 +10,13 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.Color
+import com.metrolist.music.ui.theme.sounPanel
+import com.metrolist.music.ui.theme.sounGlassColors
+import com.metrolist.music.ui.theme.sounGlass
+import com.metrolist.music.ui.theme.rememberArtworkColors
+import com.metrolist.music.ui.theme.AlbumGlow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -185,6 +192,14 @@ fun AlbumScreen(
         }
     }
 
+    // Soun: the page takes the album's colours as a soft glow behind everything.
+    val albumGlowColors = rememberArtworkColors(albumWithSongs?.album?.thumbnailUrl)
+    AlbumGlow(
+        colors = albumGlowColors,
+        dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f,
+        modifier = Modifier.fillMaxSize(),
+    )
+
     LazyColumn(
         contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
     ) {
@@ -199,16 +214,18 @@ fun AlbumScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     // Album Thumbnail - Large centered with shadow
+                    // Soun: large rounded artwork with a soft coloured shadow.
                     Surface(
                         modifier =
                             Modifier
-                                .size(240.dp)
+                                .size(260.dp)
                                 .shadow(
-                                    elevation = 24.dp,
-                                    shape = RoundedCornerShape(3.dp),
-                                    spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                                    elevation = 28.dp,
+                                    shape = RoundedCornerShape(28.dp),
+                                    spotColor = albumGlowColors.firstOrNull() ?: MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                                    ambientColor = albumGlowColors.firstOrNull() ?: MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                                 ),
-                        shape = RoundedCornerShape(3.dp),
+                        shape = RoundedCornerShape(28.dp),
                     ) {
                         AsyncImage(
                             model = albumWithSongs.album.thumbnailUrl?.resize(1080, 1080),
@@ -302,8 +319,8 @@ fun AlbumScreen(
                                 }
                             },
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.size(48.dp),
+                            color = Color.Transparent,
+                            modifier = Modifier.size(52.dp).sounPanel(CircleShape),
                         ) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
@@ -342,9 +359,10 @@ fun AlbumScreen(
                                     )
                                 }
                             },
-                            color = MaterialTheme.colorScheme.primary,
+                            // Soun: glass play button tinted with the accent.
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
                             shape = CircleShape,
-                            modifier = Modifier.size(72.dp),
+                            modifier = Modifier.size(76.dp).sounGlass(CircleShape, sounGlassColors()),
                         ) {
                             Box(
                                 contentAlignment = Alignment.Center,
@@ -374,8 +392,8 @@ fun AlbumScreen(
                                 }
                             },
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.size(48.dp),
+                            color = Color.Transparent,
+                            modifier = Modifier.size(52.dp).sounPanel(CircleShape),
                         ) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
@@ -521,6 +539,10 @@ fun AlbumScreen(
     }
 
     TopAppBar(
+        colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.Transparent,
+            scrolledContainerColor = Color.Transparent,
+        ),
         title = {
             if (inSelectMode) {
                 Text(pluralStringResource(R.plurals.n_selected, selection.size, selection.size))
