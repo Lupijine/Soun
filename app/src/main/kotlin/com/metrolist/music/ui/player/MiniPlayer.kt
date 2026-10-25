@@ -12,6 +12,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -354,15 +356,27 @@ private fun NewMiniPlayer(
                                         (kotlin.math.abs(currentOffset) > minDistanceThreshold && velocity > velocityThreshold) ||
                                             (kotlin.math.abs(currentOffset) > autoSwipeThreshold)
 
-                                    if (shouldChangeSong) {
-                                        if (currentOffset > 0 && canSkipPrevious) {
-                                            playerConnection.player.seekToPreviousMediaItem()
-                                        } else if (currentOffset <= 0 && canSkipNext) {
-                                            playerConnection.player.seekToNext()
-                                        }
-                                    }
+                                    val goPrevious = shouldChangeSong && currentOffset > 0 && canSkipPrevious
+                                    val goNext = shouldChangeSong && currentOffset <= 0 && canSkipNext
                                     coroutineScope.launch {
-                                        offsetXAnimatable.animateTo(0f, animationSpec)
+                                        if (goPrevious || goNext) {
+                                            // Soun: slide the current song out, switch, slide the new one in.
+                                            val width = windowInfo.containerSize.width.toFloat()
+                                            val direction = if (goPrevious) 1f else -1f
+                                            offsetXAnimatable.animateTo(direction * width, tween(durationMillis = 180))
+                                            if (goPrevious) {
+                                                playerConnection.player.seekToPreviousMediaItem()
+                                            } else {
+                                                playerConnection.player.seekToNext()
+                                            }
+                                            offsetXAnimatable.snapTo(-direction * width * 0.5f)
+                                            offsetXAnimatable.animateTo(
+                                                0f,
+                                                spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow),
+                                            )
+                                        } else {
+                                            offsetXAnimatable.animateTo(0f, animationSpec)
+                                        }
                                     }
                                 },
                             )
@@ -379,7 +393,6 @@ private fun NewMiniPlayer(
                 Modifier
                     .then(if (isTabletLandscape) Modifier.width(500.dp).align(Alignment.Center) else Modifier.fillMaxWidth())
                     .height(64.dp)
-                    .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
                     .sounGlass(
                         RoundedCornerShape(32.dp),
                         glassColors,
@@ -437,7 +450,15 @@ private fun NewMiniPlayer(
             }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 8.dp),
+                // Soun: the song slides inside the fixed glass pill and fades as it goes.
+                modifier = Modifier
+                    .fillMaxSize()
+                    .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
+                    .graphicsLayer {
+                        val travel = (windowInfo.containerSize.width * 0.6f).coerceAtLeast(1f)
+                        alpha = (1f - kotlin.math.abs(offsetXAnimatable.value) / travel).coerceIn(0f, 1f)
+                    }
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
             ) {
                 AsyncImage(
                     model = mediaMetadata?.thumbnailUrl?.resize(144, 144),
