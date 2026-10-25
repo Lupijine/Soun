@@ -1103,7 +1103,12 @@ class MainActivity : FragmentActivity() {
                                                             modifier = Modifier.size(28.dp).clip(CircleShape))
                                                     } else Icon(painterResource(R.drawable.account), stringResource(R.string.account))
                                                 }
-                                                DropdownMenu(expanded = showPageMenu, onDismissRequest = { showPageMenu = false }) {
+                                                DropdownMenu(
+                                                    expanded = showPageMenu,
+                                                    onDismissRequest = { showPageMenu = false },
+                                                    shape = RoundedCornerShape(24.dp),
+                                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.9f),
+                                                ) {
                                                     DropdownMenuItem(text = { Text(stringResource(R.string.account)) }, onClick = {
                                                         showPageMenu = false; showAccountDialog = true
                                                     })
@@ -1123,7 +1128,9 @@ class MainActivity : FragmentActivity() {
                                         colors =
                                             TopAppBarDefaults.topAppBarColors(
                                                 containerColor = Color.Transparent,
-                                                scrolledContainerColor = Color.Transparent,
+                                                // Soun: once content scrolls under the title, back it so the
+                                                // headings underneath don't show through the greeting.
+                                                scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
                                                 titleContentColor = MaterialTheme.colorScheme.onSurface,
                                                 actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
