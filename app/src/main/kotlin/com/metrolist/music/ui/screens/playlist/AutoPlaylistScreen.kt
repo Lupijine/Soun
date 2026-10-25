@@ -6,6 +6,7 @@
 package com.metrolist.music.ui.screens.playlist
 
 import androidx.compose.material3.TopAppBarDefaults
+import com.metrolist.music.ui.component.SounPlaylistArtwork
 import com.metrolist.music.ui.theme.sounPanel
 import android.net.Uri
 import android.widget.Toast
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -509,10 +511,33 @@ fun AutoPlaylistScreen(
             state = state,
             contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
         ) {
-            if (playlistId == "downloaded") item(key = "download_overview") {
+            if (playlistId == "downloaded" && songs == null && !isSearching) item(key = "download_overview") {
                 com.metrolist.music.ui.component.DownloadOverviewCard(onStorageClick = { navController.navigate("settings/storage") })
             }
             if (songs != null) {
+                if (!isSearching && (songs!!.isNotEmpty() || playlistId == "liked" || playlistId == "downloaded")) {
+                    item(key = "playlist_header") {
+                        AutoPlaylistHeader(
+                            name = playlist,
+                            artwork = when (playlistId) {
+                                "liked" -> R.drawable.soun_liked_chrome
+                                "downloaded" -> R.drawable.soun_downloads_chrome
+                                else -> null
+                            },
+                            songs = songs!!,
+                            likeLength = likeLength,
+                            downloadState = downloadState,
+                            onShowRemoveDownloadDialog = { showRemoveDownloadDialog = true },
+                            menuState = menuState,
+                            modifier = Modifier.animateItem(),
+                        )
+                    }
+                }
+
+                if (playlistId == "downloaded" && !isSearching) item(key = "download_overview") {
+                    com.metrolist.music.ui.component.DownloadOverviewCard(onStorageClick = { navController.navigate("settings/storage") })
+                }
+
                 if (songs!!.isEmpty()) {
                     item(key = "empty_placeholder") {
                         EmptyPlaceholder(
@@ -521,24 +546,11 @@ fun AutoPlaylistScreen(
                         )
                     }
                 } else {
-                    if (!isSearching) {
-                        item(key = "playlist_header") {
-                            AutoPlaylistHeader(
-                                name = playlist,
-                                songs = songs!!,
-                                likeLength = likeLength,
-                                downloadState = downloadState,
-                                onShowRemoveDownloadDialog = { showRemoveDownloadDialog = true },
-                                menuState = menuState,
-                                modifier = Modifier.animateItem(),
-                            )
-                        }
-                    }
-
                     item(key = "songs_header") {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(start = 16.dp),
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                                .sounPanel(RoundedCornerShape(22.dp)).padding(horizontal = 8.dp),
                         ) {
                             SortHeader(
                                 sortType = sortType,
@@ -850,6 +862,7 @@ private fun AutoPlaylistHeader(
     onShowRemoveDownloadDialog: () -> Unit,
     menuState: com.metrolist.music.ui.component.MenuState,
     modifier: Modifier = Modifier,
+    @androidx.annotation.DrawableRes artwork: Int? = null,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
@@ -862,35 +875,39 @@ private fun AutoPlaylistHeader(
                 .padding(top = 8.dp, bottom = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Playlist Thumbnail - Large centered with shadow
-        Box(
-            modifier = Modifier.padding(top = 8.dp, bottom = 20.dp),
-        ) {
-            androidx.compose.material3.Surface(
-                modifier =
-                    Modifier
-                        .size(200.dp)
-                        .shadow(
-                            elevation = 24.dp,
-                            shape = RoundedCornerShape(24.dp),
-                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                        ),
-                shape = RoundedCornerShape(24.dp),
+        if (artwork != null) {
+            SounPlaylistArtwork(artwork, Modifier.padding(top = 12.dp, bottom = 24.dp).size(200.dp))
+        } else {
+            // Playlist Thumbnail - Large centered with shadow
+            Box(
+                modifier = Modifier.padding(top = 8.dp, bottom = 20.dp),
             ) {
-                AsyncImage(
-                    model = songs[0].song.thumbnailUrl,
-                    contentDescription = null,
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                androidx.compose.material3.Surface(
+                    modifier =
+                        Modifier
+                            .size(200.dp)
+                            .shadow(
+                                elevation = 24.dp,
+                                shape = RoundedCornerShape(24.dp),
+                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                            ),
+                    shape = RoundedCornerShape(24.dp),
+                ) {
+                    AsyncImage(
+                        model = songs.firstOrNull()?.song?.thumbnailUrl,
+                        contentDescription = null,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
 
         // Playlist Name
         Text(
             text = name,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.ExtraBold,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
@@ -899,19 +916,10 @@ private fun AutoPlaylistHeader(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Metadata - Song Count • Duration
-        Text(
-            text =
-                buildString {
-                    append(pluralStringResource(R.plurals.n_song, songs.size, songs.size))
-                    if (likeLength > 0) {
-                        append(" ")
-                        append(makeTimeString(likeLength * 1000L))
-                    }
-                },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(horizontal = 20.dp)) {
+            PlaylistStat(pluralStringResource(R.plurals.n_song, songs.size, songs.size), R.drawable.music_note)
+            if (likeLength > 0) PlaylistStat(makeTimeString(likeLength * 1000L), R.drawable.history)
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -920,11 +928,11 @@ private fun AutoPlaylistHeader(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Shuffle Button - Smaller secondary button
+            // Shuffle
             androidx.compose.material3.Surface(
                 onClick = {
                     playerConnection.playQueue(
@@ -934,9 +942,11 @@ private fun AutoPlaylistHeader(
                         ),
                     )
                 },
-                shape = androidx.compose.foundation.shape.CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(48.dp),
+                shape = RoundedCornerShape(20.dp),
+                enabled = songs.isNotEmpty(),
+                contentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = if (songs.isEmpty()) 0.38f else 1f),
+                color = Color.Transparent,
+                modifier = Modifier.size(56.dp).sounPanel(RoundedCornerShape(20.dp)),
             ) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -950,7 +960,7 @@ private fun AutoPlaylistHeader(
                 }
             }
 
-            // Play Button - Larger primary circular button
+            // Play
             Surface(
                 onClick = {
                     playerConnection.playQueue(
@@ -960,24 +970,21 @@ private fun AutoPlaylistHeader(
                         ),
                     )
                 },
-                color = MaterialTheme.colorScheme.primary,
-                shape = androidx.compose.foundation.shape.CircleShape,
-                modifier = Modifier.size(72.dp),
+                enabled = songs.isNotEmpty(),
+                color = if (songs.isEmpty()) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.primary,
+                contentColor = if (songs.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimary,
+                shape = RoundedCornerShape(28.dp),
+                modifier = Modifier.weight(1f).height(56.dp),
             ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.play),
-                        contentDescription = stringResource(R.string.play),
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(32.dp),
-                    )
+                Row(Modifier.fillMaxSize().padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
+                    Icon(painterResource(R.drawable.play), null, tint = if (songs.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
+                    Text(stringResource(R.string.play), style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
 
-            // Menu Button - Smaller secondary button
+            // Playlist actions
             Surface(
                 onClick = {
                     menuState.show {
@@ -1016,9 +1023,11 @@ private fun AutoPlaylistHeader(
                         )
                     }
                 },
-                shape = androidx.compose.foundation.shape.CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(48.dp),
+                shape = RoundedCornerShape(20.dp),
+                enabled = songs.isNotEmpty(),
+                contentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = if (songs.isEmpty()) 0.38f else 1f),
+                color = Color.Transparent,
+                modifier = Modifier.size(56.dp).sounPanel(RoundedCornerShape(20.dp)),
             ) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -1032,6 +1041,15 @@ private fun AutoPlaylistHeader(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PlaylistStat(text: String, @androidx.annotation.DrawableRes icon: Int) {
+    Row(Modifier.sounPanel(RoundedCornerShape(20.dp)).padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Icon(painterResource(icon), null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

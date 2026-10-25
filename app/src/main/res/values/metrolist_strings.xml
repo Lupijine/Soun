@@ -1060,4 +1060,9 @@
     <string name="soun_theme_dark">Dark</string>
     <string name="soun_theme_black_desc">Use a black background in dark mode and turn off album glow.</string>
     <string name="soun_theme_preview">Live theme preview</string>
+    <string name="soun_download_ready">Ready</string>
+    <string name="soun_download_pending">Pending</string>
+    <string name="soun_download_failed">Failed</string>
+    <string name="soun_storage_used">Storage used</string>
+    <string name="soun_manage_storage">Manage</string>
 </resources>

@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.metrolist.music.R
 import com.metrolist.music.ui.theme.sounPanel
 
 @Composable
@@ -41,9 +42,25 @@ fun SounShortcut(
     @DrawableRes icon: Int,
     modifier: Modifier = Modifier,
     prominent: Boolean = false,
+    @DrawableRes artwork: Int? = null,
     onClick: () -> Unit,
 ) {
     val shape = RoundedCornerShape(22.dp)
+    if (artwork != null) {
+        Column(modifier.heightIn(min = 156.dp).sounPanel(shape).clickable(onClick = onClick).padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                SounPlaylistArtwork(artwork, Modifier.size(56.dp), compact = true)
+                Spacer(Modifier.weight(1f))
+                Icon(painterResource(R.drawable.arrow_forward), null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        return
+    }
     Row(
         modifier.heightIn(min = 76.dp).sounPanel(shape).clip(shape).clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 12.dp),
