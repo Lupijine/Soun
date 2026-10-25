@@ -183,7 +183,8 @@ fun Modifier.sounSheetGlass(tint: Color, enabled: Boolean = true): Modifier {
         effects = {
             vibrancy()
             blur(6.dp.toPx())
-            lens(36.dp.toPx(), 72.dp.toPx(), depthEffect = true, chromaticAberration = true)
+            // A tall refraction band makes the whole slab act as a lens, not just its rim.
+            lens(140.dp.toPx(), 96.dp.toPx(), depthEffect = true, chromaticAberration = true)
         },
         highlight = {
             Highlight(
