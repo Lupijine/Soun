@@ -44,6 +44,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import com.metrolist.music.ui.theme.sounSurface
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -76,11 +78,11 @@ fun DefaultDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
+        // Soun: dialogs use the shared rounded surface with a hairline rim.
         Surface(
-            modifier = Modifier.padding(24.dp),
-            shape = AlertDialogDefaults.shape,
-            color = AlertDialogDefaults.containerColor,
-            tonalElevation = AlertDialogDefaults.TonalElevation,
+            modifier = Modifier.padding(24.dp).sounSurface(RoundedCornerShape(32.dp)),
+            shape = RoundedCornerShape(32.dp),
+            color = Color.Transparent,
         ) {
             Column(
                 horizontalAlignment = horizontalAlignment,
@@ -249,11 +251,11 @@ fun ListDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
+        // Soun: dialogs use the shared rounded surface with a hairline rim.
         Surface(
-            modifier = Modifier.padding(24.dp),
-            shape = AlertDialogDefaults.shape,
-            color = AlertDialogDefaults.containerColor,
-            tonalElevation = AlertDialogDefaults.TonalElevation,
+            modifier = Modifier.padding(24.dp).sounSurface(RoundedCornerShape(32.dp)),
+            shape = RoundedCornerShape(32.dp),
+            color = Color.Transparent,
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,

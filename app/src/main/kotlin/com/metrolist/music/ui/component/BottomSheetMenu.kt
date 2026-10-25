@@ -69,7 +69,7 @@ fun AnimatedBottomSheet(
     modifier: Modifier = Modifier,
     sheetState: SheetState = rememberMaterialBottomSheetState(initialValue = SheetValue.Hidden),
     sheetMaxWidth: Dp = BottomSheetDefaults.SheetMaxWidth,
-    shape: Shape = BottomSheetDefaults.ExpandedShape,
+    shape: Shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp), // Soun: rounder sheets
     containerColor: Color = BottomSheetDefaults.ContainerColor,
     contentColor: Color = contentColorFor(containerColor),
     tonalElevation: Dp = 0.dp,
