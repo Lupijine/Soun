@@ -18,6 +18,12 @@ import androidx.compose.animation.shrinkOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -75,19 +81,37 @@ fun <E> ChipsRow(
         Spacer(Modifier.width(12.dp))
 
         chips.forEach { (value, label) ->
-            FilterChip(
-                modifier = Modifier.sounPanel(RoundedCornerShape(50)),
-                label = { Text(label, style = MaterialTheme.typography.labelLarge) },
-                selected = currentValue == value,
-                colors = FilterChipDefaults.filterChipColors(
-                    containerColor = containerColor,
-                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-                onClick = { onValueUpdate(value) },
-                shape = RoundedCornerShape(50),
-                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
-            )
+            val selected = currentValue == value
+            // Soun: one glass pill per chip. A Material FilterChip inside a glass panel
+            // drew two outlines, because the chip is smaller than its touch area.
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier =
+                    Modifier
+                        .padding(vertical = 4.dp)
+                        .height(40.dp)
+                        .sounPanel(RoundedCornerShape(50))
+                        .then(
+                            if (selected) {
+                                Modifier.background(MaterialTheme.colorScheme.primary, RoundedCornerShape(50))
+                            } else {
+                                Modifier.background(containerColor, RoundedCornerShape(50))
+                            },
+                        )
+                        .selectable(
+                            selected = selected,
+                            role = Role.Tab,
+                            onClick = { onValueUpdate(value) },
+                        )
+                        .padding(horizontal = 18.dp),
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                )
+            }
 
             Spacer(Modifier.width(8.dp))
         }

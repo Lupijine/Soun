@@ -886,7 +886,7 @@ class MainActivity : FragmentActivity() {
                         if (shouldShowNavigationBar && !showRail) {
                             bottom += NavigationBarHeight
                         }
-                        if (!playerBottomSheetState.isDismissed) bottom += MiniPlayerHeight
+                        if (!playerBottomSheetState.isDismissed) bottom += MiniPlayerHeight + MiniPlayerBottomSpacing + 12.dp // Soun: keep the last row clear of the floating mini player
                         windowsInsets
                             .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
                             .add(WindowInsets(top = AppBarHeight, bottom = bottom))

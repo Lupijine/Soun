@@ -112,8 +112,10 @@ fun Modifier.sounGlass(
                 effects = {
                     vibrancy()
                     // Keep detail in the centre; the curved edge does the optical work.
-                    if (Build.VERSION.SDK_INT < 33) blur(5.dp.toPx())
-                    lens(18.dp.toPx(), 32.dp.toPx(), depthEffect = true, chromaticAberration = true)
+                    // A light blur keeps text behind the glass from showing through warped;
+                    // a gentler lens keeps the curved edge without bending content too far.
+                    blur(4.dp.toPx())
+                    lens(10.dp.toPx(), 20.dp.toPx(), depthEffect = true)
                 },
                 highlight = {
                     Highlight(

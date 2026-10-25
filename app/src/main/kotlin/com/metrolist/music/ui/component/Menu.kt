@@ -25,35 +25,40 @@ import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.unit.dp
 
 @Composable
 fun Material3MenuGroup(
     items: List<Material3MenuItemData>
 ) {
+    // Soun: one rounded panel per group with hairline separators, instead of a
+    // stack of separately bordered cards.
     Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize()
+            .sounSurface(RoundedCornerShape(24.dp))
     ) {
         items.forEachIndexed { index, item ->
-            val shape = when {
-                items.size == 1 -> RoundedCornerShape(24.dp)
-                index == 0 -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 6.dp, bottomEnd = 6.dp)
-                index == items.size - 1 -> RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 24.dp, bottomEnd = 24.dp)
-                else -> RoundedCornerShape(6.dp)
+            if (index > 0) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(start = if (item.icon != null) 60.dp else 20.dp),
+                    thickness = 0.5.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
             }
-
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .animateContentSize()
-                    .then(if (item.cardColors == null) Modifier.sounSurface(shape) else Modifier),
-                shape = shape,
-                colors = item.cardColors ?: CardDefaults.cardColors(
-                    containerColor = androidx.compose.ui.graphics.Color.Transparent
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-            ) {
+            if (item.cardColors != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RectangleShape,
+                    colors = item.cardColors,
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                ) {
+                    Material3MenuItemRow(item = item)
+                }
+            } else {
                 Material3MenuItemRow(item = item)
             }
         }

@@ -288,7 +288,7 @@ fun PlayerMenu(
                         }
                     },
                     modifier = Modifier.weight(1f),
-                    accentColor = MaterialTheme.colorScheme.primary,
+                    accentColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
                 )
             }
         }

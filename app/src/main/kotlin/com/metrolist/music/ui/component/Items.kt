@@ -58,6 +58,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
@@ -1304,13 +1305,19 @@ fun YouTubeGridItem(
         val playerConnection = LocalPlayerConnection.current
         val scope = rememberCoroutineScope()
 
-        ItemThumbnail(
-            thumbnailUrl = item.thumbnail,
-            isActive = isActive,
-            isPlaying = isPlaying,
-            shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(if (roundedArtwork) 24.dp else ThumbnailCornerRadius),
-            forceCrop = roundedArtwork,
-        )
+        val thumbShape = if (item is ArtistItem) CircleShape else RoundedCornerShape(if (roundedArtwork) 24.dp else ThumbnailCornerRadius)
+        if (item is PlaylistItem && item.id == "LM") {
+            // Soun: our own Liked tile instead of YouTube's pink thumbs-up cover.
+            SounLikedThumbnail(shape = thumbShape)
+        } else {
+            ItemThumbnail(
+                thumbnailUrl = item.thumbnail,
+                isActive = isActive,
+                isPlaying = isPlaying,
+                shape = thumbShape,
+                forceCrop = roundedArtwork,
+            )
+        }
 
         if (item is SongItem && !isActive) {
             OverlayPlayButton(
@@ -1980,6 +1987,31 @@ object Icon {
             modifier = Modifier
                 .size(18.dp)
                 .padding(end = 2.dp)
+        )
+    }
+}
+
+@Composable
+private fun SounLikedThumbnail(shape: Shape) {
+    val accent = MaterialTheme.colorScheme.primary
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .aspectRatio(1f)
+                .clip(shape)
+                .background(
+                    Brush.linearGradient(
+                        listOf(accent.copy(alpha = 0.95f), accent.copy(alpha = 0.35f), Color(0xFF0B0D14)),
+                    ),
+                ),
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.favorite),
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.fillMaxSize(0.38f),
         )
     }
 }

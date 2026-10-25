@@ -2482,7 +2482,9 @@ fun HomeScreen(
             }
 
             HideOnScrollFAB(
-                visible = allLocalItems.isNotEmpty() || allYtItems.isNotEmpty(),
+                // Soun: the floating shuffle and recognition buttons covered the content
+                // and mini player; recognition stays on the Search button (long press).
+                visible = false,
                 lazyListState = lazylistState,
                 icon = R.drawable.shuffle,
                 onClick = {
