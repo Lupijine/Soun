@@ -30,6 +30,10 @@ import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.ui.component.*
 import com.metrolist.music.ui.menu.*
 import com.metrolist.music.ui.theme.sounPanel
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.viewmodels.LibraryMixViewModel
 
@@ -96,10 +100,28 @@ fun LibraryScreen(viewModel: LibraryMixViewModel = hiltViewModel()) {
                 modifier = Modifier.padding(24.dp))
         }
         itemsIndexed(content, key = { _, it -> "${it::class.simpleName}_${it.id}" }) { index, entry ->
-            val rowModifier = Modifier.padding(horizontal = 20.dp).sounPanel(RoundedCornerShape(
+            // Soun: rows form one continuous glass list. A separate glass panel per row
+            // drew a bright rim around every item; here rows share one translucent fill
+            // with hairline separators, rounded only at the ends.
+            val rowShape = RoundedCornerShape(
                 topStart = if (index == 0) 24.dp else 0.dp, topEnd = if (index == 0) 24.dp else 0.dp,
                 bottomStart = if (index == content.lastIndex) 24.dp else 0.dp, bottomEnd = if (index == content.lastIndex) 24.dp else 0.dp,
-            ))
+            )
+            val rowFill = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
+            val separator = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)
+            val rowModifier = Modifier.padding(horizontal = 20.dp)
+                .clip(rowShape)
+                .background(rowFill, rowShape)
+                .drawBehind {
+                    if (index > 0) {
+                        drawLine(
+                            color = separator,
+                            start = Offset(88.dp.toPx(), 0f),
+                            end = Offset(size.width - 16.dp.toPx(), 0f),
+                            strokeWidth = 0.5.dp.toPx(),
+                        )
+                    }
+                }
                 .combinedClickable(
                     onClick = {
                         when (entry) {

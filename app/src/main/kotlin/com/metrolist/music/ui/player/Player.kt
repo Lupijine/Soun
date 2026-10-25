@@ -1091,7 +1091,7 @@ fun BottomSheetPlayer(
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                if (useNewPlayerDesign && !showInlineLyrics) {
+                if (useNewPlayerDesign) { // Soun: same glass layout with lyrics open
                     val isFavorite = if (currentSong?.song?.isEpisode == true) currentSong?.song?.inLibrary != null else currentSong?.song?.liked == true
                     IconButton(onClick = playerConnection::toggleLike,
                         modifier = Modifier.size(48.dp).sounGlass(CircleShape, sounGlassColors(), backdrop = playerBackdrop)) {
@@ -1497,7 +1497,7 @@ fun BottomSheetPlayer(
                 exit = shrinkVertically(shrinkTowards = Alignment.Top) + slideOutVertically(targetOffsetY = { it }) + fadeOut(),
             ) {
                 Column {
-                    if (useNewPlayerDesign && !showInlineLyrics) {
+                    if (useNewPlayerDesign) { // Soun: same glass layout with lyrics open
                         val shuffle by playerConnection.shuffleModeEnabled.collectAsStateWithLifecycle()
                         Row(Modifier.fillMaxWidth().padding(horizontal = PlayerHorizontalPadding),
                             horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {

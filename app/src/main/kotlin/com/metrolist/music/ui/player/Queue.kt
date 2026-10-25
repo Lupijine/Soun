@@ -268,13 +268,14 @@ fun Queue(
             Box(Modifier.fillMaxSize().background(Color.Unspecified))
         },
         collapsedContent = {
-            if (useNewPlayerDesign && !showInlineLyrics) {
+            if (useNewPlayerDesign) { // Soun: same glass bar with lyrics open
                 Box(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp)
                     .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))) {
                     Row(Modifier.fillMaxWidth().height(56.dp).sounGlass(RoundedCornerShape(28.dp), sounGlassColors(), backdrop = backdrop)
                         .padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = onToggleLyrics) {
-                            Icon(painterResource(R.drawable.lyrics), stringResource(R.string.lyrics), tint = TextBackgroundColor)
+                            Icon(painterResource(R.drawable.lyrics), stringResource(R.string.lyrics),
+                                tint = if (showInlineLyrics) MaterialTheme.colorScheme.primary else TextBackgroundColor)
                         }
                         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                             Icon(painterResource(if (isCasting) R.drawable.cast_connected else R.drawable.volume_up), null,
