@@ -28,8 +28,8 @@ fun SounPageTitle(title: String, actions: @Composable RowScope.() -> Unit = {}) 
         Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(title, fontSize = 34.sp, fontWeight = FontWeight.ExtraBold,
-            letterSpacing = (-0.7).sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Text(title, fontSize = 44.sp, lineHeight = 48.sp, fontWeight = FontWeight.ExtraBold, // Soun: large page titles
+            letterSpacing = (-1.2).sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         actions()
     }
 }
