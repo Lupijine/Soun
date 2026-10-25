@@ -45,8 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import com.metrolist.music.ui.theme.SounWindowBlur
-import com.metrolist.music.ui.theme.sounWindowGlass
+import com.metrolist.music.ui.theme.SounGlassDialog
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -75,17 +74,9 @@ fun DefaultDialog(
     horizontalAlignment: Alignment.Horizontal = Alignment.CenterHorizontally,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        // Soun: glass dialogs; the window behind is blurred by the system.
-        SounWindowBlur()
-        Surface(
-            modifier = Modifier.padding(24.dp).sounWindowGlass(RoundedCornerShape(32.dp)),
-            shape = RoundedCornerShape(32.dp),
-            color = Color.Transparent,
-        ) {
+    // Soun: Liquid Glass dialog over the live app.
+    SounGlassDialog(onDismiss = onDismiss) {
+        Box {
             Column(
                 horizontalAlignment = horizontalAlignment,
                 modifier =
@@ -249,17 +240,9 @@ fun ListDialog(
     modifier: Modifier = Modifier,
     content: LazyListScope.() -> Unit,
 ) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        // Soun: glass dialogs; the window behind is blurred by the system.
-        SounWindowBlur()
-        Surface(
-            modifier = Modifier.padding(24.dp).sounWindowGlass(RoundedCornerShape(32.dp)),
-            shape = RoundedCornerShape(32.dp),
-            color = Color.Transparent,
-        ) {
+    // Soun: Liquid Glass dialog over the live app.
+    SounGlassDialog(onDismiss = onDismiss) {
+        Box {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier =
