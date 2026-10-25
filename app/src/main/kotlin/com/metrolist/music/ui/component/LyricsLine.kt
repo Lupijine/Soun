@@ -33,6 +33,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
@@ -125,7 +129,6 @@ internal fun LyricsLine(
     bgVisible: Boolean,
     isSelected: Boolean,
     isSelectionModeActive: Boolean,
-    currentPositionState: Long,
     lyricsOffset: Long,
     playerConnection: PlayerConnection,
     lyricsTextSize: Float,
@@ -234,14 +237,15 @@ internal fun LyricsLine(
                     )
                 )
 
-                val effectiveWords = item.timedWordsForDisplay(romanizeAsMain && isRomanizedAvailable)
+                val effectiveWords = remember(item, romanizeAsMain, isRomanizedAvailable) {
+                    item.timedWordsForDisplay(romanizeAsMain && isRomanizedAvailable)
+                }
 
                 if (isSynced && effectiveWords != null && (isActiveLine || abs(index - displayedCurrentLineIndex) <= 3) && mainText != null) {
                     WordLevelLyrics(
                         mainText = mainText,
                         words = effectiveWords,
                         isActiveLine = isActiveLine,
-                        currentPositionState = currentPositionState,
                         lyricsOffset = lyricsOffset,
                         playerConnection = playerConnection,
                         lyricStyle = lyricStyle,
@@ -305,7 +309,6 @@ private fun WordLevelLyrics(
     mainText: String,
     words: List<WordTimestamp>,
     isActiveLine: Boolean,
-    currentPositionState: Long,
     lyricsOffset: Long,
     playerConnection: PlayerConnection,
     lyricStyle: TextStyle,
@@ -323,30 +326,20 @@ private fun WordLevelLyrics(
         }
     }
     
-    var smoothPosition by remember { mutableLongStateOf(currentPositionState + lyricsOffset) }
+    var smoothPosition by remember { mutableLongStateOf(playerConnection.player.currentPosition + lyricsOffset) }
     
-    LaunchedEffect(isActiveLine) {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val latestLyricsOffset by rememberUpdatedState(lyricsOffset)
+    LaunchedEffect(isActiveLine, lifecycleOwner) {
         if (isActiveLine) {
-            var lastPlayerPos = playerConnection.player.currentPosition
-            var lastUpdateTime = System.currentTimeMillis()
-            while (isActive) {
-                withFrameMillis {
-                    val now = System.currentTimeMillis()
-                    val playerPos = playerConnection.player.currentPosition
-                    if (playerPos != lastPlayerPos) {
-                        lastPlayerPos = playerPos
-                        lastUpdateTime = now
+            lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (isActive) {
+                    withFrameMillis {
+                        // ExoPlayer already interpolates position at the current playback speed.
+                        smoothPosition = playerConnection.player.currentPosition + latestLyricsOffset
                     }
-                    val elapsed = now - lastUpdateTime
-                    smoothPosition = lastPlayerPos + lyricsOffset + (if (playerConnection.player.isPlaying) elapsed else 0)
                 }
             }
-        }
-    }
-    
-    LaunchedEffect(isActiveLine, currentPositionState) {
-        if (!isActiveLine) {
-            smoothPosition = currentPositionState + lyricsOffset
         }
     }
 

@@ -448,113 +448,115 @@ fun OnlineSearchResult(
         )
 
         // Main content area below search bar
-        Box(modifier = Modifier.weight(1f)) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                val visibleChips =
-                    listOf(
-                        null to stringResource(R.string.filter_all),
-                        FILTER_SONG to stringResource(R.string.filter_songs),
-                    ).let { baseChips ->
-                        if (!hideVideoSongs) {
-                            baseChips + (FILTER_VIDEO to stringResource(R.string.filter_videos))
-                        } else {
-                            baseChips
-                        }
-                    } +
-                        listOf(
-                            FILTER_ALBUM to stringResource(R.string.filter_albums),
-                            FILTER_ARTIST to stringResource(R.string.filter_artists),
-                            FILTER_COMMUNITY_PLAYLIST to stringResource(R.string.filter_community_playlists),
-                            FILTER_FEATURED_PLAYLIST to stringResource(R.string.filter_featured_playlists),
-                            FILTER_PODCAST to stringResource(R.string.filter_podcasts),
-                            FILTER_EPISODE to stringResource(R.string.filter_episodes),
-                            FILTER_PROFILE to stringResource(R.string.filter_profiles),
-                        )
-
-                ChipsRow(
-                    chips = visibleChips,
-                    currentValue = searchFilter,
-                    onValueUpdate = {
-                        if (viewModel.filter.value != it) {
-                            viewModel.filter.value = it
-                        }
-                        coroutineScope.launch {
-                            lazyListState.animateScrollToItem(0)
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                LazyColumn(
-                    state = lazyListState,
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()
+            .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)) {
+            if (!isSearchFocused) {
+                Column(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    if (searchFilter == null) {
-                        searchSummary?.summaries?.forEach { summary ->
-                            item {
-                                NavigationTitle(summary.title)
+                    val visibleChips =
+                        listOf(
+                            null to stringResource(R.string.filter_all),
+                            FILTER_SONG to stringResource(R.string.filter_songs),
+                        ).let { baseChips ->
+                            if (!hideVideoSongs) {
+                                baseChips + (FILTER_VIDEO to stringResource(R.string.filter_videos))
+                            } else {
+                                baseChips
                             }
-
-                            itemsIndexed(
-                                items = summary.items,
-                                key = { index, item -> "${summary.title}/${item.id}/$index" },
-                                itemContent = { index, item -> ytItemContent(item) },
+                        } +
+                            listOf(
+                                FILTER_ALBUM to stringResource(R.string.filter_albums),
+                                FILTER_ARTIST to stringResource(R.string.filter_artists),
+                                FILTER_COMMUNITY_PLAYLIST to stringResource(R.string.filter_community_playlists),
+                                FILTER_FEATURED_PLAYLIST to stringResource(R.string.filter_featured_playlists),
+                                FILTER_PODCAST to stringResource(R.string.filter_podcasts),
+                                FILTER_EPISODE to stringResource(R.string.filter_episodes),
+                                FILTER_PROFILE to stringResource(R.string.filter_profiles),
                             )
-                        }
 
-                        if (searchSummary?.summaries?.isEmpty() == true) {
-                            item {
-                                EmptyPlaceholder(
-                                    icon = R.drawable.search,
-                                    text = stringResource(R.string.no_results_found),
+                    ChipsRow(
+                        chips = visibleChips,
+                        currentValue = searchFilter,
+                        onValueUpdate = {
+                            if (viewModel.filter.value != it) {
+                                viewModel.filter.value = it
+                            }
+                            coroutineScope.launch {
+                                lazyListState.animateScrollToItem(0)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+
+                    LazyColumn(
+                        state = lazyListState,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        if (searchFilter == null) {
+                            searchSummary?.summaries?.forEach { summary ->
+                                item {
+                                    NavigationTitle(summary.title)
+                                }
+
+                                itemsIndexed(
+                                    items = summary.items,
+                                    key = { index, item -> "${summary.title}/${item.id}/$index" },
+                                    itemContent = { index, item -> ytItemContent(item) },
                                 )
                             }
-                        }
-                    } else {
-                        items(
-                            items = itemsPage?.items.orEmpty().distinctBy { it.id },
-                            key = { "filtered_${it.id}" },
-                            itemContent = ytItemContent,
-                        )
 
-                        if (itemsPage?.continuation != null) {
-                            item(key = "loading") {
+                            if (searchSummary?.summaries?.isEmpty() == true) {
+                                item {
+                                    EmptyPlaceholder(
+                                        icon = R.drawable.search,
+                                        text = stringResource(R.string.no_results_found),
+                                    )
+                                }
+                            }
+                        } else {
+                            items(
+                                items = itemsPage?.items.orEmpty().distinctBy { it.id },
+                                key = { "filtered_${it.id}" },
+                                itemContent = ytItemContent,
+                            )
+
+                            if (itemsPage?.continuation != null) {
+                                item(key = "loading") {
+                                    ShimmerHost {
+                                        repeat(3) {
+                                            ListItemPlaceHolder()
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (itemsPage?.items?.isEmpty() == true) {
+                                item {
+                                    EmptyPlaceholder(
+                                        icon = R.drawable.search,
+                                        text = stringResource(R.string.no_results_found),
+                                    )
+                                }
+                            }
+                        }
+
+                        if (searchFilter == null && searchSummary == null || searchFilter != null && itemsPage == null) {
+                            item {
                                 ShimmerHost {
-                                    repeat(3) {
+                                    repeat(8) {
                                         ListItemPlaceHolder()
                                     }
                                 }
                             }
                         }
 
-                        if (itemsPage?.items?.isEmpty() == true) {
-                            item {
-                                EmptyPlaceholder(
-                                    icon = R.drawable.search,
-                                    text = stringResource(R.string.no_results_found),
-                                )
-                            }
+                        item(key = "bottom_spacer") {
+                            Spacer(modifier = Modifier.height(MiniPlayerHeight + MiniPlayerBottomSpacing + NavigationBarHeight))
                         }
-                    }
-
-                    if (searchFilter == null && searchSummary == null || searchFilter != null && itemsPage == null) {
-                        item {
-                            ShimmerHost {
-                                repeat(8) {
-                                    ListItemPlaceHolder()
-                                }
-                            }
-                        }
-                    }
-
-                    item(key = "bottom_spacer") {
-                        Spacer(modifier = Modifier.height(MiniPlayerHeight + MiniPlayerBottomSpacing + NavigationBarHeight))
                     }
                 }
-            }
-            if (isSearchFocused) {
+            } else {
                 OnlineSearchScreen(
                     query = query.text,
                     onQueryChange = { query = it },
@@ -566,7 +568,7 @@ fun OnlineSearchResult(
                     pureBlack = pureBlack,
                 )
             }
-            HideOnScrollFAB(
+            if (!isSearchFocused) HideOnScrollFAB(
                 lazyListState = lazyListState,
                 icon = R.drawable.mic,
                 onClick = { navController.navigate("recognition") },

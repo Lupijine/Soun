@@ -45,6 +45,7 @@ import com.metrolist.music.ui.screens.search.SearchScreen
 import com.metrolist.music.ui.screens.settings.AboutScreen
 import com.metrolist.music.ui.screens.settings.AiSettings
 import com.metrolist.music.ui.screens.settings.AndroidAutoSettings
+import com.metrolist.music.ui.screens.settings.LyricsSettings
 import com.metrolist.music.ui.screens.settings.AppearanceSettings
 import com.metrolist.music.ui.screens.settings.BackupAndRestore
 import com.metrolist.music.ui.screens.settings.ContentSettings
@@ -360,6 +361,10 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable("settings/appearance") {
         AppearanceSettings(navController, snackbarHostState)
+    }
+
+    composable("settings/lyrics") {
+        LyricsSettings(navController)
     }
 
     composable("settings/appearance/theme") {

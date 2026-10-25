@@ -87,8 +87,6 @@ import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.OnlineSearchSuggestionViewModel
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class, ExperimentalMaterial3Api::class, FlowPreview::class)
@@ -127,9 +125,7 @@ fun OnlineSearchScreen(
     }
 
     LaunchedEffect(query) {
-        snapshotFlow { query }.debounce(300L).collectLatest {
-            viewModel.query.value = it
-        }
+        viewModel.query.value = query
     }
 
     if (query.isBlank()) {

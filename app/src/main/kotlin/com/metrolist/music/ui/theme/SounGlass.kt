@@ -12,6 +12,7 @@ import androidx.compose.foundation.border
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -108,6 +109,9 @@ fun Modifier.sounGlass(
     backdropEnabled: Boolean = true,
     backdrop: Backdrop? = LocalSounBackdrop.current,
 ): Modifier {
+    val fill = remember(colors.fillTop, colors.fillBottom) {
+        Brush.verticalGradient(listOf(colors.fillTop, colors.fillBottom))
+    }
     if (backdropEnabled && backdrop != null && isRenderEffectSupported()) {
         return this
             .drawBackdrop(
@@ -115,7 +119,6 @@ fun Modifier.sounGlass(
                 shape = { shape },
                 effects = {
                     vibrancy()
-                    // Keep detail in the centre; the curved edge does the optical work.
                     // Keep detail in the centre; the curved edge does the optical work.
                     if (Build.VERSION.SDK_INT < 33) blur(5.dp.toPx())
                     lens(18.dp.toPx(), 32.dp.toPx(), depthEffect = true, chromaticAberration = true)
@@ -133,7 +136,7 @@ fun Modifier.sounGlass(
                 },
                 onDrawSurface = {
                     drawRect(colors.surfaceTint)
-                    drawRect(Brush.verticalGradient(listOf(colors.fillTop, colors.fillBottom)))
+                    drawRect(fill)
                 },
             )
             .clip(shape)
@@ -148,7 +151,7 @@ fun Modifier.sounGlass(
         )
         .clip(shape)
         .then(if (backdropEnabled) Modifier.background(colors.fallback, shape) else Modifier)
-        .background(Brush.verticalGradient(listOf(colors.fillTop, colors.fillBottom)), shape)
+        .background(fill, shape)
         .border(
             BorderStroke(
                 width = 1.dp,

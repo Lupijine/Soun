@@ -1038,4 +1038,16 @@
     <string name="soun_explore_empty">Connect to the internet to discover new music.</string>
     <string name="soun_repeat">Repeat</string>
     <string name="soun_music_starting">Getting your music ready…</string>
+    <string name="soun_lyrics_style">Lyrics style</string>
+    <string name="soun_expressive_lyrics">Expressive</string>
+    <string name="soun_classic_lyrics">Classic</string>
+    <string name="soun_expressive_lyrics_desc">Word highlighting, overlapping vocals and follow controls.</string>
+    <string name="soun_classic_lyrics_desc">Adjustable text size, spacing and line animations.</string>
+    <string name="soun_lyrics_settings_desc">Style, alignment and reading controls</string>
+    <string name="soun_floating_mini_player">Floating mini player</string>
+    <string name="soun_player_layout">Soun player layout</string>
+    <string name="soun_liquid_glass">Liquid glass</string>
+    <string name="soun_together_account_menu">Together in account menu</string>
+    <string name="soun_together_account_menu_desc">Access Together from your profile menu. Turn off to show it in the navigation bar.</string>
+    <string name="soun_library_browser_shortcuts">Shortcuts in Manage library</string>
 </resources>

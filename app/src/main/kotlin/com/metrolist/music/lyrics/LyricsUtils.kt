@@ -806,12 +806,13 @@ object LyricsUtils {
         position: Long,
     ): Int {
         val threshold = 100L
-        for (index in lines.indices) {
-            if (lines[index].time >= position + threshold) {
-                return index - 1
-            }
+        var low = 0
+        var high = lines.size
+        while (low < high) {
+            val mid = low + (high - low) / 2
+            if (lines[mid].time < position + threshold) low = mid + 1 else high = mid
         }
-        return lines.lastIndex
+        return low - 1
     }
 
     /**

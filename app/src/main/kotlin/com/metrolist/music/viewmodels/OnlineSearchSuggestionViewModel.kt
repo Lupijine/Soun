@@ -27,6 +27,9 @@ import com.metrolist.music.utils.get
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
@@ -57,6 +60,8 @@ class OnlineSearchSuggestionViewModel
                                 )
                             }
                         } else {
+                            // Inside flatMapLatest so every keystroke cancels the previous wait/request immediately.
+                            delay(250)
                             // Check if query is a YouTube URL
                             val parsedUrl = YouTubeUrlParser.parse(query)
                             if (parsedUrl != null) {
@@ -102,7 +107,7 @@ class OnlineSearchSuggestionViewModel
                                     }
                             }
                         }
-                    }.collect {
+                    }.flowOn(Dispatchers.IO).collect {
                         _viewState.value = it
                     }
             }

@@ -84,6 +84,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -103,6 +105,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -703,14 +706,17 @@ fun BottomSheetPlayer(
     // Position update - only for local playback
     // When casting, we use castPosition directly to avoid sync issues
     // Use isPlaying instead of playbackState to ensure continuous updates during playback
-    LaunchedEffect(isPlaying, isCasting) {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(isPlaying, isCasting, lifecycleOwner) {
         if (!isCasting && isPlaying) {
-            while (isActive) {
-                delay(100) // Update more frequently for smoother progress bar
-                if (sliderPosition == null) { // Only update if user isn't dragging
-                    position = playerConnection.player.currentPosition
-                    // Don't clobber a valid (metadata-derived) duration with 0/UNSET mid-resolve.
-                    playerConnection.player.duration.takeIf { it > 0 }?.let { duration = it }
+            lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (isActive) {
+                    delay(100) // Update more frequently for smoother progress bar
+                    if (sliderPosition == null) { // Only update if user isn't dragging
+                        position = playerConnection.player.currentPosition
+                        // Don't clobber a valid (metadata-derived) duration with 0/UNSET mid-resolve.
+                        playerConnection.player.duration.takeIf { it > 0 }?.let { duration = it }
+                    }
                 }
             }
         }
@@ -787,7 +793,6 @@ fun BottomSheetPlayer(
             }
         }
 
-    val backgroundAlpha = state.progress.coerceIn(0f, 1f)
     val playerBackdrop = rememberLayerBackdrop()
 
     BottomSheet(
@@ -815,7 +820,7 @@ fun BottomSheetPlayer(
                             label = "blurBackground",
                         ) { thumbnailUrl ->
                             if (thumbnailUrl != null) {
-                                Box(modifier = Modifier.alpha(backgroundAlpha)) {
+                                Box(modifier = Modifier.graphicsLayer { alpha = state.progress.coerceIn(0f, 1f) }) {
                                     AsyncImage(
                                         model =
                                             ImageRequest
@@ -868,7 +873,7 @@ fun BottomSheetPlayer(
                                 Box(
                                     Modifier
                                         .fillMaxSize()
-                                        .alpha(backgroundAlpha)
+                                        .graphicsLayer { alpha = state.progress.coerceIn(0f, 1f) }
                                         .background(Brush.verticalGradient(colorStops = gradientColorStops))
                                         .background(Color.Black.copy(alpha = 0.2f)),
                                 )
@@ -881,7 +886,7 @@ fun BottomSheetPlayer(
                             AlbumGlow(
                                 colors = gradientColors,
                                 dark = useDarkTheme,
-                                modifier = Modifier.fillMaxSize().alpha(backgroundAlpha),
+                                modifier = Modifier.fillMaxSize().graphicsLayer { alpha = state.progress.coerceIn(0f, 1f) },
                             )
                         }
                     }
@@ -1900,7 +1905,7 @@ fun BottomSheetPlayer(
                                 InlineLyricsView(
                                     mediaMetadata = mediaMetadata,
                                     showLyrics = showLyrics,
-                                    positionProvider = { effectivePosition },
+                                    positionProvider = if (isCasting) ({ effectivePosition }) else sliderPositionProvider,
                                 )
                             } else {
                                 Thumbnail(
@@ -1966,7 +1971,7 @@ fun BottomSheetPlayer(
                                 InlineLyricsView(
                                     mediaMetadata = mediaMetadata,
                                     showLyrics = showLyrics,
-                                    positionProvider = { effectivePosition },
+                                    positionProvider = if (isCasting) ({ effectivePosition }) else sliderPositionProvider,
                                 )
                             } else {
                                 Thumbnail(
@@ -2026,7 +2031,7 @@ fun BottomSheetPlayer(
 fun InlineLyricsView(
     mediaMetadata: MediaMetadata?,
     showLyrics: Boolean,
-    positionProvider: () -> Long,
+    positionProvider: () -> Long?,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val currentLyrics by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)

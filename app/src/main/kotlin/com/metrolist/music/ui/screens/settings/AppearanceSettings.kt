@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -19,9 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -34,12 +33,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,29 +59,17 @@ import com.metrolist.music.constants.DynamicThemeKey
 import com.metrolist.music.constants.EnableDynamicIconKey
 import com.metrolist.music.constants.EnableHighRefreshRateKey
 import com.metrolist.music.constants.EnableLandscapeScalingKey
-import com.metrolist.music.constants.ExperimentalLyricsKey
 import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.HidePlayerThumbnailKey
-import com.metrolist.music.constants.HideStatusBarOnFullscreenKey
 import com.metrolist.music.constants.LibraryFilter
 import com.metrolist.music.constants.ListenTogetherInTopBarKey
-import com.metrolist.music.constants.LyricsAnimationStyle
-import com.metrolist.music.constants.LyricsAnimationStyleKey
-import com.metrolist.music.constants.LyricsClickKey
-import com.metrolist.music.constants.LyricsGlowEffectKey
-import com.metrolist.music.constants.LyricsLineSpacingKey
-import com.metrolist.music.constants.LyricsScrollKey
-import com.metrolist.music.constants.LyricsTextPositionKey
-import com.metrolist.music.constants.LyricsTextSizeKey
 import com.metrolist.music.constants.MiniPlayerBackgroundStyle
 import com.metrolist.music.constants.MiniPlayerBackgroundStyleKey
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PlayerButtonsStyle
 import com.metrolist.music.constants.PlayerButtonsStyleKey
-import com.metrolist.music.constants.PureBlackMiniPlayerKey
-import com.metrolist.music.constants.RespectAgentPositioningKey
 import com.metrolist.music.constants.SelectedThemeColorKey
 import com.metrolist.music.constants.ShowCachedPlaylistKey
 import com.metrolist.music.constants.ShowDownloadedPlaylistKey
@@ -115,8 +101,6 @@ import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.IconUtils
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
-import kotlinx.coroutines.launch
-import java.util.Locale
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -207,39 +191,6 @@ fun AppearanceSettings(
             PlayerButtonsStyleKey,
             defaultValue = PlayerButtonsStyle.DEFAULT,
         )
-    val (lyricsPosition, onLyricsPositionChange) =
-        rememberEnumPreference(
-            LyricsTextPositionKey,
-            defaultValue = LyricsPosition.CENTER,
-        )
-    val (lyricsClick, onLyricsClickChange) = rememberPreference(LyricsClickKey, defaultValue = true)
-    val (lyricsScroll, onLyricsScrollChange) =
-        rememberPreference(
-            LyricsScrollKey,
-            defaultValue = true,
-        )
-    val (hideStatusBarOnFullscreen, onHideStatusBarOnFullscreenChange) =
-        rememberPreference(
-            HideStatusBarOnFullscreenKey,
-            defaultValue = false,
-        )
-    val (respectAgentPositioning, onRespectAgentPositioningChange) = rememberPreference(RespectAgentPositioningKey, defaultValue = true)
-    val (experimentalLyrics, onExperimentalLyricsChange) = rememberPreference(ExperimentalLyricsKey, defaultValue = true)
-
-    val (lyricsGlowEffect, onLyricsGlowEffectChange) = rememberPreference(LyricsGlowEffectKey, defaultValue = false)
-    val (lyricsAnimationStyle, onLyricsAnimationStyleChange) =
-        rememberEnumPreference(
-            LyricsAnimationStyleKey,
-            defaultValue = LyricsAnimationStyle.FADE,
-        )
-    val (lyricsTextSize, onLyricsTextSizeChange) = rememberPreference(LyricsTextSizeKey, defaultValue = 24f)
-    val (lyricsLineSpacing, onLyricsLineSpacingChange) = rememberPreference(LyricsLineSpacingKey, defaultValue = 1.2f)
-
-    var showExperimentalLyricsBetaDialog by remember { mutableStateOf(false) }
-    var showLyricsAnimationStyleDialog by remember { mutableStateOf(false) }
-    var showLyricsTextSizeDialog by remember { mutableStateOf(false) }
-    var showLyricsLineSpacingDialog by remember { mutableStateOf(false) }
-
     val (sliderStyle, onSliderStyleChange) =
         rememberEnumPreference(
             SliderStyleKey,
@@ -324,11 +275,14 @@ fun AppearanceSettings(
             it != PlayerBackgroundStyle.BLUR || Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
         }
 
-    val (defaultChip, onDefaultChipChange) =
+    val (savedDefaultChip, onDefaultChipChange) =
         rememberEnumPreference(
             key = ChipSortTypeKey,
-            defaultValue = LibraryFilter.LIBRARY,
+            defaultValue = LibraryFilter.PLAYLISTS,
         )
+
+    val libraryTabs = listOf(LibraryFilter.PLAYLISTS, LibraryFilter.SONGS, LibraryFilter.ALBUMS, LibraryFilter.ARTISTS)
+    val defaultChip = savedDefaultChip.takeIf { it in libraryTabs } ?: LibraryFilter.PLAYLISTS
 
     var showSliderOptionDialog by rememberSaveable {
         mutableStateOf(false)
@@ -340,179 +294,6 @@ fun AppearanceSettings(
 
     var showPlayerButtonsStyleDialog by rememberSaveable {
         mutableStateOf(false)
-    }
-
-    var showLyricsPositionDialog by rememberSaveable {
-        mutableStateOf(false)
-    }
-
-    if (showLyricsPositionDialog) {
-        EnumDialog(
-            onDismiss = { showLyricsPositionDialog = false },
-            onSelect = {
-                onLyricsPositionChange(it)
-                showLyricsPositionDialog = false
-            },
-            title = stringResource(R.string.lyrics_text_position),
-            current = lyricsPosition,
-            values = LyricsPosition.values().toList(),
-            valueText = {
-                when (it) {
-                    LyricsPosition.LEFT -> stringResource(R.string.left)
-                    LyricsPosition.CENTER -> stringResource(R.string.center)
-                    LyricsPosition.RIGHT -> stringResource(R.string.right)
-                }
-            },
-        )
-    }
-
-    if (showLyricsAnimationStyleDialog) {
-        EnumDialog(
-            onDismiss = { showLyricsAnimationStyleDialog = false },
-            onSelect = {
-                onLyricsAnimationStyleChange(it)
-                showLyricsAnimationStyleDialog = false
-            },
-            title = stringResource(R.string.lyrics_animation_style_title),
-            current = lyricsAnimationStyle,
-            values = LyricsAnimationStyle.values().toList(),
-            valueText = {
-                when (it) {
-                    LyricsAnimationStyle.NONE -> stringResource(R.string.lyrics_animation_none)
-                    LyricsAnimationStyle.FADE -> stringResource(R.string.lyrics_animation_fade)
-                    LyricsAnimationStyle.GLOW -> stringResource(R.string.lyrics_animation_glow)
-                    LyricsAnimationStyle.SLIDE -> stringResource(R.string.lyrics_animation_slide)
-                    LyricsAnimationStyle.KARAOKE -> stringResource(R.string.lyrics_animation_karaoke)
-                    LyricsAnimationStyle.APPLE -> stringResource(R.string.lyrics_animation_apple)
-                }
-            },
-        )
-    }
-
-    if (showLyricsTextSizeDialog) {
-        var tempTextSize by remember { mutableFloatStateOf(lyricsTextSize) }
-
-        DefaultDialog(
-            onDismiss = {
-                tempTextSize = lyricsTextSize
-                showLyricsTextSizeDialog = false
-            },
-            buttons = {
-                TextButton(
-                    onClick = {
-                        tempTextSize = 24f
-                    },
-                ) {
-                    Text(stringResource(R.string.reset))
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                TextButton(
-                    onClick = {
-                        tempTextSize = lyricsTextSize
-                        showLyricsTextSizeDialog = false
-                    },
-                ) {
-                    Text(stringResource(android.R.string.cancel))
-                }
-                TextButton(
-                    onClick = {
-                        onLyricsTextSizeChange(tempTextSize)
-                        showLyricsTextSizeDialog = false
-                    },
-                ) {
-                    Text(stringResource(android.R.string.ok))
-                }
-            },
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(16.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.lyrics_text_size),
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(bottom = 16.dp),
-                )
-
-                Text(
-                    text = "${tempTextSize.roundToInt()} sp",
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(bottom = 16.dp),
-                )
-
-                Slider(
-                    value = tempTextSize,
-                    onValueChange = { tempTextSize = it },
-                    valueRange = 12f..48f,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-    }
-
-    if (showLyricsLineSpacingDialog) {
-        var tempLineSpacing by remember { mutableFloatStateOf(lyricsLineSpacing) }
-
-        DefaultDialog(
-            onDismiss = {
-                tempLineSpacing = lyricsLineSpacing
-                showLyricsLineSpacingDialog = false
-            },
-            buttons = {
-                TextButton(
-                    onClick = {
-                        tempLineSpacing = 1.3f
-                    },
-                ) {
-                    Text(stringResource(R.string.reset))
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                TextButton(
-                    onClick = {
-                        tempLineSpacing = lyricsLineSpacing
-                        showLyricsLineSpacingDialog = false
-                    },
-                ) {
-                    Text(stringResource(android.R.string.cancel))
-                }
-                TextButton(
-                    onClick = {
-                        onLyricsLineSpacingChange(tempLineSpacing)
-                        showLyricsLineSpacingDialog = false
-                    },
-                ) {
-                    Text(stringResource(android.R.string.ok))
-                }
-            },
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(16.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.lyrics_line_spacing),
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(bottom = 16.dp),
-                )
-
-                Text(
-                    text = String.format(Locale.US, "%.1f", tempLineSpacing),
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(bottom = 16.dp),
-                )
-
-                Slider(
-                    value = tempLineSpacing,
-                    onValueChange = { tempLineSpacing = it },
-                    valueRange = 1.0f..3.0f,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
     }
 
     if (showPlayerButtonsStyleDialog) {
@@ -547,7 +328,7 @@ fun AppearanceSettings(
             values = availableBackgroundStyles,
             valueText = {
                 when (it) {
-                    PlayerBackgroundStyle.DEFAULT -> stringResource(R.string.follow_theme)
+                    PlayerBackgroundStyle.DEFAULT -> stringResource(R.string.soun_liquid_glass)
                     PlayerBackgroundStyle.GRADIENT -> stringResource(R.string.gradient)
                     PlayerBackgroundStyle.BLUR -> stringResource(R.string.player_background_blur)
                 }
@@ -567,7 +348,7 @@ fun AppearanceSettings(
             values = availableMiniPlayerBackgroundStyles,
             valueText = {
                 when (it) {
-                    MiniPlayerBackgroundStyle.DEFAULT -> stringResource(R.string.follow_theme)
+                    MiniPlayerBackgroundStyle.DEFAULT -> stringResource(R.string.soun_liquid_glass)
                     MiniPlayerBackgroundStyle.TRANSPARENT -> stringResource(R.string.transparent)
                     MiniPlayerBackgroundStyle.BLUR -> stringResource(R.string.player_background_blur)
                     MiniPlayerBackgroundStyle.GRADIENT -> stringResource(R.string.gradient)
@@ -614,7 +395,7 @@ fun AppearanceSettings(
             },
             title = stringResource(R.string.default_lib_chips),
             current = defaultChip,
-            values = LibraryFilter.values().toList(),
+            values = libraryTabs,
             valueText = {
                 when (it) {
                     LibraryFilter.SONGS -> stringResource(R.string.songs)
@@ -895,80 +676,174 @@ fun AppearanceSettings(
         }
     }
 
-    Column(
+    var showSensitivityDialog by rememberSaveable { mutableStateOf(false) }
+
+    if (showSensitivityDialog) {
+        var tempSensitivity by remember { mutableFloatStateOf(swipeSensitivity) }
+
+        DefaultDialog(
+            onDismiss = {
+                tempSensitivity = swipeSensitivity
+                showSensitivityDialog = false
+            },
+            buttons = {
+                TextButton(
+                    onClick = {
+                        tempSensitivity = 0.73f
+                    },
+                ) {
+                    Text(stringResource(R.string.reset))
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                TextButton(
+                    onClick = {
+                        tempSensitivity = swipeSensitivity
+                        showSensitivityDialog = false
+                    },
+                ) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+                TextButton(
+                    onClick = {
+                        onSwipeSensitivityChange(tempSensitivity)
+                        showSensitivityDialog = false
+                    },
+                ) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(16.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.swipe_sensitivity),
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
+
+                Text(
+                    text =
+                        stringResource(
+                            R.string.sensitivity_percentage,
+                            (tempSensitivity * 100).roundToInt(),
+                        ),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
+
+                Slider(
+                    value = tempSensitivity,
+                    onValueChange = { tempSensitivity = it },
+                    valueRange = 0f..1f,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+
+    LazyColumn(
         Modifier
             .windowInsetsPadding(LocalPlayerAwareWindowInsets.current)
-            .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp),
     ) {
-        Material3SettingsGroup(
-            title = stringResource(R.string.theme),
-            items =
-                buildList {
-                    add(
-                        Material3SettingsItem(
-                            icon = painterResource(R.drawable.speed),
-                            title = { Text(stringResource(R.string.enable_high_refresh_rate)) },
-                            description = { Text(stringResource(R.string.enable_high_refresh_rate_desc)) },
-                            trailingContent = {
-                                Switch(
-                                    checked = enableHighRefreshRate,
-                                    onCheckedChange = onEnableHighRefreshRateChange,
-                                    thumbContent = {
-                                        Icon(
-                                            painter =
-                                                painterResource(
-                                                    id = if (enableHighRefreshRate) R.drawable.check else R.drawable.close,
-                                                ),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(SwitchDefaults.IconSize),
+        item(key = "theme") {
+            Material3SettingsGroup(
+                title = stringResource(R.string.theme),
+                items =
+                    buildList {
+                        add(
+                            Material3SettingsItem(
+                                icon = painterResource(R.drawable.speed),
+                                title = { Text(stringResource(R.string.enable_high_refresh_rate)) },
+                                description = { Text(stringResource(R.string.enable_high_refresh_rate_desc)) },
+                                trailingContent = {
+                                    Switch(
+                                        checked = enableHighRefreshRate,
+                                        onCheckedChange = onEnableHighRefreshRateChange,
+                                        thumbContent = {
+                                            Icon(
+                                                painter =
+                                                    painterResource(
+                                                        id = if (enableHighRefreshRate) R.drawable.check else R.drawable.close,
+                                                    ),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(SwitchDefaults.IconSize),
+                                            )
+                                        },
+                                    )
+                                },
+                                onClick = { onEnableHighRefreshRateChange(!enableHighRefreshRate) },
+                            ),
+                        )
+                        add(
+                            Material3SettingsItem(
+                                icon = painterResource(R.drawable.fullscreen),
+                                title = { Text(stringResource(R.string.enable_landscape_scaling)) },
+                                description = { Text(stringResource(R.string.enable_landscape_scaling_desc)) },
+                                trailingContent = {
+                                    Switch(
+                                        checked = enableLandscapeScaling,
+                                        onCheckedChange = onEnableLandscapeScalingChange,
+                                        thumbContent = {
+                                            Icon(
+                                                painter =
+                                                    painterResource(
+                                                        id = if (enableLandscapeScaling) R.drawable.check else R.drawable.close,
+                                                    ),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(SwitchDefaults.IconSize),
+                                            )
+                                        },
+                                    )
+                                },
+                                onClick = { onEnableLandscapeScalingChange(!enableLandscapeScaling) },
+                            ),
+                        )
+                        // Only show dynamic theme option when using the default/dynamic color
+                        // When a custom color is selected, dynamic theme is automatically disabled
+                        if (!isUsingCustomColor) {
+                            add(
+                                Material3SettingsItem(
+                                    icon = painterResource(R.drawable.palette),
+                                    title = { Text(stringResource(R.string.enable_dynamic_theme)) },
+                                    trailingContent = {
+                                        Switch(
+                                            checked = dynamicTheme,
+                                            onCheckedChange = onDynamicThemeChange,
+                                            thumbContent = {
+                                                Icon(
+                                                    painter =
+                                                        painterResource(
+                                                            id = if (dynamicTheme) R.drawable.check else R.drawable.close,
+                                                        ),
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                                )
+                                            },
                                         )
                                     },
-                                )
-                            },
-                            onClick = { onEnableHighRefreshRateChange(!enableHighRefreshRate) },
-                        ),
-                    )
-                    add(
-                        Material3SettingsItem(
-                            icon = painterResource(R.drawable.fullscreen),
-                            title = { Text(stringResource(R.string.enable_landscape_scaling)) },
-                            description = { Text(stringResource(R.string.enable_landscape_scaling_desc)) },
-                            trailingContent = {
-                                Switch(
-                                    checked = enableLandscapeScaling,
-                                    onCheckedChange = onEnableLandscapeScalingChange,
-                                    thumbContent = {
-                                        Icon(
-                                            painter =
-                                                painterResource(
-                                                    id = if (enableLandscapeScaling) R.drawable.check else R.drawable.close,
-                                                ),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(SwitchDefaults.IconSize),
-                                        )
-                                    },
-                                )
-                            },
-                            onClick = { onEnableLandscapeScalingChange(!enableLandscapeScaling) },
-                        ),
-                    )
-                    // Only show dynamic theme option when using the default/dynamic color
-                    // When a custom color is selected, dynamic theme is automatically disabled
-                    if (!isUsingCustomColor) {
+                                    onClick = { onDynamicThemeChange(!dynamicTheme) },
+                                ),
+                            )
+                        }
                         add(
                             Material3SettingsItem(
                                 icon = painterResource(R.drawable.palette),
-                                title = { Text(stringResource(R.string.enable_dynamic_theme)) },
+                                title = { Text(stringResource(R.string.enable_dynamic_icon)) },
+                                description = { Text(stringResource(R.string.enable_dynamic_icon_desc)) },
                                 trailingContent = {
                                     Switch(
-                                        checked = dynamicTheme,
-                                        onCheckedChange = onDynamicThemeChange,
+                                        checked = enableDynamicIcon,
+                                        onCheckedChange = onEnableDynamicIconChange,
                                         thumbContent = {
                                             Icon(
                                                 painter =
                                                     painterResource(
-                                                        id = if (dynamicTheme) R.drawable.check else R.drawable.close,
+                                                        id = if (enableDynamicIcon) R.drawable.check else R.drawable.close,
                                                     ),
                                                 contentDescription = null,
                                                 modifier = Modifier.size(SwitchDefaults.IconSize),
@@ -976,420 +851,40 @@ fun AppearanceSettings(
                                         },
                                     )
                                 },
-                                onClick = { onDynamicThemeChange(!dynamicTheme) },
+                                onClick = { onEnableDynamicIconChange(!enableDynamicIcon) },
                             ),
                         )
-                    }
-                    add(
-                        Material3SettingsItem(
-                            icon = painterResource(R.drawable.palette),
-                            title = { Text(stringResource(R.string.enable_dynamic_icon)) },
-                            description = { Text(stringResource(R.string.enable_dynamic_icon_desc)) },
-                            trailingContent = {
-                                Switch(
-                                    checked = enableDynamicIcon,
-                                    onCheckedChange = onEnableDynamicIconChange,
-                                    thumbContent = {
-                                        Icon(
-                                            painter =
-                                                painterResource(
-                                                    id = if (enableDynamicIcon) R.drawable.check else R.drawable.close,
-                                                ),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(SwitchDefaults.IconSize),
-                                        )
-                                    },
-                                )
-                            },
-                            onClick = { onEnableDynamicIconChange(!enableDynamicIcon) },
-                        ),
-                    )
-                    add(
-                        Material3SettingsItem(
-                            icon = painterResource(R.drawable.palette),
-                            title = { Text(stringResource(R.string.theme)) },
-                            description = { Text(stringResource(R.string.theme_desc)) },
-                            onClick = { navController.navigate("settings/appearance/theme") },
-                        ),
-                    )
-                },
-        )
-
-        Spacer(modifier = Modifier.height(27.dp))
-
-        val (pureBlackMiniPlayer, onPureBlackMiniPlayerChange) =
-            rememberPreference(
-                PureBlackMiniPlayerKey,
-                defaultValue = false,
+                        add(
+                            Material3SettingsItem(
+                                icon = painterResource(R.drawable.palette),
+                                title = { Text(stringResource(R.string.theme)) },
+                                description = { Text(stringResource(R.string.theme_desc)) },
+                                onClick = { navController.navigate("settings/appearance/theme") },
+                            ),
+                        )
+                    },
             )
 
-        Material3SettingsGroup(
-            title = stringResource(id = R.string.mini_player),
-            items =
-                buildList {
-                    add(
-                        Material3SettingsItem(
-                            icon = painterResource(R.drawable.nav_bar),
-                            title = { Text(stringResource(R.string.new_mini_player_design)) },
-                            trailingContent = {
-                                Switch(
-                                    checked = useNewMiniPlayerDesign,
-                                    onCheckedChange = onUseNewMiniPlayerDesignChange,
-                                    thumbContent = {
-                                        Icon(
-                                            painter =
-                                                painterResource(
-                                                    id = if (useNewMiniPlayerDesign) R.drawable.check else R.drawable.close,
-                                                ),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(SwitchDefaults.IconSize),
-                                        )
-                                    },
-                                )
-                            },
-                            onClick = { onUseNewMiniPlayerDesignChange(!useNewMiniPlayerDesign) },
-                        ),
-                    )
-                    add(
-                        Material3SettingsItem(
-                            icon = painterResource(R.drawable.gradient),
-                            title = {
-                                Text(
-                                    text = stringResource(R.string.mini_player_background_style),
-                                    color =
-                                        if (!useNewMiniPlayerDesign) {
-                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurface
-                                        },
-                                )
-                            },
-                            description = {
-                                Text(
-                                    text =
-                                        if (!useNewMiniPlayerDesign) {
-                                            stringResource(R.string.mini_player_background_not_available)
-                                        } else {
-                                            when (miniPlayerBackground) {
-                                                MiniPlayerBackgroundStyle.DEFAULT -> stringResource(R.string.follow_theme)
-                                                MiniPlayerBackgroundStyle.TRANSPARENT -> stringResource(R.string.transparent)
-                                                MiniPlayerBackgroundStyle.BLUR -> stringResource(R.string.player_background_blur)
-                                                MiniPlayerBackgroundStyle.GRADIENT -> stringResource(R.string.gradient)
-                                                MiniPlayerBackgroundStyle.PURE_BLACK -> stringResource(R.string.pure_black)
-                                            }
-                                        },
-                                    color =
-                                        if (!useNewMiniPlayerDesign) {
-                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        },
-                                )
-                            },
-                            onClick = { if (useNewMiniPlayerDesign) showMiniPlayerBackgroundDialog = true },
-                        ),
-                    )
-                },
-        )
-
-        Spacer(modifier = Modifier.height(27.dp))
-
-        var showSensitivityDialog by rememberSaveable { mutableStateOf(false) }
-
-        Material3SettingsGroup(
-            title = stringResource(R.string.player),
-            items =
-                listOf(
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.palette),
-                        title = { Text(stringResource(R.string.new_player_design)) },
-                        trailingContent = {
-                            Switch(
-                                checked = useNewPlayerDesign,
-                                onCheckedChange = onUseNewPlayerDesignChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter =
-                                            painterResource(
-                                                id = if (useNewPlayerDesign) R.drawable.check else R.drawable.close,
-                                            ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    )
-                                },
-                            )
-                        },
-                        onClick = { onUseNewPlayerDesignChange(!useNewPlayerDesign) },
-                    ),
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.gradient),
-                        title = { Text(stringResource(R.string.player_background_style)) },
-                        description = {
-                            Text(
-                                when (playerBackground) {
-                                    PlayerBackgroundStyle.DEFAULT -> stringResource(R.string.follow_theme)
-                                    PlayerBackgroundStyle.GRADIENT -> stringResource(R.string.gradient)
-                                    PlayerBackgroundStyle.BLUR -> stringResource(R.string.player_background_blur)
-                                },
-                            )
-                        },
-                        onClick = { showPlayerBackgroundDialog = true },
-                    ),
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.hide_image),
-                        title = { Text(stringResource(R.string.hide_player_thumbnail)) },
-                        description = { Text(stringResource(R.string.hide_player_thumbnail_desc)) },
-                        trailingContent = {
-                            Switch(
-                                checked = hidePlayerThumbnail,
-                                onCheckedChange = onHidePlayerThumbnailChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter =
-                                            painterResource(
-                                                id = if (hidePlayerThumbnail) R.drawable.check else R.drawable.close,
-                                            ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    )
-                                },
-                            )
-                        },
-                        onClick = { onHidePlayerThumbnailChange(!hidePlayerThumbnail) },
-                    ),
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.crop),
-                        title = { Text(stringResource(R.string.crop_album_art)) },
-                        description = { Text(stringResource(R.string.crop_album_art_desc)) },
-                        trailingContent = {
-                            Switch(
-                                checked = cropAlbumArt,
-                                onCheckedChange = onCropAlbumArtChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter =
-                                            painterResource(
-                                                id = if (cropAlbumArt) R.drawable.check else R.drawable.close,
-                                            ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    )
-                                },
-                            )
-                        },
-                        onClick = { onCropAlbumArtChange(!cropAlbumArt) },
-                    ),
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.palette),
-                        title = { Text(stringResource(R.string.player_buttons_style)) },
-                        description = {
-                            Text(
-                                when (playerButtonsStyle) {
-                                    PlayerButtonsStyle.DEFAULT -> stringResource(R.string.default_style)
-                                    PlayerButtonsStyle.PRIMARY -> stringResource(R.string.primary_color_style)
-                                    PlayerButtonsStyle.TERTIARY -> stringResource(R.string.tertiary_color_style)
-                                },
-                            )
-                        },
-                        onClick = { showPlayerButtonsStyleDialog = true },
-                    ),
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.sliders),
-                        title = { Text(stringResource(R.string.player_slider_style)) },
-                        description = {
-                            Text(
-                                when (sliderStyle) {
-                                    SliderStyle.DEFAULT -> {
-                                        stringResource(R.string.default_)
-                                    }
-
-                                    SliderStyle.WAVY -> {
-                                        if (squigglySlider) {
-                                            stringResource(R.string.squiggly)
-                                        } else {
-                                            stringResource(
-                                                R.string.wavy,
-                                            )
-                                        }
-                                    }
-
-                                    SliderStyle.SLIM -> {
-                                        stringResource(R.string.slim)
-                                    }
-                                },
-                            )
-                        },
-                        onClick = { showSliderOptionDialog = true },
-                    ),
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.swipe),
-                        title = { Text(stringResource(R.string.enable_swipe_thumbnail)) },
-                        trailingContent = {
-                            Switch(
-                                checked = swipeThumbnail,
-                                onCheckedChange = onSwipeThumbnailChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter =
-                                            painterResource(
-                                                id = if (swipeThumbnail) R.drawable.check else R.drawable.close,
-                                            ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    )
-                                },
-                            )
-                        },
-                        onClick = { onSwipeThumbnailChange(!swipeThumbnail) },
-                    ),
-                ) +
-                    if (swipeThumbnail) {
-                        listOf(
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.tune),
-                                title = { Text(stringResource(R.string.swipe_sensitivity)) },
-                                description = {
-                                    Text(
-                                        stringResource(
-                                            R.string.sensitivity_percentage,
-                                            (swipeSensitivity * 100).roundToInt(),
-                                        ),
-                                    )
-                                },
-                                onClick = { showSensitivityDialog = true },
-                            ),
-                        )
-                    } else {
-                        emptyList()
-                    },
-        )
-
-        if (showSensitivityDialog) {
-            var tempSensitivity by remember { mutableFloatStateOf(swipeSensitivity) }
-
-            DefaultDialog(
-                onDismiss = {
-                    tempSensitivity = swipeSensitivity
-                    showSensitivityDialog = false
-                },
-                buttons = {
-                    TextButton(
-                        onClick = {
-                            tempSensitivity = 0.73f
-                        },
-                    ) {
-                        Text(stringResource(R.string.reset))
-                    }
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    TextButton(
-                        onClick = {
-                            tempSensitivity = swipeSensitivity
-                            showSensitivityDialog = false
-                        },
-                    ) {
-                        Text(stringResource(android.R.string.cancel))
-                    }
-                    TextButton(
-                        onClick = {
-                            onSwipeSensitivityChange(tempSensitivity)
-                            showSensitivityDialog = false
-                        },
-                    ) {
-                        Text(stringResource(android.R.string.ok))
-                    }
-                },
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(16.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.swipe_sensitivity),
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(bottom = 16.dp),
-                    )
-
-                    Text(
-                        text =
-                            stringResource(
-                                R.string.sensitivity_percentage,
-                                (tempSensitivity * 100).roundToInt(),
-                            ),
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(bottom = 16.dp),
-                    )
-
-                    Slider(
-                        value = tempSensitivity,
-                        onValueChange = { tempSensitivity = it },
-                        valueRange = 0f..1f,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            }
+            Spacer(modifier = Modifier.height(27.dp))
         }
-
-        Spacer(modifier = Modifier.height(27.dp))
-
-        Material3SettingsGroup(
-            title = stringResource(R.string.lyrics),
-            items =
-                buildList {
-                    add(
-                        Material3SettingsItem(
-                            icon = painterResource(R.drawable.lyrics),
-                            title = { Text(stringResource(R.string.experimental_lyrics)) },
-                            description = { Text(stringResource(R.string.experimental_lyrics_desc)) },
-                            showBadge = true,
-                            trailingContent = {
-                                Switch(
-                                    checked = experimentalLyrics,
-                                    onCheckedChange = {
-                                        if (!experimentalLyrics) {
-                                            showExperimentalLyricsBetaDialog = true
-                                        } else {
-                                            onExperimentalLyricsChange(false)
-                                        }
-                                    },
-                                    thumbContent = {
-                                        Icon(
-                                            painter =
-                                                painterResource(
-                                                    id = if (experimentalLyrics) R.drawable.check else R.drawable.close,
-                                                ),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(SwitchDefaults.IconSize),
-                                        )
-                                    },
-                                )
-                            },
-                            onClick = {
-                                if (!experimentalLyrics) {
-                                    showExperimentalLyricsBetaDialog = true
-                                } else {
-                                    onExperimentalLyricsChange(false)
-                                }
-                            },
-                        ),
-                    )
-
-                    if (!experimentalLyrics) {
+        item(key = "mini_player") {
+            Material3SettingsGroup(
+                title = stringResource(id = R.string.mini_player),
+                items =
+                    buildList {
                         add(
                             Material3SettingsItem(
-                                icon = painterResource(R.drawable.lyrics),
-                                title = { Text(stringResource(R.string.lyrics_glow_effect)) },
-                                description = { Text(stringResource(R.string.lyrics_glow_effect_desc)) },
+                                icon = painterResource(R.drawable.nav_bar),
+                                title = { Text(stringResource(R.string.soun_floating_mini_player)) },
                                 trailingContent = {
                                     Switch(
-                                        checked = lyricsGlowEffect,
-                                        onCheckedChange = onLyricsGlowEffectChange,
+                                        checked = useNewMiniPlayerDesign,
+                                        onCheckedChange = onUseNewMiniPlayerDesignChange,
                                         thumbContent = {
                                             Icon(
                                                 painter =
                                                     painterResource(
-                                                        id = if (lyricsGlowEffect) R.drawable.check else R.drawable.close,
+                                                        id = if (useNewMiniPlayerDesign) R.drawable.check else R.drawable.close,
                                                     ),
                                                 contentDescription = null,
                                                 modifier = Modifier.size(SwitchDefaults.IconSize),
@@ -1397,76 +892,83 @@ fun AppearanceSettings(
                                         },
                                     )
                                 },
-                                onClick = { onLyricsGlowEffectChange(!lyricsGlowEffect) },
+                                onClick = { onUseNewMiniPlayerDesignChange(!useNewMiniPlayerDesign) },
                             ),
                         )
-                        add(
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.lyrics),
-                                title = { Text(stringResource(R.string.lyrics_animation_style_title)) },
-                                description = {
-                                    Text(
-                                        when (lyricsAnimationStyle) {
-                                            LyricsAnimationStyle.NONE -> stringResource(R.string.lyrics_animation_none)
-                                            LyricsAnimationStyle.FADE -> stringResource(R.string.lyrics_animation_fade)
-                                            LyricsAnimationStyle.GLOW -> stringResource(R.string.lyrics_animation_glow)
-                                            LyricsAnimationStyle.SLIDE -> stringResource(R.string.lyrics_animation_slide)
-                                            LyricsAnimationStyle.KARAOKE -> stringResource(R.string.lyrics_animation_karaoke)
-                                            LyricsAnimationStyle.APPLE -> stringResource(R.string.lyrics_animation_apple)
-                                        },
-                                    )
-                                },
-                                onClick = { showLyricsAnimationStyleDialog = true },
-                            ),
-                        )
-                        add(
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.lyrics),
-                                title = { Text(stringResource(R.string.lyrics_text_size)) },
-                                description = { Text("${lyricsTextSize.roundToInt()} sp") },
-                                onClick = { showLyricsTextSizeDialog = true },
-                            ),
-                        )
-                        add(
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.lyrics),
-                                title = { Text(stringResource(R.string.lyrics_line_spacing)) },
-                                description = { Text(String.format(Locale.US, "%.1f", lyricsLineSpacing)) },
-                                onClick = { showLyricsLineSpacingDialog = true },
-                            ),
-                        )
-                    }
+                        if (useNewMiniPlayerDesign) {
+                            add(
+                                Material3SettingsItem(
+                                    icon = painterResource(R.drawable.gradient),
+                                    title = { Text(stringResource(R.string.mini_player_background_style)) },
+                                    description = { Text(stringResource(when (miniPlayerBackground) {
+                                        MiniPlayerBackgroundStyle.DEFAULT -> R.string.soun_liquid_glass
+                                        MiniPlayerBackgroundStyle.TRANSPARENT -> R.string.transparent
+                                        MiniPlayerBackgroundStyle.BLUR -> R.string.player_background_blur
+                                        MiniPlayerBackgroundStyle.GRADIENT -> R.string.gradient
+                                        MiniPlayerBackgroundStyle.PURE_BLACK -> R.string.pure_black
+                                    })) },
+                                    onClick = { showMiniPlayerBackgroundDialog = true },
+                                ),
+                            )
+                        }
+                    },
+            )
 
-                    add(
+            Spacer(modifier = Modifier.height(27.dp))
+        }
+        item(key = "player") {
+            Material3SettingsGroup(
+                title = stringResource(R.string.player),
+                items =
+                    listOf(
                         Material3SettingsItem(
-                            icon = painterResource(R.drawable.lyrics),
-                            title = { Text(stringResource(R.string.lyrics_text_position)) },
+                            icon = painterResource(R.drawable.palette),
+                            title = { Text(stringResource(R.string.soun_player_layout)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = useNewPlayerDesign,
+                                    onCheckedChange = onUseNewPlayerDesignChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter =
+                                                painterResource(
+                                                    id = if (useNewPlayerDesign) R.drawable.check else R.drawable.close,
+                                                ),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize),
+                                        )
+                                    },
+                                )
+                            },
+                            onClick = { onUseNewPlayerDesignChange(!useNewPlayerDesign) },
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.gradient),
+                            title = { Text(stringResource(R.string.player_background_style)) },
                             description = {
                                 Text(
-                                    when (lyricsPosition) {
-                                        LyricsPosition.LEFT -> stringResource(R.string.left)
-                                        LyricsPosition.CENTER -> stringResource(R.string.center)
-                                        LyricsPosition.RIGHT -> stringResource(R.string.right)
+                                    when (playerBackground) {
+                                        PlayerBackgroundStyle.DEFAULT -> stringResource(R.string.soun_liquid_glass)
+                                        PlayerBackgroundStyle.GRADIENT -> stringResource(R.string.gradient)
+                                        PlayerBackgroundStyle.BLUR -> stringResource(R.string.player_background_blur)
                                     },
                                 )
                             },
-                            onClick = { showLyricsPositionDialog = true },
+                            onClick = { showPlayerBackgroundDialog = true },
                         ),
-                    )
-                    add(
                         Material3SettingsItem(
-                            icon = painterResource(R.drawable.lyrics),
-                            title = { Text(stringResource(R.string.respect_agent_positioning)) },
-                            description = { Text(stringResource(R.string.respect_agent_positioning_desc)) },
+                            icon = painterResource(R.drawable.hide_image),
+                            title = { Text(stringResource(R.string.hide_player_thumbnail)) },
+                            description = { Text(stringResource(R.string.hide_player_thumbnail_desc)) },
                             trailingContent = {
                                 Switch(
-                                    checked = respectAgentPositioning,
-                                    onCheckedChange = onRespectAgentPositioningChange,
+                                    checked = hidePlayerThumbnail,
+                                    onCheckedChange = onHidePlayerThumbnailChange,
                                     thumbContent = {
                                         Icon(
                                             painter =
                                                 painterResource(
-                                                    id = if (respectAgentPositioning) R.drawable.check else R.drawable.close,
+                                                    id = if (hidePlayerThumbnail) R.drawable.check else R.drawable.close,
                                                 ),
                                             contentDescription = null,
                                             modifier = Modifier.size(SwitchDefaults.IconSize),
@@ -1474,22 +976,21 @@ fun AppearanceSettings(
                                     },
                                 )
                             },
-                            onClick = { onRespectAgentPositioningChange(!respectAgentPositioning) },
+                            onClick = { onHidePlayerThumbnailChange(!hidePlayerThumbnail) },
                         ),
-                    )
-                    add(
                         Material3SettingsItem(
-                            icon = painterResource(R.drawable.lyrics),
-                            title = { Text(stringResource(R.string.lyrics_click_change)) },
+                            icon = painterResource(R.drawable.crop),
+                            title = { Text(stringResource(R.string.crop_album_art)) },
+                            description = { Text(stringResource(R.string.crop_album_art_desc)) },
                             trailingContent = {
                                 Switch(
-                                    checked = lyricsClick,
-                                    onCheckedChange = onLyricsClickChange,
+                                    checked = cropAlbumArt,
+                                    onCheckedChange = onCropAlbumArtChange,
                                     thumbContent = {
                                         Icon(
                                             painter =
                                                 painterResource(
-                                                    id = if (lyricsClick) R.drawable.check else R.drawable.close,
+                                                    id = if (cropAlbumArt) R.drawable.check else R.drawable.close,
                                                 ),
                                             contentDescription = null,
                                             modifier = Modifier.size(SwitchDefaults.IconSize),
@@ -1497,22 +998,62 @@ fun AppearanceSettings(
                                     },
                                 )
                             },
-                            onClick = { onLyricsClickChange(!lyricsClick) },
+                            onClick = { onCropAlbumArtChange(!cropAlbumArt) },
                         ),
-                    )
-                    add(
                         Material3SettingsItem(
-                            icon = painterResource(R.drawable.lyrics),
-                            title = { Text(stringResource(R.string.lyrics_auto_scroll)) },
+                            icon = painterResource(R.drawable.palette),
+                            title = { Text(stringResource(R.string.player_buttons_style)) },
+                            description = {
+                                Text(
+                                    when (playerButtonsStyle) {
+                                        PlayerButtonsStyle.DEFAULT -> stringResource(R.string.default_style)
+                                        PlayerButtonsStyle.PRIMARY -> stringResource(R.string.primary_color_style)
+                                        PlayerButtonsStyle.TERTIARY -> stringResource(R.string.tertiary_color_style)
+                                    },
+                                )
+                            },
+                            onClick = { showPlayerButtonsStyleDialog = true },
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.sliders),
+                            title = { Text(stringResource(R.string.player_slider_style)) },
+                            description = {
+                                Text(
+                                    when (sliderStyle) {
+                                        SliderStyle.DEFAULT -> {
+                                            stringResource(R.string.default_)
+                                        }
+
+                                        SliderStyle.WAVY -> {
+                                            if (squigglySlider) {
+                                                stringResource(R.string.squiggly)
+                                            } else {
+                                                stringResource(
+                                                    R.string.wavy,
+                                                )
+                                            }
+                                        }
+
+                                        SliderStyle.SLIM -> {
+                                            stringResource(R.string.slim)
+                                        }
+                                    },
+                                )
+                            },
+                            onClick = { showSliderOptionDialog = true },
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.swipe),
+                            title = { Text(stringResource(R.string.enable_swipe_thumbnail)) },
                             trailingContent = {
                                 Switch(
-                                    checked = lyricsScroll,
-                                    onCheckedChange = onLyricsScrollChange,
+                                    checked = swipeThumbnail,
+                                    onCheckedChange = onSwipeThumbnailChange,
                                     thumbContent = {
                                         Icon(
                                             painter =
                                                 painterResource(
-                                                    id = if (lyricsScroll) R.drawable.check else R.drawable.close,
+                                                    id = if (swipeThumbnail) R.drawable.check else R.drawable.close,
                                                 ),
                                             contentDescription = null,
                                             modifier = Modifier.size(SwitchDefaults.IconSize),
@@ -1520,23 +1061,81 @@ fun AppearanceSettings(
                                     },
                                 )
                             },
-                            onClick = { onLyricsScrollChange(!lyricsScroll) },
+                            onClick = { onSwipeThumbnailChange(!swipeThumbnail) },
                         ),
-                    )
-                    add(
+                    ) +
+                        if (swipeThumbnail) {
+                            listOf(
+                                Material3SettingsItem(
+                                    icon = painterResource(R.drawable.tune),
+                                    title = { Text(stringResource(R.string.swipe_sensitivity)) },
+                                    description = {
+                                        Text(
+                                            stringResource(
+                                                R.string.sensitivity_percentage,
+                                                (swipeSensitivity * 100).roundToInt(),
+                                            ),
+                                        )
+                                    },
+                                    onClick = { showSensitivityDialog = true },
+                                ),
+                            )
+                        } else {
+                            emptyList()
+                        },
+            )
+
+
+            Spacer(modifier = Modifier.height(27.dp))
+        }
+        item(key = "navigation") {
+            Material3SettingsGroup(
+                title = stringResource(R.string.misc),
+                items =
+                    listOf(
                         Material3SettingsItem(
-                            icon = painterResource(R.drawable.lyrics),
-                            title = { Text(stringResource(R.string.hide_status_bar_fullscreen)) },
-                            description = { Text(stringResource(R.string.hide_status_bar_fullscreen_desc)) },
+                            icon = painterResource(R.drawable.nav_bar),
+                            title = { Text(stringResource(R.string.default_open_tab)) },
+                            description = {
+                                Text(
+                                    when (defaultOpenTab) {
+                                        NavigationTab.HOME -> stringResource(R.string.home)
+                                        NavigationTab.SEARCH -> stringResource(R.string.search)
+                                        NavigationTab.LIBRARY -> stringResource(R.string.filter_library)
+                                    },
+                                )
+                            },
+                            onClick = { showDefaultOpenTabDialog = true },
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.tab),
+                            title = { Text(stringResource(R.string.default_lib_chips)) },
+                            description = {
+                                Text(
+                                    when (defaultChip) {
+                                        LibraryFilter.SONGS -> stringResource(R.string.songs)
+                                        LibraryFilter.ARTISTS -> stringResource(R.string.artists)
+                                        LibraryFilter.ALBUMS -> stringResource(R.string.albums)
+                                        LibraryFilter.PLAYLISTS -> stringResource(R.string.playlists)
+                                        LibraryFilter.PODCASTS -> stringResource(R.string.filter_podcasts)
+                                        LibraryFilter.LIBRARY -> stringResource(R.string.filter_library)
+                                    },
+                                )
+                            },
+                            onClick = { showDefaultChipDialog = true },
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.swipe),
+                            title = { Text(stringResource(R.string.swipe_song_to_add)) },
                             trailingContent = {
                                 Switch(
-                                    checked = hideStatusBarOnFullscreen,
-                                    onCheckedChange = onHideStatusBarOnFullscreenChange,
+                                    checked = swipeToSong,
+                                    onCheckedChange = onSwipeToSongChange,
                                     thumbContent = {
                                         Icon(
                                             painter =
                                                 painterResource(
-                                                    id = if (hideStatusBarOnFullscreen) R.drawable.check else R.drawable.close,
+                                                    id = if (swipeToSong) R.drawable.check else R.drawable.close,
                                                 ),
                                             contentDescription = null,
                                             modifier = Modifier.size(SwitchDefaults.IconSize),
@@ -1544,291 +1143,211 @@ fun AppearanceSettings(
                                     },
                                 )
                             },
-                            onClick = { onHideStatusBarOnFullscreenChange(!hideStatusBarOnFullscreen) },
+                            onClick = { onSwipeToSongChange(!swipeToSong) },
                         ),
-                    )
-                },
-        )
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.swipe),
+                            title = { Text(stringResource(R.string.swipe_song_to_remove)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = swipeToRemoveSong,
+                                    onCheckedChange = onSwipeToRemoveSongChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter =
+                                                painterResource(
+                                                    id = if (swipeToRemoveSong) R.drawable.check else R.drawable.close,
+                                                ),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize),
+                                        )
+                                    },
+                                )
+                            },
+                            onClick = { onSwipeToRemoveSongChange(!swipeToRemoveSong) },
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.nav_bar),
+                            title = { Text(stringResource(R.string.slim_navbar)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = slimNav,
+                                    onCheckedChange = onSlimNavChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter =
+                                                painterResource(
+                                                    id = if (slimNav) R.drawable.check else R.drawable.close,
+                                                ),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize),
+                                        )
+                                    },
+                                )
+                            },
+                            onClick = { onSlimNavChange(!slimNav) },
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.group_outlined),
+                            title = { Text(stringResource(R.string.soun_together_account_menu)) },
+                            description = { Text(stringResource(R.string.soun_together_account_menu_desc)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = listenTogetherInTopBar,
+                                    onCheckedChange = onListenTogetherInTopBarChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter =
+                                                painterResource(
+                                                    id = if (listenTogetherInTopBar) R.drawable.check else R.drawable.close,
+                                                ),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize),
+                                        )
+                                    },
+                                )
+                            },
+                            onClick = { onListenTogetherInTopBarChange(!listenTogetherInTopBar) },
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.grid_view),
+                            title = { Text(stringResource(R.string.grid_cell_size)) },
+                            description = {
+                                Text(
+                                    when (gridItemSize) {
+                                        GridItemSize.BIG -> stringResource(R.string.big)
+                                        GridItemSize.SMALL -> stringResource(R.string.small)
+                                    },
+                                )
+                            },
+                            onClick = { showGridSizeDialog = true },
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.grid_view),
+                            title = { Text(stringResource(R.string.display_density)) },
+                            description = {
+                                Text(DensityScale.fromValue(densityScale).label)
+                            },
+                            onClick = { showDensityScaleDialog = true },
+                        ),
+                    ),
+            )
 
-        Spacer(modifier = Modifier.height(27.dp))
-
-        Material3SettingsGroup(
-            title = stringResource(R.string.misc),
-            items =
-                listOf(
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.nav_bar),
-                        title = { Text(stringResource(R.string.default_open_tab)) },
-                        description = {
-                            Text(
-                                when (defaultOpenTab) {
-                                    NavigationTab.HOME -> stringResource(R.string.home)
-                                    NavigationTab.SEARCH -> stringResource(R.string.search)
-                                    NavigationTab.LIBRARY -> stringResource(R.string.filter_library)
-                                },
-                            )
-                        },
-                        onClick = { showDefaultOpenTabDialog = true },
+            Spacer(modifier = Modifier.height(27.dp))
+        }
+        item(key = "library_shortcuts") {
+            Material3SettingsGroup(
+                title = stringResource(R.string.soun_library_browser_shortcuts),
+                items =
+                    listOf(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.favorite),
+                            title = { Text(stringResource(R.string.show_liked_playlist)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = showLikedPlaylist,
+                                    onCheckedChange = onShowLikedPlaylistChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter =
+                                                painterResource(
+                                                    id = if (showLikedPlaylist) R.drawable.check else R.drawable.close,
+                                                ),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize),
+                                        )
+                                    },
+                                )
+                            },
+                            onClick = { onShowLikedPlaylistChange(!showLikedPlaylist) },
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.offline),
+                            title = { Text(stringResource(R.string.show_downloaded_playlist)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = showDownloadedPlaylist,
+                                    onCheckedChange = onShowDownloadedPlaylistChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter =
+                                                painterResource(
+                                                    id = if (showDownloadedPlaylist) R.drawable.check else R.drawable.close,
+                                                ),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize),
+                                        )
+                                    },
+                                )
+                            },
+                            onClick = { onShowDownloadedPlaylistChange(!showDownloadedPlaylist) },
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.trending_up),
+                            title = { Text(stringResource(R.string.show_top_playlist)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = showTopPlaylist,
+                                    onCheckedChange = onShowTopPlaylistChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter =
+                                                painterResource(
+                                                    id = if (showTopPlaylist) R.drawable.check else R.drawable.close,
+                                                ),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize),
+                                        )
+                                    },
+                                )
+                            },
+                            onClick = { onShowTopPlaylistChange(!showTopPlaylist) },
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.cached),
+                            title = { Text(stringResource(R.string.show_cached_playlist)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = showCachedPlaylist,
+                                    onCheckedChange = onShowCachedPlaylistChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter =
+                                                painterResource(
+                                                    id = if (showCachedPlaylist) R.drawable.check else R.drawable.close,
+                                                ),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize),
+                                        )
+                                    },
+                                )
+                            },
+                            onClick = { onShowCachedPlaylistChange(!showCachedPlaylist) },
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.backup),
+                            title = { Text(stringResource(R.string.show_uploaded_playlist)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = showUploadedPlaylist,
+                                    onCheckedChange = onShowUploadedPlaylistChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter =
+                                                painterResource(
+                                                    id = if (showUploadedPlaylist) R.drawable.check else R.drawable.close,
+                                                ),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize),
+                                        )
+                                    },
+                                )
+                            },
+                            onClick = { onShowUploadedPlaylistChange(!showUploadedPlaylist) },
+                        ),
                     ),
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.tab),
-                        title = { Text(stringResource(R.string.default_lib_chips)) },
-                        description = {
-                            Text(
-                                when (defaultChip) {
-                                    LibraryFilter.SONGS -> stringResource(R.string.songs)
-                                    LibraryFilter.ARTISTS -> stringResource(R.string.artists)
-                                    LibraryFilter.ALBUMS -> stringResource(R.string.albums)
-                                    LibraryFilter.PLAYLISTS -> stringResource(R.string.playlists)
-                                    LibraryFilter.PODCASTS -> stringResource(R.string.filter_podcasts)
-                                    LibraryFilter.LIBRARY -> stringResource(R.string.filter_library)
-                                },
-                            )
-                        },
-                        onClick = { showDefaultChipDialog = true },
-                    ),
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.swipe),
-                        title = { Text(stringResource(R.string.swipe_song_to_add)) },
-                        trailingContent = {
-                            Switch(
-                                checked = swipeToSong,
-                                onCheckedChange = onSwipeToSongChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter =
-                                            painterResource(
-                                                id = if (swipeToSong) R.drawable.check else R.drawable.close,
-                                            ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    )
-                                },
-                            )
-                        },
-                        onClick = { onSwipeToSongChange(!swipeToSong) },
-                    ),
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.swipe),
-                        title = { Text(stringResource(R.string.swipe_song_to_remove)) },
-                        trailingContent = {
-                            Switch(
-                                checked = swipeToRemoveSong,
-                                onCheckedChange = onSwipeToRemoveSongChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter =
-                                            painterResource(
-                                                id = if (swipeToRemoveSong) R.drawable.check else R.drawable.close,
-                                            ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    )
-                                },
-                            )
-                        },
-                        onClick = { onSwipeToRemoveSongChange(!swipeToRemoveSong) },
-                    ),
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.nav_bar),
-                        title = { Text(stringResource(R.string.slim_navbar)) },
-                        trailingContent = {
-                            Switch(
-                                checked = slimNav,
-                                onCheckedChange = onSlimNavChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter =
-                                            painterResource(
-                                                id = if (slimNav) R.drawable.check else R.drawable.close,
-                                            ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    )
-                                },
-                            )
-                        },
-                        onClick = { onSlimNavChange(!slimNav) },
-                    ),
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.group_outlined),
-                        title = { Text(stringResource(R.string.listen_together_in_top_bar)) },
-                        description = { Text(stringResource(R.string.listen_together_in_top_bar_desc)) },
-                        trailingContent = {
-                            Switch(
-                                checked = listenTogetherInTopBar,
-                                onCheckedChange = onListenTogetherInTopBarChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter =
-                                            painterResource(
-                                                id = if (listenTogetherInTopBar) R.drawable.check else R.drawable.close,
-                                            ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    )
-                                },
-                            )
-                        },
-                        onClick = { onListenTogetherInTopBarChange(!listenTogetherInTopBar) },
-                    ),
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.grid_view),
-                        title = { Text(stringResource(R.string.grid_cell_size)) },
-                        description = {
-                            Text(
-                                when (gridItemSize) {
-                                    GridItemSize.BIG -> stringResource(R.string.big)
-                                    GridItemSize.SMALL -> stringResource(R.string.small)
-                                },
-                            )
-                        },
-                        onClick = { showGridSizeDialog = true },
-                    ),
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.grid_view),
-                        title = { Text(stringResource(R.string.display_density)) },
-                        description = {
-                            Text(DensityScale.fromValue(densityScale).label)
-                        },
-                        onClick = { showDensityScaleDialog = true },
-                    ),
-                ),
-        )
-
-        Spacer(modifier = Modifier.height(27.dp))
-
-        Material3SettingsGroup(
-            title = stringResource(R.string.auto_playlists),
-            items =
-                listOf(
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.favorite),
-                        title = { Text(stringResource(R.string.show_liked_playlist)) },
-                        trailingContent = {
-                            Switch(
-                                checked = showLikedPlaylist,
-                                onCheckedChange = onShowLikedPlaylistChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter =
-                                            painterResource(
-                                                id = if (showLikedPlaylist) R.drawable.check else R.drawable.close,
-                                            ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    )
-                                },
-                            )
-                        },
-                        onClick = { onShowLikedPlaylistChange(!showLikedPlaylist) },
-                    ),
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.offline),
-                        title = { Text(stringResource(R.string.show_downloaded_playlist)) },
-                        trailingContent = {
-                            Switch(
-                                checked = showDownloadedPlaylist,
-                                onCheckedChange = onShowDownloadedPlaylistChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter =
-                                            painterResource(
-                                                id = if (showDownloadedPlaylist) R.drawable.check else R.drawable.close,
-                                            ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    )
-                                },
-                            )
-                        },
-                        onClick = { onShowDownloadedPlaylistChange(!showDownloadedPlaylist) },
-                    ),
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.trending_up),
-                        title = { Text(stringResource(R.string.show_top_playlist)) },
-                        trailingContent = {
-                            Switch(
-                                checked = showTopPlaylist,
-                                onCheckedChange = onShowTopPlaylistChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter =
-                                            painterResource(
-                                                id = if (showTopPlaylist) R.drawable.check else R.drawable.close,
-                                            ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    )
-                                },
-                            )
-                        },
-                        onClick = { onShowTopPlaylistChange(!showTopPlaylist) },
-                    ),
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.cached),
-                        title = { Text(stringResource(R.string.show_cached_playlist)) },
-                        trailingContent = {
-                            Switch(
-                                checked = showCachedPlaylist,
-                                onCheckedChange = onShowCachedPlaylistChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter =
-                                            painterResource(
-                                                id = if (showCachedPlaylist) R.drawable.check else R.drawable.close,
-                                            ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    )
-                                },
-                            )
-                        },
-                        onClick = { onShowCachedPlaylistChange(!showCachedPlaylist) },
-                    ),
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.backup),
-                        title = { Text(stringResource(R.string.show_uploaded_playlist)) },
-                        trailingContent = {
-                            Switch(
-                                checked = showUploadedPlaylist,
-                                onCheckedChange = onShowUploadedPlaylistChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter =
-                                            painterResource(
-                                                id = if (showUploadedPlaylist) R.drawable.check else R.drawable.close,
-                                            ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    )
-                                },
-                            )
-                        },
-                        onClick = { onShowUploadedPlaylistChange(!showUploadedPlaylist) },
-                    ),
-                ),
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (showExperimentalLyricsBetaDialog) {
-            DefaultDialog(
-                onDismiss = { showExperimentalLyricsBetaDialog = false },
-                title = { Text(stringResource(R.string.experimental_lyrics_beta_title)) },
-                buttons = {
-                    TextButton(onClick = { showExperimentalLyricsBetaDialog = false }) {
-                        Text(stringResource(R.string.cancel))
-                    }
-                    TextButton(onClick = {
-                        showExperimentalLyricsBetaDialog = false
-                        onExperimentalLyricsChange(true)
-                    }) {
-                        Text(stringResource(R.string.enable))
-                    }
-                },
-            ) {
-                Text(stringResource(R.string.experimental_lyrics_beta_message))
-            }
+            )
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 

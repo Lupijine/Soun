@@ -111,6 +111,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.compose.runtime.withFrameMillis
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -275,7 +277,7 @@ fun OriginalLyrics(
                         val newEntry =
                             LyricsEntry(entry.time, entry.text, entry.words, agent = entry.agent, isBackground = entry.isBackground)
 
-                        scope.launch {
+                        scope.launch(Dispatchers.Default) {
                             val text = if (romanizeCyrillicByLine) entry.text else lyrics
                             var value: String? = ""
 
@@ -337,7 +339,7 @@ fun OriginalLyrics(
                 lyrics.lines().mapIndexed { index, line ->
                     val newEntry = LyricsEntry(index * 100L, line)
 
-                    scope.launch {
+                    scope.launch(Dispatchers.Default) {
                         val text = if (romanizeCyrillicByLine) line else lyrics
                         var value = newEntry.romanizedTextFlow.value
 
@@ -560,19 +562,24 @@ fun OriginalLyrics(
         selectedIndices.clear()
     }
 
-    LaunchedEffect(lyrics) {
-        if (lyrics.isNullOrEmpty() || !lyrics.startsWith("[")) {
+    val latestLyricsOffset by rememberUpdatedState(currentSong?.song?.lyricsOffset ?: 0)
+    val latestSliderPositionProvider by rememberUpdatedState(sliderPositionProvider)
+    LaunchedEffect(lyrics, lines, showLyrics, lifecycleOwner) {
+        if (!showLyrics || lyrics.isNullOrEmpty() || !lyrics.startsWith("[")) {
             currentLineIndex = -1
             return@LaunchedEffect
         }
-        while (isActive) {
-            delay(8) // Faster update for word-by-word animation
-            val sliderPosition = sliderPositionProvider()
-            isSeeking = sliderPosition != null
-            val position = sliderPosition ?: playerConnection.player.currentPosition
-            currentPlaybackPosition = position
-            val lyricsOffset = currentSong?.song?.lyricsOffset ?: 0
-            currentLineIndex = findCurrentLineIndex(lines, position + lyricsOffset)
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (isActive) {
+                // Word highlighting only needs one update per displayed frame.
+                withFrameMillis {
+                    val sliderPosition = latestSliderPositionProvider()
+                    isSeeking = sliderPosition != null
+                    val position = sliderPosition ?: playerConnection.player.currentPosition
+                    currentPlaybackPosition = position
+                    currentLineIndex = findCurrentLineIndex(lines, position + latestLyricsOffset)
+                }
+            }
         }
     }
 
