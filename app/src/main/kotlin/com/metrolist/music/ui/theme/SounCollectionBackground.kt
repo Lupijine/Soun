@@ -66,15 +66,17 @@ fun SounCollectionBackground(colors: List<Color>, pureBlack: Boolean = false, mo
             val edgeStroke = Stroke(1.2.dp.toPx(), cap = StrokeCap.Round)
             onDrawBehind {
                 val phase = drift.value * (2 * Math.PI).toFloat()
-                val dx = sin(phase) * size.width * 0.10f
-                val dy = (cos(phase) - 1f) * size.height * 0.025f
-                translate(dx, dy) { drawRect(glow, topLeft = Offset(-size.width, -size.height), size = size * 3f) }
-                translate(-dx, -dy) { drawRect(lowerGlow, topLeft = Offset(-size.width, -size.height), size = size * 3f) }
+                val dx = sin(phase) * size.width * 0.20f
+                val dy = (cos(phase) - 1f) * size.height * 0.07f
+                translate(dx, dy) { drawRect(glow, topLeft = Offset(-size.width * 0.3f, -size.height * 0.2f), size = androidx.compose.ui.geometry.Size(size.width * 1.6f, size.height * 1.4f)) }
+                translate(-dx, -dy) { drawRect(lowerGlow, topLeft = Offset(-size.width * 0.3f, -size.height * 0.2f), size = androidx.compose.ui.geometry.Size(size.width * 1.6f, size.height * 1.4f)) }
+                translate(dx * 0.5f, dy * 0.5f) {
                 for (ribbon in ribbons) {
                     drawPath(ribbon, beam, alpha = 0.2f, style = outerStroke)
                     drawPath(ribbon, beam, alpha = 0.35f, style = softStroke)
                     drawPath(ribbon, beam, style = lightStroke)
                     drawPath(ribbon, glint, style = edgeStroke)
+                }
                 }
             }
         })

@@ -83,6 +83,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
@@ -494,6 +495,7 @@ fun LocalPlaylistScreen(
         ) {
             SounCollectionBackground(palette.ifEmpty { listOf(com.metrolist.music.ui.theme.SounAccent) }, pureBlack = pureBlack, lightField = collectionBackdrop)
             LazyColumn(
+                modifier = Modifier.graphicsLayer(),
                 state = lazyListState,
                 contentPadding = LocalPlayerAwareWindowInsets.current.union(WindowInsets.ime).asPaddingValues(),
             ) {

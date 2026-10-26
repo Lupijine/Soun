@@ -35,10 +35,10 @@ fun AlbumGlow(colors: List<Color>, dark: Boolean, modifier: Modifier = Modifier)
         )
         onDrawBehind {
             val phase = drift.value * (2 * Math.PI).toFloat()
-            val dx = sin(phase) * size.width * 0.12f
-            val dy = (cos(phase) - 1f) * size.height * 0.035f
-            translate(dx, dy) { drawRect(firstGlow, topLeft = Offset(-size.width, -size.height), size = size * 3f) }
-            translate(-dx, -dy) { drawRect(secondGlow, topLeft = Offset(-size.width, -size.height), size = size * 3f) }
+            val dx = sin(phase) * size.width * 0.24f
+            val dy = (cos(phase) - 1f) * size.height * 0.09f
+            translate(dx, dy) { drawRect(firstGlow, topLeft = Offset(-size.width * 0.3f, -size.height * 0.2f), size = androidx.compose.ui.geometry.Size(size.width * 1.6f, size.height * 1.4f)) }
+            translate(-dx, -dy) { drawRect(secondGlow, topLeft = Offset(-size.width * 0.3f, -size.height * 0.2f), size = androidx.compose.ui.geometry.Size(size.width * 1.6f, size.height * 1.4f)) }
         }
     })
 }

@@ -156,7 +156,8 @@ fun Modifier.sounGlass(
                     }
                     if (diffusion > 0.dp) blur(diffusion.toPx())
                     else if (Build.VERSION.SDK_INT < 33) blur(5.dp.toPx())
-                    lens(18.dp.toPx(), 32.dp.toPx(), depthEffect = true, chromaticAberration = true)
+                    // The panel shader already disperses RGB; avoid repeating those samples in the edge lens.
+                    lens(18.dp.toPx(), 32.dp.toPx(), depthEffect = true, chromaticAberration = !fullPanel)
                 },
                 highlight = {
                     Highlight(

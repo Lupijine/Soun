@@ -1,6 +1,13 @@
 package com.metrolist.music.ui.component
 
 import android.app.Application
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.metrolist.music.ui.theme.LocalAmbientDrift
+import com.metrolist.music.ui.theme.sounAmbientBackground
+import com.metrolist.music.ui.theme.rememberAmbientDrift
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawBehind
 import android.graphics.Bitmap
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -205,6 +212,34 @@ class CollectionPresentationTest {
         compose.onNodeWithText("Shuffle", ignoreCase = true).performClick()
         compose.onNodeWithContentDescription("More options").performClick()
         compose.runOnIdle { assertEquals(listOf(1, 1, 1, 1), listOf(saves, plays, shuffles, menus)) }
+    }
+
+    @Test fun `ambient light visibly moves without recomposing or redrawing the cached foreground`() {
+        val phase = mutableStateOf(0f)
+        var compositions = 0
+        var foregroundDraws = 0
+        content {
+            CompositionLocalProvider(LocalAmbientDrift provides phase) {
+                assertTrue(rememberAmbientDrift() === phase)
+                SideEffect { compositions++ }
+                Box(Modifier.fillMaxSize().testTag("moving-page")) {
+                    Box(Modifier.fillMaxSize().layerBackdrop(rememberLayerBackdrop()).sounAmbientBackground(artwork = listOf(Color.Red, Color.Blue)))
+                    Box(Modifier.size(120.dp).graphicsLayer().drawBehind { foregroundDraws++; drawRect(Color.White) })
+                }
+            }
+        }
+        val before = compose.onNodeWithTag("moving-page").captureToImage().asAndroidBitmap()
+        val oldCompositions = compositions
+        val oldDraws = foregroundDraws
+        compose.runOnIdle { phase.value = 0.25f }
+        val after = compose.onNodeWithTag("moving-page").captureToImage().asAndroidBitmap()
+        var changed = 0
+        for (y in 150 until before.height step 20) for (x in 0 until before.width step 20) {
+            if (before.getPixel(x, y) != after.getPixel(x, y)) changed++
+        }
+        assertTrue("The visible light field must move", changed > 50)
+        assertEquals("Motion must stay in the draw phase", oldCompositions, compositions)
+        assertEquals("Static content must reuse its layer", oldDraws, foregroundDraws)
     }
 
     @Test fun `pure black collection has no coloured light or translucent overlay`() {

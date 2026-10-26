@@ -1058,12 +1058,14 @@ class MainActivity : FragmentActivity() {
                 val baseBg = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
                 val glassBackdrop = rememberLayerBackdrop()
                 val ambientBackdrop = rememberLayerBackdrop()
+                val ambientDrift = com.metrolist.music.ui.theme.rememberAmbientDrift()
                 val ambientMedia by activePlayerConnection?.mediaMetadata?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(null) }
                 val ambientArtwork = rememberArtworkColors(ambientMedia?.thumbnailUrl, enabled = !pureBlack && enableDynamicTheme)
                 val artistNameAliases by ArtistNameAliases.aliases.collectAsStateWithLifecycle()
 
                 CompositionLocalProvider(
                     com.metrolist.music.ui.theme.LocalSounArtworkAccent provides enableDynamicTheme,
+                    com.metrolist.music.ui.theme.LocalAmbientDrift provides ambientDrift,
                     LocalSounBackdrop provides glassBackdrop,
                     LocalSounSurfaceBackdrop provides ambientBackdrop,
                     LocalDatabase provides database,
@@ -1392,7 +1394,9 @@ class MainActivity : FragmentActivity() {
                                 Modifier.weight(1f)
                                     .then(if (isRenderEffectSupported()) Modifier.layerBackdrop(glassBackdrop) else Modifier),
                             ) {
-                                Box(Modifier.fillMaxSize().layerBackdrop(ambientBackdrop).sounAmbientBackground(pureBlack, ambientArtwork))
+                                Box(Modifier.fillMaxSize().layerBackdrop(ambientBackdrop).sounAmbientBackground(pureBlack, ambientArtwork,
+                                    motionEnabled = !playerBottomSheetState.isExpanded && currentRoute?.contains("playlist") != true,
+                                ))
                                 // NavHost with animations (Material 3 Expressive style)
                                 NavHost(
                                     navController = navController,
@@ -1442,7 +1446,7 @@ class MainActivity : FragmentActivity() {
                                             slideOutHorizontally { it / 8 } + fadeOut(tween(200))
                                         }
                                     },
-                                    modifier = Modifier.nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
+                                    modifier = Modifier.graphicsLayer().nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
                                 ) {
                                     navigationBuilder(
                                         navController = navController,

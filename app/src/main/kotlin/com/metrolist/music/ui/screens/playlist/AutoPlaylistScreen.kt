@@ -70,6 +70,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -523,6 +524,7 @@ fun AutoPlaylistScreen(
                 lightField = collectionBackdrop,
             )
             LazyColumn(
+                modifier = Modifier.graphicsLayer(),
                 state = state,
                 contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
             ) {
