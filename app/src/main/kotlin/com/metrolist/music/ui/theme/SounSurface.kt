@@ -86,7 +86,7 @@ fun SounGlassDialog(
     content: @Composable () -> Unit,
 ) {
     val panelColors = sounGlassColors(strong = true).copy(
-        surfaceTint = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.58f),
+        surfaceTint = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.70f),
     )
     Dialog(
         onDismissRequest = onDismiss,

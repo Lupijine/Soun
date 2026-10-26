@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -19,7 +19,6 @@ import com.kyant.backdrop.Backdrop
 import com.metrolist.music.ui.theme.LocalSounBackdrop
 import com.metrolist.music.ui.theme.sounGlass
 import com.metrolist.music.ui.theme.sounGlassColors
-import com.metrolist.music.ui.theme.SounWindowBlur
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -42,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -125,7 +125,6 @@ fun AnimatedBottomSheet(
         contentWindowInsets = contentWindowInsets,
         properties = properties,
         content = {
-            SounWindowBlur()
             lastContent()
         },
     )
@@ -139,7 +138,8 @@ fun BottomSheetMenu(
     background: Color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f), // Soun: glass sheet
 ) {
     val focusManager = LocalFocusManager.current
-    val sheetState = rememberMaterialBottomSheetState(initialValue = SheetValue.Hidden)
+    val sheetState = rememberMaterialBottomSheetState(initialValue = SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
+    val maximumHeight = LocalConfiguration.current.screenHeightDp.dp * 0.9f
 
     AnimatedBottomSheet(
         isVisible = state.isVisible,
@@ -150,28 +150,24 @@ fun BottomSheetMenu(
         sheetState = sheetState,
         containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
-        dragHandle = {
-            Box(
-                modifier = Modifier
-                    .padding(vertical = 12.dp)
-                    .size(width = 40.dp, height = 4.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
-            )
-        },
-        modifier = modifier.fillMaxHeight(0.9f).sounGlass(
-            RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-            sounGlassColors().copy(surfaceTint = background.copy(alpha = 0.78f)),
-            backdrop = state.backdrop ?: LocalSounBackdrop.current,
-            fullPanel = true,
-        )
+        dragHandle = null,
+        modifier = modifier.heightIn(max = maximumHeight),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
+            modifier = Modifier.fillMaxWidth().sounGlass(
+                RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+                sounGlassColors().copy(surfaceTint = background.copy(alpha = 0.76f)),
+                backdrop = state.backdrop ?: LocalSounBackdrop.current,
+                fullPanel = true,
+            ),
+            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
         ) {
-            state.content(this)
+            Box(Modifier.padding(vertical = 12.dp).size(width = 36.dp, height = 4.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)))
+            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                state.content(this)
+            }
         }
     }
 }

@@ -1070,4 +1070,8 @@
     <string name="soun_cover_update_failed">Could not update the playlist photo. Please try again.</string>
     <string name="soun_browse_online">Browse online</string>
     <string name="soun_artist_library">Artist in your library</string>
+    <string name="soun_download_pending_count">%1$d pending</string>
+    <string name="soun_retry_count">Retry %1$d</string>
+    <string name="soun_show_download_details">Show download details</string>
+    <string name="soun_hide_download_details">Hide download details</string>
 </resources>

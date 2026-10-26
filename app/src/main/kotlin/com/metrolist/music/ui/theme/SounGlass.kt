@@ -36,19 +36,28 @@ import com.kyant.backdrop.isRenderEffectSupported
 import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
 
-// A convex pane magnifies the centre and curves the image across the entire surface.
+// Two soft lobes and a diagonal fold give the pane changing surface normals, including its centre.
 internal const val SounPanelLensShader = """
 uniform shader content;
 uniform float2 size;
 half4 main(float2 coord) {
-    float2 centre = size * 0.5;
-    float2 local = coord - centre;
-    float2 normalized = local / max(centre, float2(1.0));
-    float scale = 0.78 + 0.12 * min(dot(normalized, normalized), 2.0);
-    float2 samplePoint = centre + local * scale;
+    float span = max(min(size.x, size.y), 1.0);
+    float2 p = (coord - size * 0.5) / span;
+    float2 a = p - float2(-0.23, -0.18);
+    float2 b = p - float2(0.24, 0.22);
+    float domeA = exp(-7.0 * dot(a, a));
+    float domeB = exp(-9.0 * dot(b, b));
+    float phase = 6.0 * p.x + 3.0 * p.y;
+    float2 slope = -2.8 * a * domeA + 3.0 * b * domeB;
+    slope += float2(0.19, 0.095) * cos(phase);
+    float3 normal = normalize(float3(slope, 1.0));
+    float3 ray = refract(float3(0.0, 0.0, -1.0), normal, 0.69);
+    float2 displacement = ray.xy / max(-ray.z, 0.1) * span * 0.19;
+    float2 samplePoint = clamp(coord + displacement, float2(0.5), size - 0.5);
     half4 colour = content.eval(samplePoint);
-    colour.r = content.eval(samplePoint + local * 0.002).r;
-    colour.b = content.eval(samplePoint - local * 0.002).b;
+    float2 dispersion = displacement * 0.035;
+    colour.r = content.eval(clamp(samplePoint + dispersion, float2(0.5), size - 0.5)).r;
+    colour.b = content.eval(clamp(samplePoint - dispersion, float2(0.5), size - 0.5)).b;
     return colour;
 }
 """
@@ -143,7 +152,8 @@ fun Modifier.sounGlass(
                             setFloatUniform("size", size.width, size.height)
                         }
                     }
-                    if (Build.VERSION.SDK_INT < 33) blur(5.dp.toPx())
+                    if (fullPanel) blur(3.dp.toPx())
+                    else if (Build.VERSION.SDK_INT < 33) blur(5.dp.toPx())
                     lens(18.dp.toPx(), 32.dp.toPx(), depthEffect = true, chromaticAberration = true)
                 },
                 highlight = {
