@@ -181,7 +181,10 @@ fun AppNavigationBar(
     onHomeLongHold: (() -> Unit)? = null,
 ) {
     val glass = sounGlassColors(strong = true, pureBlack = pureBlack).copy(
-        surfaceTint = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.62f),
+        surfaceTint = MaterialTheme.colorScheme.surface.copy(alpha = 0.18f),
+        fillTop = Color.White.copy(alpha = 0.05f),
+        fillBottom = Color.White.copy(alpha = 0.01f),
+        selectedPill = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
     )
     val barHeight = (if (slimNav) SlimNavBarHeight else NavigationBarHeight) - 16.dp
     val pillShape = RoundedCornerShape(percent = 50)
@@ -205,7 +208,7 @@ fun AppNavigationBar(
                     Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .sounGlass(pillShape, glass, fullPanel = true)
+                        .sounGlass(pillShape, glass, fullPanel = true, diffusion = 10.dp)
                         .selectableGroup()
                         .padding(if (slimNav) 0.dp else 5.dp),
             ) {
@@ -251,7 +254,7 @@ fun AppNavigationBar(
                     modifier =
                         Modifier
                             .size(barHeight)
-                            .sounGlass(CircleShape, glass, fullPanel = true)
+                            .sounGlass(CircleShape, glass, fullPanel = true, diffusion = 10.dp)
                             .then(
                                 if (isSelected) {
                                     Modifier.background(
