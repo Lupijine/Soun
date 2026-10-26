@@ -151,10 +151,10 @@ fun BottomSheetMenu(
         containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
         dragHandle = null,
-        modifier = modifier.heightIn(max = maximumHeight),
+        modifier = modifier,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().sounGlass(
+            modifier = Modifier.fillMaxWidth().heightIn(max = maximumHeight).sounGlass(
                 RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
                 sounGlassColors().copy(surfaceTint = background.copy(alpha = 0.76f)),
                 backdrop = state.backdrop ?: LocalSounBackdrop.current,
@@ -165,7 +165,7 @@ fun BottomSheetMenu(
             Box(Modifier.padding(vertical = 12.dp).size(width = 36.dp, height = 4.dp)
                 .clip(RoundedCornerShape(2.dp))
                 .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)))
-            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+            Column(Modifier.weight(1f, fill = false).fillMaxWidth().padding(horizontal = 20.dp)) {
                 state.content(this)
             }
         }

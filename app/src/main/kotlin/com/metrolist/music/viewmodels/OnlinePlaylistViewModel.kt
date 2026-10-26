@@ -6,6 +6,15 @@
 package com.metrolist.music.viewmodels
 
 import android.content.Context
+import android.os.SystemClock
+import com.metrolist.music.utils.PlaylistPageCache
+import com.metrolist.music.utils.PlaylistCacheKey
+import com.metrolist.music.utils.CachedPlaylistPage
+import com.metrolist.innertube.pages.PlaylistPage
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -38,7 +47,8 @@ import javax.inject.Inject
 class OnlinePlaylistViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle,
-    private val database: MusicDatabase
+    private val database: MusicDatabase,
+    private val pageCache: PlaylistPageCache,
 ) : ViewModel() {
     private val playlistId = savedStateHandle.get<String>("playlistId")!!
 
@@ -46,10 +56,14 @@ class OnlinePlaylistViewModel @Inject constructor(
     private val normalizedPlaylistId = playlistId.removePrefix("VL")
     val isPodcastPlaylist = normalizedPlaylistId == "RDPN" || normalizedPlaylistId == "SE"
 
-    val playlist = MutableStateFlow<PlaylistItem?>(null)
-    val playlistSongs = MutableStateFlow<List<SongItem>>(emptyList())
+    private val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+    private val cacheKey = PlaylistCacheKey(normalizedPlaylistId, YouTube.cookie, YouTube.locale, hideVideoSongs)
+    private val cachedPage = if (isPodcastPlaylist) null else pageCache.get(cacheKey)
+    private var fetchedAt = cachedPage?.fetchedAt ?: 0L
+    val playlist = MutableStateFlow<PlaylistItem?>(cachedPage?.page?.playlist)
+    val playlistSongs = MutableStateFlow(cachedPage?.page?.songs.orEmpty())
 
-    private val _isLoading = MutableStateFlow(true)
+    private val _isLoading = MutableStateFlow(cachedPage == null)
     val isLoading = _isLoading.asStateFlow()
 
     private val _error = MutableStateFlow<String?>(null)
@@ -61,20 +75,29 @@ class OnlinePlaylistViewModel @Inject constructor(
     val dbPlaylist = database.playlistByBrowseId(playlistId)
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
-    var continuation: String? = null
+    var continuation: String? = cachedPage?.page?.songsContinuation
         private set
 
     private var proactiveLoadJob: Job? = null
+    private var initialLoadJob: Job? = null
+    private var manualLoadJob: Job? = null
+    private val pagination = Mutex()
 
     init {
-        fetchInitialPlaylistData()
+        if (cachedPage?.isFresh() == true) {
+            if (continuation != null) startProactiveBackgroundLoading()
+        } else {
+            fetchInitialPlaylistData()
+        }
     }
 
     private fun fetchInitialPlaylistData() {
-        viewModelScope.launch(Dispatchers.IO) {
-            _isLoading.value = true
+        initialLoadJob?.cancel()
+        manualLoadJob?.cancel()
+        initialLoadJob = viewModelScope.launch(Dispatchers.IO) {
+            _isLoading.value = playlist.value == null
             _error.value = null
-            continuation = null
+            if (playlist.value == null) continuation = null
             proactiveLoadJob?.cancel() // Cancel any ongoing proactive load
 
             if (isPodcastPlaylist) {
@@ -82,7 +105,7 @@ class OnlinePlaylistViewModel @Inject constructor(
                 fetchPodcastPlaylist()
             } else {
                 // Use regular playlist API
-                fetchRegularPlaylist()
+                pagination.withLock { fetchRegularPlaylist() }
             }
         }
     }
@@ -105,6 +128,7 @@ class OnlinePlaylistViewModel @Inject constructor(
                         playlistSongs.value = applySongFilters(episodes)
                         _isLoading.value = false
                     }.onFailure { throwable ->
+                        currentCoroutineContext().ensureActive()
                         _error.value = throwable.message ?: "Failed to load new episodes"
                         _isLoading.value = false
                         reportException(throwable)
@@ -146,14 +170,18 @@ class OnlinePlaylistViewModel @Inject constructor(
     private suspend fun fetchRegularPlaylist() {
         YouTube.playlist(playlistId)
             .onSuccess { playlistPage ->
+                currentCoroutineContext().ensureActive()
+                fetchedAt = SystemClock.elapsedRealtime()
                 playlist.value = playlistPage.playlist
                 playlistSongs.value = applySongFilters(playlistPage.songs)
                 continuation = playlistPage.songsContinuation
+                cacheCurrentPage()
                 _isLoading.value = false
                 if (continuation != null) {
                     startProactiveBackgroundLoading()
                 }
             }.onFailure { throwable ->
+                currentCoroutineContext().ensureActive()
                 _error.value = throwable.message ?: "Failed to load playlist"
                 _isLoading.value = false
                 reportException(throwable)
@@ -204,59 +232,41 @@ class OnlinePlaylistViewModel @Inject constructor(
         }
     }
 
-    private fun startProactiveBackgroundLoading() {
-        proactiveLoadJob?.cancel() // Cancel previous job if any
-        proactiveLoadJob = viewModelScope.launch(Dispatchers.IO) {
-            var currentProactiveToken = continuation
-            while (currentProactiveToken != null && isActive) {
-                // If a manual loadMore is happening, pause proactive loading
-                if (_isLoadingMore.value) {
-                    // Wait until manual load is finished, then re-evaluate
-                    // This simple break and restart strategy from loadMoreSongs is preferred
-                    break 
-                }
+    private fun cacheCurrentPage() {
+        val header = playlist.value ?: return
+        pageCache.put(cacheKey, CachedPlaylistPage(PlaylistPage(header, playlistSongs.value, continuation, null), fetchedAt))
+    }
 
-                YouTube.playlistContinuation(currentProactiveToken)
-                    .onSuccess { playlistContinuationPage ->
-                        val currentSongs = playlistSongs.value.toMutableList()
-                        currentSongs.addAll(playlistContinuationPage.songs)
-                        playlistSongs.value = applySongFilters(currentSongs)
-                        currentProactiveToken = playlistContinuationPage.continuation
-                        // Update the class-level continuation for manual loadMore if needed
-                        this@OnlinePlaylistViewModel.continuation = currentProactiveToken 
-                    }.onFailure { throwable ->
-                        reportException(throwable)
-                        currentProactiveToken = null // Stop proactive loading on error
-                    }
-            }
-            // If loop finishes because currentProactiveToken is null, all songs are loaded proactively.
+    private suspend fun appendNextPage(): Boolean = pagination.withLock {
+        val token = continuation ?: return@withLock false
+        val result = YouTube.playlistContinuation(token)
+        currentCoroutineContext().ensureActive()
+        result.onSuccess { page ->
+            playlistSongs.value = applySongFilters(playlistSongs.value + page.songs)
+            continuation = page.continuation
+            cacheCurrentPage()
+        }.onFailure { reportException(it) }
+        result.isSuccess && continuation != null
+    }
+
+    private fun startProactiveBackgroundLoading() {
+        proactiveLoadJob?.cancel()
+        proactiveLoadJob = viewModelScope.launch(Dispatchers.IO) {
+            while (isActive && appendNextPage()) { }
         }
     }
 
     fun loadMoreSongs() {
-        if (_isLoadingMore.value) return // Already loading more (manually)
-        
-        val tokenForManualLoad = continuation ?: return // No more songs to load
-
-        proactiveLoadJob?.cancel() // Cancel proactive loading to prioritize manual scroll
+        if (_isLoadingMore.value || continuation == null) return
+        proactiveLoadJob?.cancel()
         _isLoadingMore.value = true
-
-        viewModelScope.launch(Dispatchers.IO) {
-            YouTube.playlistContinuation(tokenForManualLoad)
-                .onSuccess { playlistContinuationPage ->
-                    val currentSongs = playlistSongs.value.toMutableList()
-                    currentSongs.addAll(playlistContinuationPage.songs)
-                    playlistSongs.value = applySongFilters(currentSongs)
-                    continuation = playlistContinuationPage.continuation
-                }.onFailure { throwable ->
-                    reportException(throwable)
-                }.also {
-                    _isLoadingMore.value = false
-                    // Resume proactive loading if there's still a continuation
-                    if (continuation != null && isActive) {
-                        startProactiveBackgroundLoading()
-                    }
-                }
+        manualLoadJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                appendNextPage()
+            } finally {
+                _isLoadingMore.value = false
+                if (isActive && continuation != null) startProactiveBackgroundLoading()
+            }
         }
     }
 
@@ -266,7 +276,6 @@ class OnlinePlaylistViewModel @Inject constructor(
     }
 
     private fun applySongFilters(songs: List<SongItem>): List<SongItem> {
-        val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
         return songs
             .distinctBy { it.id }
             .filterVideoSongs(hideVideoSongs)

@@ -250,6 +250,25 @@ class CollectionPresentationTest {
         }
     }
 
+    @Test fun `long menu opens fully and its final actions remain scrollable`() {
+        content {
+            BottomSheetMenu(modifier = Modifier.testTag("long-menu"), state = androidx.compose.runtime.remember {
+                MenuState(true) {
+                    Text("CHEYLL VIBES", Modifier.padding(16.dp))
+                    LazyColumn(Modifier.testTag("menu-actions")) {
+                        items(18) { index -> Text("Action $index", Modifier.fillMaxWidth().padding(20.dp)) }
+                    }
+                }
+            })
+        }
+        compose.onNodeWithText("CHEYLL VIBES").assertIsDisplayed()
+        val bounds = compose.onNodeWithTag("long-menu").getUnclippedBoundsInRoot()
+        assertTrue("The long sheet should use most of the screen", bounds.height > 600.dp)
+        assertTrue("The sheet must not stay at the half-screen anchor", bounds.top < 180.dp)
+        compose.onNodeWithTag("menu-actions").performScrollToIndex(17)
+        compose.onNodeWithText("Action 17").assertIsDisplayed()
+    }
+
     @Test fun `short menu wraps its content instead of reserving most of the screen`() {
         content {
             Box(Modifier.fillMaxSize()) {
