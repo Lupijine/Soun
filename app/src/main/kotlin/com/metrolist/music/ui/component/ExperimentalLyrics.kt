@@ -24,8 +24,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.verticalDrag
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -70,9 +71,6 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.positionChange
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
@@ -464,7 +462,6 @@ fun ExperimentalLyrics(
     }
     
     var flingJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
-    val velocityTracker = remember { VelocityTracker() }
     val decayAnimSpec = remember { exponentialDecay<Float>(frictionMultiplier = 1.8f) }
     val itemHeights = remember(lyrics, mergedLyricsList) { mutableStateMapOf<Int, Int>() }
     var isInitialLayout by remember(lyrics, mergedLyricsList) { mutableStateOf(true) }
@@ -551,6 +548,7 @@ fun ExperimentalLyrics(
         // effectively unbounded overscroll away from the lyrics.
         val scrollClampMin = minOf(minOffset, maxOffset)
         val scrollClampMax = maxOf(minOffset, maxOffset)
+        val latestScrollBounds by rememberUpdatedState(scrollClampMin to scrollClampMax)
 
         LaunchedEffect(scrollClampMin, scrollClampMax) {
             if (userManualOffset < scrollClampMin || userManualOffset > scrollClampMax) {
@@ -666,32 +664,30 @@ fun ExperimentalLyrics(
                             }
                         }
                     })
-                    .pointerInput(Unit) {
-                        awaitPointerEventScope {
-                            while (true) {
-                                val down = awaitFirstDown(requireUnconsumed = false)
-                                if (isInitialLayout) continue
-                                flingJob?.cancel()
-                                velocityTracker.resetTracking()
-                                isAutoScrollEnabled = false
-                                lastPreviewTime = System.currentTimeMillis()
-                                velocityTracker.addPosition(down.uptimeMillis, down.position)
-                                verticalDrag(down.id) { change ->
-                                    userManualOffset = (userManualOffset + change.positionChange().y).coerceIn(scrollClampMin, scrollClampMax)
-                                    velocityTracker.addPosition(change.uptimeMillis, change.position)
-                                    change.consume()
-                                }
-                                val velocity = velocityTracker.calculateVelocity().y
-                                flingJob = scope.launch {
-                                    AnimationState(initialValue = userManualOffset, initialVelocity = velocity).animateDecay(decayAnimSpec) {
-                                        val clamped = value.coerceIn(scrollClampMin, scrollClampMax)
-                                        userManualOffset = clamped
-                                        if (value != clamped) cancelAnimation()
-                                    }
+                    .draggable(
+                        orientation = Orientation.Vertical,
+                        enabled = !isInitialLayout,
+                        state = rememberDraggableState { delta ->
+                            isAutoScrollEnabled = false
+                            val bounds = latestScrollBounds
+                            userManualOffset = (userManualOffset + delta).coerceIn(bounds.first, bounds.second)
+                        },
+                        // Standard drag recognition leaves taps and small finger movements to the lyric line.
+                        onDragStarted = {
+                            flingJob?.cancel()
+                            lastPreviewTime = System.currentTimeMillis()
+                        },
+                        onDragStopped = { velocity ->
+                            flingJob = scope.launch {
+                                AnimationState(initialValue = userManualOffset, initialVelocity = velocity).animateDecay(decayAnimSpec) {
+                                    val bounds = latestScrollBounds
+                                    val clamped = value.coerceIn(bounds.first, bounds.second)
+                                    userManualOffset = clamped
+                                    if (value != clamped) cancelAnimation()
                                 }
                             }
-                        }
-                    }
+                        },
+                    )
             ) {
                 val lyricsOffsetVal = (currentSong?.song?.lyricsOffset ?: 0).toLong()
                 val currentEffectivePosition = currentPositionState + lyricsOffsetVal
@@ -778,13 +774,15 @@ fun ExperimentalLyrics(
                                                     if (selectedIndices.isEmpty()) isSelectionModeActive = false
                                                 } else if (selectedIndices.size < maxSelectionLimit) selectedIndices.add(index)
                                                 else showMaxSelectionToast = true
-                                            } else if (changeLyrics && !isGuest) {
-                                                if (item.time < playerConnection.player.duration + 30000L) {
+                                            } else if (isSynced && changeLyrics && !isGuest) {
+                                                val duration = playerConnection.player.duration
+                                                if (duration <= 0L || item.time < duration + 30000L) {
                                                     playerConnection.seekTo((item.time - (currentSong?.song?.lyricsOffset ?: 0)).coerceAtLeast(0))
                                                 } else {
                                                     scrollTargetIndex = index
                                                     deferredCurrentLineIndex = index
                                                 }
+                                                flingJob?.cancel()
                                                 isAutoScrollEnabled = true
                                                 lastPreviewTime = 0L
                                             }

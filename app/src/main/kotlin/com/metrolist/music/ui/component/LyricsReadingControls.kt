@@ -5,6 +5,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -15,6 +17,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.semantics
 import com.kyant.backdrop.Backdrop
 import com.metrolist.music.R
 import com.metrolist.music.lyrics.LyricsLoadStatus
@@ -91,8 +96,15 @@ internal fun LyricsFollowButton(backdrop: Backdrop?, onClick: () -> Unit) {
  * Listening with requireUnconsumed = false lets the tap through; a real drag still
  * cancels it, so scrolling the lyrics by hand doesn't seek.
  */
-internal fun Modifier.lyricsTap(onClick: () -> Unit, onLongClick: () -> Unit): Modifier =
-    pointerInput(onClick, onLongClick) {
+@Composable
+internal fun Modifier.lyricsTap(onClick: () -> Unit, onLongClick: () -> Unit): Modifier {
+    val latestClick by rememberUpdatedState(onClick)
+    val latestLongClick by rememberUpdatedState(onLongClick)
+    // Playback recomposes every frame; callback keys would cancel a finger already down.
+    return semantics(mergeDescendants = true) {
+        onClick { latestClick(); true }
+        onLongClick { latestLongClick(); true }
+    }.pointerInput(Unit) {
         awaitEachGesture {
             awaitFirstDown(requireUnconsumed = false)
             var timedOut = true
@@ -102,12 +114,13 @@ internal fun Modifier.lyricsTap(onClick: () -> Unit, onLongClick: () -> Unit): M
             when {
                 up != null -> {
                     up.consume()
-                    onClick()
+                    latestClick()
                 }
                 timedOut -> {
-                    onLongClick()
+                    latestLongClick()
                     waitForUpOrCancellation()?.consume()
                 }
             }
         }
     }
+}

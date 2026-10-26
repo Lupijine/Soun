@@ -316,5 +316,6 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
+    testImplementation("androidx.compose.ui:ui-test-junit4:${libs.versions.compose.get()}")
     testImplementation(libs.ktor.client.mock)
 }

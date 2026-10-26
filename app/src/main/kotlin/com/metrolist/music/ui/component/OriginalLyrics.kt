@@ -924,10 +924,9 @@ fun OriginalLyrics(
                                                 }
                                             }
                                         } else if (isSynced && changeLyrics && !isGuest) {
-                                            // Professional seek action with smooth animation
                                             val lyricsOffset = currentSong?.song?.lyricsOffset ?: 0
                                             playerConnection.seekTo((item.time - lyricsOffset).coerceAtLeast(0))
-                                            // Smooth slow scroll when clicking on lyrics (3 seconds)
+                                            isAutoScrollEnabled = true
                                             scope.launch {
                                                 val listTargetIndex = resolveListScrollIndex(index) ?: return@launch
                                                 // First scroll to the clicked item without animation
@@ -950,7 +949,7 @@ fun OriginalLyrics(
                                                     if (kotlin.math.abs(offset) > 10) { // Only animate if not already centered
                                                         lazyListState.animateScrollBy(
                                                             value = offset.toFloat(),
-                                                            animationSpec = tween(durationMillis = 1500), // Reduced to half speed
+                                                            animationSpec = tween(durationMillis = 250),
                                                         )
                                                     }
                                                 }
