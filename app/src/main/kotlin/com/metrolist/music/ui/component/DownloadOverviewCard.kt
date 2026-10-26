@@ -63,12 +63,15 @@ internal fun DownloadStatusStrip(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(painterResource(R.drawable.download), stringResource(R.string.soun_manage_storage), Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(Formatter.formatShortFileSize(context, state.storage), style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column {
+                    Text(Formatter.formatShortFileSize(context, state.storage), style = MaterialTheme.typography.labelMedium,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (overview.pending > 0) Text(stringResource(R.string.soun_download_pending_count, overview.pending),
+                        style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
             if (overview.pending > 0) {
-                Text(stringResource(R.string.soun_download_pending_count, overview.pending),
-                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 IconButton(onClick = { onPauseChange(!canResume) }) {
                     Icon(painterResource(if (canResume) R.drawable.play else R.drawable.pause),
                         stringResource(if (canResume) R.string.soun_resume_downloads else R.string.soun_pause_downloads), Modifier.size(18.dp))

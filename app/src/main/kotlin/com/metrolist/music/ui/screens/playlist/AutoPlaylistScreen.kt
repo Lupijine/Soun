@@ -7,6 +7,7 @@ package com.metrolist.music.ui.screens.playlist
 
 import androidx.compose.material3.TopAppBarDefaults
 import com.metrolist.music.ui.theme.rememberArtworkColors
+import com.metrolist.music.ui.theme.SounCollectionTheme
 import com.metrolist.music.ui.theme.SounCollectionBackground
 import android.net.Uri
 import android.widget.Toast
@@ -52,9 +53,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
 import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
-import androidx.compose.runtime.CompositionLocalProvider
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
-import com.metrolist.music.ui.theme.LocalSounSurfaceBackdrop
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -499,7 +498,7 @@ fun AutoPlaylistScreen(
     val pureBlack by rememberPreference(PureBlackKey, false)
     val collectionPalette = rememberArtworkColors(collectionColorSource)
     val collectionBackdrop = rememberLayerBackdrop()
-    CompositionLocalProvider(LocalSounSurfaceBackdrop provides collectionBackdrop) {
+    SounCollectionTheme(collectionPalette.firstOrNull() ?: if (playlistId == "liked") Color(0xFF9B638D) else Color(0xFF688CBA), backdrop = collectionBackdrop) {
         Box(
             modifier =
                 Modifier

@@ -10,6 +10,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.mutableStateOf
+import com.metrolist.music.ui.theme.SounCollectionTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -134,6 +137,31 @@ class CollectionPresentationTest {
         compose.onNodeWithText("Shuffle", ignoreCase = true).assertIsNotEnabled()
         compose.onNodeWithContentDescription("More options").performClick()
         compose.runOnIdle { assertEquals(1, menus) }
+    }
+
+    @Test fun `collection accent stays independent when the playing song changes the app theme`() {
+        val playingColor = mutableStateOf(Color.Red)
+        var accent = Color.Unspecified
+        content {
+            MaterialTheme(colorScheme = MaterialTheme.colorScheme.copy(primary = playingColor.value)) {
+                SounCollectionTheme(Color(0xFF568DCA)) {
+                    val current = MaterialTheme.colorScheme.primary
+                    SideEffect { accent = current }
+                    Text("Collection")
+                }
+            }
+        }
+        val original = compose.runOnIdle { accent }
+        compose.runOnIdle { playingColor.value = Color.Green }
+        compose.runOnIdle { assertEquals(original, accent) }
+    }
+
+    @Test fun `pure black collection has no coloured light or translucent overlay`() {
+        content { SounCollectionBackground(listOf(Color.White, Color.Magenta), pureBlack = true, modifier = Modifier.testTag("black-page")) }
+        val bitmap = compose.onNodeWithTag("black-page").captureToImage().asAndroidBitmap()
+        for ((x, y) in listOf(bitmap.width / 2 to bitmap.height / 5, bitmap.width / 3 to bitmap.height / 2)) {
+            assertEquals(android.graphics.Color.BLACK, bitmap.getPixel(x, y))
+        }
     }
 
     @Test fun `short menu wraps its content instead of reserving most of the screen`() {

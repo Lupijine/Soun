@@ -4,8 +4,13 @@ import android.app.Application
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.ui.Modifier
@@ -63,4 +68,33 @@ class DownloadStatusStripTest {
         compose.onNodeWithText("Retry", ignoreCase = true).performClick()
         compose.runOnIdle { assertEquals(listOf(null, "song-id"), retries) }
     }
+    @Test
+    fun `active and failed downloads fit a narrow screen and pause and resume remain usable`() {
+        val state = mutableStateOf(DownloadPanelState(DownloadOverview(29, 210, 0,
+            List(7) { FailedDownload("id$it", "Song $it") }, 0.4f), false, 447_000_000))
+        val commands = mutableListOf<Boolean>()
+        var storageClicks = 0
+        compose.runOnUiThread {
+            host = Robolectric.buildActivity(ComponentActivity::class.java).setup()
+            host!!.get().setContent {
+                MaterialTheme(colorScheme = darkColorScheme()) {
+                    CompositionLocalProvider(LocalDensity provides Density(1f, 1.3f)) {
+                        Column(Modifier.fillMaxSize()) {
+                            Box(Modifier.width(320.dp).testTag("strip")) {
+                                DownloadStatusStrip(state.value, { storageClicks++ },
+                                    { commands += it; state.value = state.value.copy(paused = it) }, {})
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        compose.onNodeWithText("Retry 7").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Manage").performClick()
+        compose.onNodeWithContentDescription("Pause downloads").assertIsDisplayed().performClick()
+        compose.onNodeWithContentDescription("Resume downloads").assertIsDisplayed().performClick()
+        assertTrue(compose.onNodeWithTag("strip").getUnclippedBoundsInRoot().height <= 80.dp)
+        compose.runOnIdle { assertEquals(listOf(true, false), commands); assertEquals(1, storageClicks) }
+    }
+
 }

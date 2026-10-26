@@ -27,10 +27,15 @@ import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 @Composable
 fun SounCollectionBackground(colors: List<Color>, pureBlack: Boolean = false, modifier: Modifier = Modifier, lightField: LayerBackdrop = rememberLayerBackdrop()) {
     val scheme = MaterialTheme.colorScheme
-    val primary by animateColorAsState(colors.firstOrNull() ?: scheme.primary, tween(800), label = "collectionLight")
-    val secondary by animateColorAsState(colors.getOrNull(1) ?: primary, tween(800), label = "collectionLightSecondary")
     val dark = scheme.surface.luminance() < 0.5f
-    val base = if (pureBlack) Color.Black else if (dark) Color(0xFF0C0C12) else Color(0xFFF3F1F7)
+    if (pureBlack && dark) {
+        Box(modifier.fillMaxSize().layerBackdrop(lightField).background(Color.Black))
+        return
+    }
+    val targetPrimary = colors.firstOrNull() ?: SounAccent
+    val primary by animateColorAsState(targetPrimary, tween(800), label = "collectionLight")
+    val secondary by animateColorAsState(colors.getOrNull(1) ?: targetPrimary, tween(800), label = "collectionLightSecondary")
+    val base = if (dark) Color(0xFF0C0C12) else Color(0xFFF3F1F7)
     Box(modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize().layerBackdrop(lightField).background(base).drawWithCache {
             val glow = Brush.radialGradient(listOf(primary.copy(alpha = if (dark) 0.54f else 0.26f), Color.Transparent),
@@ -48,21 +53,26 @@ fun SounCollectionBackground(colors: List<Color>, pureBlack: Boolean = false, mo
             val beam = Brush.linearGradient(listOf(Color.Transparent, primary.copy(alpha = 0.20f), secondary.copy(alpha = 0.16f), Color.Transparent),
                 start = Offset.Zero, end = Offset(size.width, size.height))
             val glint = Brush.linearGradient(listOf(Color.Transparent, scheme.onSurface.copy(alpha = 0.14f), Color.Transparent))
+            val ribbons = listOf(upper, lower)
+            val outerStroke = Stroke(100.dp.toPx(), cap = StrokeCap.Round)
+            val softStroke = Stroke(48.dp.toPx(), cap = StrokeCap.Round)
+            val lightStroke = Stroke(14.dp.toPx(), cap = StrokeCap.Round)
+            val edgeStroke = Stroke(1.2.dp.toPx(), cap = StrokeCap.Round)
             onDrawBehind {
                 drawRect(glow)
                 drawRect(lowerGlow)
-                if (!pureBlack) for (ribbon in listOf(upper, lower)) {
-                    drawPath(ribbon, beam, alpha = 0.2f, style = Stroke(100.dp.toPx(), cap = StrokeCap.Round))
-                    drawPath(ribbon, beam, alpha = 0.35f, style = Stroke(48.dp.toPx(), cap = StrokeCap.Round))
-                    drawPath(ribbon, beam, style = Stroke(14.dp.toPx(), cap = StrokeCap.Round))
-                    drawPath(ribbon, glint, style = Stroke(1.2.dp.toPx(), cap = StrokeCap.Round))
+                for (ribbon in ribbons) {
+                    drawPath(ribbon, beam, alpha = 0.2f, style = outerStroke)
+                    drawPath(ribbon, beam, alpha = 0.35f, style = softStroke)
+                    drawPath(ribbon, beam, style = lightStroke)
+                    drawPath(ribbon, glint, style = edgeStroke)
                 }
             }
         })
         Box(Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 6.dp).sounGlass(
             RoundedCornerShape(30.dp),
             sounGlassColors(strong = false).copy(
-                surfaceTint = base.copy(alpha = if (pureBlack) 0.85f else 0.16f),
+                surfaceTint = base.copy(alpha = 0.16f),
                 fillTop = Color.White.copy(alpha = if (dark) 0.04f else 0.14f),
                 rimBright = scheme.onSurface.copy(alpha = 0.16f),
             ), elevation = 0f, backdrop = lightField, fullPanel = true,

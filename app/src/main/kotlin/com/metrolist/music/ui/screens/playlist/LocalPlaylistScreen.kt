@@ -13,9 +13,8 @@ import kotlinx.coroutines.flow.first
 import com.metrolist.music.utils.persistPlaylistCover
 import com.metrolist.music.utils.deletePlaylistCover
 import com.metrolist.music.ui.component.SounCollectionHeader
-import androidx.compose.runtime.CompositionLocalProvider
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
-import com.metrolist.music.ui.theme.LocalSounSurfaceBackdrop
+import com.metrolist.music.ui.theme.SounCollectionTheme
 import com.metrolist.music.ui.theme.SounCollectionBackground
 import com.metrolist.music.ui.theme.rememberArtworkColors
 import com.metrolist.music.constants.PureBlackKey
@@ -489,7 +488,7 @@ fun LocalPlaylistScreen(
     val palette = rememberArtworkColors(collectionSource)
     val pureBlack by rememberPreference(PureBlackKey, false)
     val collectionBackdrop = rememberLayerBackdrop()
-    CompositionLocalProvider(LocalSounSurfaceBackdrop provides collectionBackdrop) {
+    SounCollectionTheme(palette.firstOrNull() ?: com.metrolist.music.ui.theme.SounAccent, backdrop = collectionBackdrop) {
         Box(
             modifier = Modifier.fillMaxSize(),
         ) {
