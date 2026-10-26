@@ -31,9 +31,7 @@ private val BACKGROUND_REGEX = "^\\{bg\\}".toRegex()
 
 @Suppress("RegExpRedundantEscape")
 object LyricsUtils {
-    fun cleanTitleForSearch(title: String): String {
-        return title.replace(Regex("\\s*[(\\[].*?[)\\]]"), "").trim()
-    }
+    fun cleanTitleForSearch(title: String): String = LyricsMatch.cleanTitle(title)
 
     fun filterLyricsCreditLines(lyrics: String): String {
         return lyrics.lines().filter { line ->

@@ -21,7 +21,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+import com.metrolist.music.lyrics.usableLyrics
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 @HiltViewModel
@@ -33,6 +35,7 @@ constructor(
     private val networkConnectivity: NetworkConnectivityObserver,
 ) : ViewModel() {
     private var job: Job? = null
+    @Volatile private var searchGeneration = 0L
     val results = MutableStateFlow(emptyList<LyricsResult>())
     val isLoading = MutableStateFlow(false)
 
@@ -60,36 +63,45 @@ constructor(
         duration: Int,
         album: String? = null,
     ) {
+        val generation = ++searchGeneration
+        job?.cancel()
         isLoading.value = true
         results.value = emptyList()
-        job?.cancel()
-        job =
-            viewModelScope.launch(Dispatchers.IO) {
-                lyricsHelper.getAllLyrics(mediaId, title, artist, duration, album) { result ->
-                    results.update {
-                        it + result
+        job = viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    lyricsHelper.getAllLyrics(mediaId, title, artist, duration, album) { result ->
+                        launch(Dispatchers.Main.immediate) {
+                            if (generation == searchGeneration) results.update { it + result }
+                        }
                     }
                 }
-                isLoading.value = false
+            } finally {
+                if (generation == searchGeneration) isLoading.value = false
             }
+        }
     }
 
     fun cancelSearch() {
+        ++searchGeneration
         job?.cancel()
         job = null
+        isLoading.value = false
     }
 
     fun refetchLyrics(
         mediaMetadata: MediaMetadata,
         lyricsEntity: LyricsEntity?,
     ) {
-        database.query {
-            lyricsEntity?.let(::delete)
-            val lyricsWithProvider =
-                runBlocking {
-                    lyricsHelper.getLyrics(mediaMetadata)
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = lyricsHelper.getLyrics(mediaMetadata, forceRefresh = true)
+            if (!usableLyrics(result.lyrics)) return@launch
+            database.withTransaction {
+                // A fresh response must not overwrite edits made while the request was running.
+                if (database.lyrics(mediaMetadata.id).first() == lyricsEntity) {
+                    database.upsert(LyricsEntity(mediaMetadata.id, result.lyrics, result.provider))
                 }
-            upsert(LyricsEntity(mediaMetadata.id, lyricsWithProvider.lyrics, lyricsWithProvider.provider))
+            }
         }
     }
 }

@@ -86,28 +86,9 @@ object Paxsenix {
             appleTokenManager ?: AppleTokenManager(httpClient).also { appleTokenManager = it }
         }
 
-    private val titleCleanupPatterns = listOf(
-        Regex("""\s*\(.*?(official|video|audio|lyrics|lyric|visualizer|hd|hq|4k|remaster|remix|live|acoustic|version|edit|extended|radio|clean|explicit).*?\)""", RegexOption.IGNORE_CASE),
-        Regex("""\s*\[.*?(official|video|audio|lyrics|lyric|visualizer|hd|hq|4k|remaster|remix|live|acoustic|version|edit|extended|radio|clean|explicit).*?\]""", RegexOption.IGNORE_CASE),
-        Regex("""\s*【.*?】"""),
-        Regex("""\s*\|.*$"""),
-        Regex("""\s*-\s*(official|video|audio|lyrics|lyric|visualizer).*$""", RegexOption.IGNORE_CASE),
-        Regex("""\s*\(feat\..*?\)""", RegexOption.IGNORE_CASE),
-        Regex("""\s*\(ft\..*?\)""", RegexOption.IGNORE_CASE),
-        Regex("""\s*feat\..*$""", RegexOption.IGNORE_CASE),
-        Regex("""\s*ft\..*$""", RegexOption.IGNORE_CASE),
-        Regex("""\s*\([^)]*\d{4}[^)]*\)""", RegexOption.IGNORE_CASE),
-    )
-
     private val artistSeparators = listOf(" & ", " and ", ", ", " x ", " X ", " feat. ", " feat ", " ft. ", " ft ", " featuring ", " with ")
 
-    private fun cleanTitle(title: String): String {
-        var cleaned = title.trim()
-        for (pattern in titleCleanupPatterns) {
-            cleaned = cleaned.replace(pattern, "")
-        }
-        return cleaned.trim()
-    }
+    private fun cleanTitle(title: String) = com.metrolist.music.lyrics.LyricsMatch.cleanTitle(title)
 
     private fun cleanArtist(artist: String): String {
         var cleaned = artist.trim()
@@ -262,70 +243,11 @@ object Paxsenix {
         return 1
     }
 
-    private fun scoreAndFilterResults(
-        results: List<SearchResult>,
-        title: String,
-        artist: String,
-        duration: Int
-    ): List<Pair<SearchResult, Double>> {
-        val durationMs = duration * 1000
-        val cleanupRegex = Regex("""\s*\(.*?\)|\s*\[.*?\]""")
-        
-        // Cleaned versions for fuzzy matching
-        val cleanedTitle = title.replace(cleanupRegex, "").lowercase().trim()
-        val cleanedArtist = cleanArtist(artist).lowercase()
-        
-        // Track if target has version markers
-        val targetIsMixed = title.contains("mixed", ignoreCase = true)
-        val targetIsRemix = title.contains("remix", ignoreCase = true)
-        
-        return results.map { result ->
-            var score = 0.0
-            
-            val resultTitle = result.displayName
-            val resultArtist = result.displayArtist
-            
-            result.duration?.let { d ->
-                val diff = abs(d - durationMs)
-                when {
-                    diff <= 2000 -> score += 100 // Excellent match
-                    diff <= 5000 -> score += 50  // Good match
-                    diff <= 10000 -> score += 10 // Acceptable match
-                    else -> score -= 50          // Likely wrong version (Mixed/Edit/etc)
-                }
-            }
-            
-            val resultTitleCleaned = resultTitle.replace(cleanupRegex, "").lowercase().trim()
-            
-            when {
-                resultTitleCleaned == cleanedTitle -> score += 80
-                resultTitleCleaned.contains(cleanedTitle) || cleanedTitle.contains(resultTitleCleaned) -> score += 40
-            }
-            
-            // Penalize version mismatch
-            val resultIsMixed = resultTitle.contains("mixed", ignoreCase = true)
-            val resultIsRemix = resultTitle.contains("remix", ignoreCase = true)
-            
-            if (resultIsMixed && !targetIsMixed) score -= 60
-            if (resultIsRemix && !targetIsRemix) score -= 40
-            
-            val resultArtistLower = resultArtist.lowercase()
-            val targetArtistPrimary = cleanedArtist
-            
-            when {
-                resultArtistLower.contains(targetArtistPrimary) -> score += 50
-                else -> {
-                    val artistWords = targetArtistPrimary.split(Regex("\\s+")).filter { it.length > 2 }
-                    if (artistWords.any { resultArtistLower.contains(it) }) {
-                        score += 25
-                    }
-                }
-            }
-            
-            Timber.v("  Score for '${resultTitle}': $score")
-            result to score
-        }.sortedByDescending { it.second }.filter { it.second > 0 }.take(10)
-    }
+    internal fun scoreAndFilterResults(results: List<SearchResult>, title: String, artist: String, duration: Int): List<Pair<SearchResult, Double>> =
+        results.mapNotNull { result ->
+            com.metrolist.music.lyrics.LyricsMatch.score(title, artist, duration, result.displayName,
+                result.displayArtist, result.duration?.toDouble())?.let { result to it }
+        }.sortedByDescending { it.second }.take(10)
 
     private suspend fun fetchLyricsForTrack(id: String): Result<String> = runCatching {
         Timber.d("Fetching lyrics for track ID: $id")

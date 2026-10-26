@@ -122,7 +122,7 @@ object ZemerLyricsProvider : LyricsProvider {
             parameter("videoId", videoId)
             header(HttpHeaders.Accept, "application/json")
         }
-        return if (r.status == HttpStatusCode.OK) r.body<Resolved>() else null
+        return if (r.status == HttpStatusCode.OK) r.body<Resolved>().takeIf { it.videoId == videoId } else null
     }
 
     private suspend fun fetchText(url: String): String? {

@@ -1,6 +1,7 @@
 package com.metrolist.kugou
 
 import com.metrolist.kugou.models.DownloadLyricsResponse
+import com.metrolist.music.lyrics.LyricsMatch
 import com.metrolist.kugou.models.Keyword
 import com.metrolist.kugou.models.SearchLyricsResponse
 import com.metrolist.kugou.models.SearchSongResponse
@@ -65,14 +66,14 @@ object KuGou {
     ) {
         val keyword = generateKeyword(title, artist, album)
         searchSongs(keyword).data.info.forEach {
-            if (duration == -1 || abs(it.duration - duration) <= DURATION_TOLERANCE) {
-                searchLyricsByHash(it.hash).candidates.firstOrNull()?.let { candidate ->
+            if (duration <= 0 || abs(it.duration - duration) <= DURATION_TOLERANCE) {
+                matchingCandidates(searchLyricsByHash(it.hash).candidates, keyword, duration).firstOrNull()?.let { candidate ->
                     Base64.Default.decode(downloadLyrics(candidate.id, candidate.accesskey).content).decodeToString()
                         .normalize().let(callback)
                 }
             }
         }
-        searchLyricsByKeyword(keyword, duration).candidates.forEach { candidate ->
+        matchingCandidates(searchLyricsByKeyword(keyword, duration).candidates, keyword, duration).forEach { candidate ->
             Base64.Default.decode(downloadLyrics(candidate.id, candidate.accesskey).content).decodeToString()
                 .normalize().let(callback)
         }
@@ -82,12 +83,12 @@ object KuGou {
         keyword: Keyword, duration: Int
     ): SearchLyricsResponse.Candidate? {
         searchSongs(keyword).data.info.forEach { song ->
-            if (duration == -1 || abs(song.duration - duration) <= DURATION_TOLERANCE) { // if duration == -1, we don't care duration
-                val candidate = searchLyricsByHash(song.hash).candidates.firstOrNull()
+            if (duration <= 0 || abs(song.duration - duration) <= DURATION_TOLERANCE) { // if duration == -1, we don't care duration
+                val candidate = matchingCandidates(searchLyricsByHash(song.hash).candidates, keyword, duration).firstOrNull()
                 if (candidate != null) return candidate
             }
         }
-        return searchLyricsByKeyword(keyword, duration).candidates.firstOrNull()
+        return matchingCandidates(searchLyricsByKeyword(keyword, duration).candidates, keyword, duration).firstOrNull()
     }
 
     suspend fun searchSongs(keyword: Keyword) =
@@ -117,7 +118,7 @@ object KuGou {
             parameter("man", "yes")
             parameter("client", "pc")
             parameter(
-                "duration", duration.takeIf { it != -1 }?.times(1000)
+                "duration", duration.takeIf { it > 0 }?.toLong()?.times(1000)
             ) // if duration == -1, we don't care duration
             val searchQuery = buildString {
                 append(keyword.title)
@@ -152,18 +153,14 @@ object KuGou {
             parameter("accesskey", accessKey)
         }.body<DownloadLyricsResponse>()
 
-    private fun normalizeTitle(title: String) =
-        title.replace("\\(.*\\)".toRegex(), "").replace("（.*）".toRegex(), "")
-            .replace("「.*」".toRegex(), "").replace("『.*』".toRegex(), "")
-            .replace("<.*>".toRegex(), "").replace("《.*》".toRegex(), "")
-            .replace("〈.*〉".toRegex(), "").replace("＜.*＞".toRegex(), "")
-
-    private fun normalizeArtist(artist: String) =
-        artist.replace(", ", "、").replace(" & ", "、").replace(".", "").replace("和", "、")
-            .replace("\\(.*\\)".toRegex(), "").replace("（.*）".toRegex(), "")
+    internal fun matchingCandidates(candidates: List<SearchLyricsResponse.Candidate>, keyword: Keyword, duration: Int) =
+        candidates.mapNotNull { candidate ->
+            LyricsMatch.score(keyword.title, keyword.artist, duration, candidate.song, candidate.singer,
+                candidate.duration / 1000.0)?.let { candidate to it }
+        }.sortedByDescending { it.second }.map { it.first }
 
     fun generateKeyword(title: String, artist: String, album: String? = null) =
-        Keyword(normalizeTitle(title), normalizeArtist(artist), album)
+        Keyword(LyricsMatch.cleanTitle(title), artist, album)
 
     private fun String.normalize(): String =
         lines().filter { line -> line.matches(ACCEPTED_REGEX) }

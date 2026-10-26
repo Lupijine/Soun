@@ -180,11 +180,13 @@ object LyricsPlusProvider : LyricsProvider {
         val response = client.get("$url/v2/lyrics/get") {
             parameter("title", title)
             parameter("artist", artist)
-            // LyricsPlus expects duration in seconds, while MediaMetadata stores milliseconds.
-            if (duration > 0) parameter("duration", duration / 1000)
+            // MediaMetadata and this endpoint both use seconds.
+            if (duration > 0) parameter("duration", duration)
             if (!album.isNullOrBlank()) parameter("album", album)
         }
-        if (response.status == HttpStatusCode.OK) response.body<LyricsPlusResponse>() else null
+        if (response.status == HttpStatusCode.OK) response.body<LyricsPlusResponse>().takeIf { result ->
+            result.metadata?.title?.takeIf(String::isNotBlank)?.let { LyricsMatch.titlesMatch(title, it) } != false
+        } else null
     }.getOrNull()
 
     private suspend fun fetchLyrics(
@@ -257,7 +259,17 @@ object LyricsPlusProvider : LyricsProvider {
         if (payload.results.isEmpty()) return null
 
         val selectedResult = payload.results
-            .firstOrNull { !it.lyricsUrl.isNullOrBlank() }
+            .filter { !it.lyricsUrl.isNullOrBlank() }
+            .mapNotNull { candidate ->
+                val exactIsrc = canUseIsrc && candidate.isrc.equals(normalizedIsrc, ignoreCase = true)
+                val score = LyricsMatch.score(title, artist, duration, candidate.track_name.orEmpty(),
+                    candidate.artist_name.orEmpty(), candidate.duration?.toDouble())
+                when {
+                    exactIsrc -> candidate to 1000.0
+                    score != null -> candidate to score
+                    else -> null
+                }
+            }.maxByOrNull { it.second }?.first
             ?: return null
         val lyricsUrl = selectedResult.lyricsUrl.orEmpty()
         val ttml = runCatching {
