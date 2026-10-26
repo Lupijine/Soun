@@ -23,6 +23,9 @@ import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import androidx.compose.ui.graphics.drawscope.translate
+import kotlin.math.cos
+import kotlin.math.sin
 
 @Composable
 fun SounCollectionBackground(colors: List<Color>, pureBlack: Boolean = false, modifier: Modifier = Modifier, lightField: LayerBackdrop = rememberLayerBackdrop()) {
@@ -32,9 +35,12 @@ fun SounCollectionBackground(colors: List<Color>, pureBlack: Boolean = false, mo
         Box(modifier.fillMaxSize().layerBackdrop(lightField).background(Color.Black))
         return
     }
-    val targetPrimary = colors.firstOrNull() ?: SounAccent
+    val drift = rememberAmbientDrift()
+    val artworkAccent = LocalSounArtworkAccent.current
+    val targetPrimary = if (artworkAccent) colors.firstOrNull() ?: SounAccent else scheme.primary
+    val targetSecondary = if (artworkAccent) colors.getOrNull(1) ?: targetPrimary else scheme.tertiary
     val primary by animateColorAsState(targetPrimary, tween(800), label = "collectionLight")
-    val secondary by animateColorAsState(colors.getOrNull(1) ?: targetPrimary, tween(800), label = "collectionLightSecondary")
+    val secondary by animateColorAsState(targetSecondary, tween(800), label = "collectionLightSecondary")
     val base = if (dark) Color(0xFF0C0C12) else Color(0xFFF3F1F7)
     Box(modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize().layerBackdrop(lightField).background(base).drawWithCache {
@@ -59,8 +65,11 @@ fun SounCollectionBackground(colors: List<Color>, pureBlack: Boolean = false, mo
             val lightStroke = Stroke(14.dp.toPx(), cap = StrokeCap.Round)
             val edgeStroke = Stroke(1.2.dp.toPx(), cap = StrokeCap.Round)
             onDrawBehind {
-                drawRect(glow)
-                drawRect(lowerGlow)
+                val phase = drift.value * (2 * Math.PI).toFloat()
+                val dx = sin(phase) * size.width * 0.10f
+                val dy = (cos(phase) - 1f) * size.height * 0.025f
+                translate(dx, dy) { drawRect(glow, topLeft = Offset(-size.width, -size.height), size = size * 3f) }
+                translate(-dx, -dy) { drawRect(lowerGlow, topLeft = Offset(-size.width, -size.height), size = size * 3f) }
                 for (ribbon in ribbons) {
                     drawPath(ribbon, beam, alpha = 0.2f, style = outerStroke)
                     drawPath(ribbon, beam, alpha = 0.35f, style = softStroke)

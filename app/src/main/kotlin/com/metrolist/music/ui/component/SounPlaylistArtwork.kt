@@ -30,6 +30,7 @@ import coil3.request.ImageRequest
 import com.metrolist.music.R
 import com.metrolist.music.ui.theme.SounAccent
 import com.metrolist.music.ui.theme.rememberArtworkColors
+import com.metrolist.music.ui.theme.LocalSounArtworkAccent
 
 @Composable
 fun SounPlaylistArtwork(
@@ -42,14 +43,15 @@ fun SounPlaylistArtwork(
     val image = remember(context, artwork, compact) {
         artwork?.let { ImageRequest.Builder(context).data(it).size(if (compact) 160 else 640).build() }
     }
-    val palette = rememberArtworkColors(colorSource)
+    val artworkAccent = LocalSounArtworkAccent.current
+    val palette = rememberArtworkColors(colorSource, enabled = artworkAccent)
     val fallback = when (artwork) {
         R.drawable.soun_liked_chrome -> Color(0xFFFF7EB8)
         R.drawable.soun_downloads_chrome -> Color(0xFF83CEFF)
         else -> SounAccent
     }
-    val primary by animateColorAsState(palette.firstOrNull() ?: fallback, tween(600), label = "collectionGlow")
-    val secondary by animateColorAsState(palette.getOrNull(1) ?: fallback, tween(600), label = "collectionReflection")
+    val primary by animateColorAsState(if (artworkAccent) palette.firstOrNull() ?: fallback else MaterialTheme.colorScheme.primary, tween(600), label = "collectionGlow")
+    val secondary by animateColorAsState(if (artworkAccent) palette.getOrNull(1) ?: fallback else MaterialTheme.colorScheme.tertiary, tween(600), label = "collectionReflection")
     val light = MaterialTheme.colorScheme.onSurface
     Box(modifier, contentAlignment = Alignment.Center) {
         Box(Modifier.matchParentSize().drawWithCache {

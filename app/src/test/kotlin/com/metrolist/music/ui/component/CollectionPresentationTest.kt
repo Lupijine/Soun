@@ -46,6 +46,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.android.controller.ActivityController
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import com.metrolist.music.ui.theme.LocalSounArtworkAccent
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [31], application = Application::class, qualifiers = "w393dp-h851dp-mdpi")
@@ -154,6 +155,56 @@ class CollectionPresentationTest {
         val original = compose.runOnIdle { accent }
         compose.runOnIdle { playingColor.value = Color.Green }
         compose.runOnIdle { assertEquals(original, accent) }
+    }
+
+    @Test fun `manual accent overrides collection artwork and updates without reopening the page`() {
+        val chosen = mutableStateOf(Color.Red)
+        var accent = Color.Unspecified
+        content {
+            CompositionLocalProvider(LocalSounArtworkAccent provides false) {
+                MaterialTheme(colorScheme = MaterialTheme.colorScheme.copy(primary = chosen.value, tertiary = chosen.value)) {
+                    SounCollectionTheme(Color.Blue) {
+                        val current = MaterialTheme.colorScheme.primary
+                        SideEffect { accent = current }
+                        SounCollectionBackground(listOf(Color.Blue), modifier = Modifier.testTag("manual-page"))
+                    }
+                }
+            }
+        }
+        compose.runOnIdle { assertEquals(Color.Red, accent) }
+        val red = compose.onNodeWithTag("manual-page").captureToImage().asAndroidBitmap()
+        val x = red.width / 2
+        val y = red.height / 5
+        assertTrue(android.graphics.Color.red(red.getPixel(x, y)) > android.graphics.Color.blue(red.getPixel(x, y)))
+        compose.runOnIdle { chosen.value = Color.Green }
+        compose.mainClock.advanceTimeBy(1000)
+        compose.runOnIdle { assertEquals(Color.Green, accent) }
+        val green = compose.onNodeWithTag("manual-page").captureToImage().asAndroidBitmap()
+        assertTrue(android.graphics.Color.green(green.getPixel(x, y)) > android.graphics.Color.red(green.getPixel(x, y)))
+    }
+
+    @Test fun `remote collection header retains creator and save actions alongside playback`() {
+        var saves = 0
+        var plays = 0
+        var shuffles = 0
+        var menus = 0
+        content {
+            SounCollectionHeader(
+                name = "THE INSPECTION", subtitle = "19 songs · 51:06", artwork = null,
+                colorSource = null, thumbnail = "file:///missing-cover.jpg", enabled = true,
+                onPlay = { plays++ }, onShuffle = { shuffles++ }, onMore = { menus++ },
+                supportingContent = {
+                    Text("COCHISE")
+                    TextButton(onClick = { saves++ }) { Text("Save playlist") }
+                },
+            )
+        }
+        compose.onNodeWithText("COCHISE").assertIsDisplayed()
+        compose.onNodeWithText("Save playlist").performClick()
+        compose.onNodeWithText("Play", ignoreCase = true).performClick()
+        compose.onNodeWithText("Shuffle", ignoreCase = true).performClick()
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.runOnIdle { assertEquals(listOf(1, 1, 1, 1), listOf(saves, plays, shuffles, menus)) }
     }
 
     @Test fun `pure black collection has no coloured light or translucent overlay`() {

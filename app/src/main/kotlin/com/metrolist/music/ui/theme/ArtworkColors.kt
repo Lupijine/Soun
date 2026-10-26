@@ -53,5 +53,5 @@ fun rememberArtworkColors(url: String?, enabled: Boolean = true): List<Color> {
             value = emptyList()
         }
     }
-    return colors
+    return if (enabled) colors else emptyList()
 }

@@ -144,6 +144,7 @@ import com.metrolist.music.constants.SleepTimerFadeOutKey
 import com.metrolist.music.constants.SleepTimerStopAfterCurrentSongKey
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.material3.Button
+import androidx.compose.ui.graphics.Brush
 
 
 @SuppressLint("UnrememberedMutableState")
@@ -265,14 +266,12 @@ fun Queue(
     BottomSheet(
         state = state,
         modifier = modifier,
-        background = {
-            Box(Modifier.fillMaxSize().background(Color.Unspecified))
-        },
+        background = {},
         collapsedContent = {
             if (useNewPlayerDesign) { // Soun: same glass bar with lyrics open
                 Box(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp)
                     .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))) {
-                    Row(Modifier.fillMaxWidth().height(56.dp).sounGlass(RoundedCornerShape(28.dp), sounGlassColors(), backdrop = backdrop)
+                    Row(Modifier.fillMaxWidth().height(56.dp).sounGlass(RoundedCornerShape(28.dp), sounGlassColors(), backdrop = backdrop, fullPanel = true, diffusion = 12.dp)
                         .padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = onToggleLyrics) {
                             Icon(painterResource(R.drawable.lyrics), stringResource(R.string.lyrics),
@@ -780,7 +779,11 @@ fun Queue(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .background(background),
+                    .then(if (pureBlack) Modifier.background(Color.Black) else Modifier.sounGlass(
+                        RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                        sounGlassColors(strong = false).copy(surfaceTint = background.copy(alpha = 0.28f)),
+                        elevation = 0f, backdrop = backdrop, fullPanel = true, diffusion = 18.dp,
+                    )),
         ) {
             LazyColumn(
                 state = lazyListState,
@@ -810,7 +813,7 @@ fun Queue(
                     ReorderableItem(
                         state = reorderableState,
                         key = window.uid.hashCode(),
-                    ) {
+                    ) { isDragging ->
                         val currentItem by rememberUpdatedState(window)
                         val isActive = window.uid == currentPlayingUid
                         val dismissBoxState =
@@ -922,7 +925,7 @@ fun Queue(
                                             .fillMaxWidth()
                                             .padding(horizontal = 12.dp, vertical = 3.dp)
                                             .clip(RoundedCornerShape(20.dp))
-                                            .background(background)
+                                            .background(background.copy(alpha = if (isDragging) 0.88f else 0f))
                                             .combinedClickable(
                                                 onClick = {
                                                     if (inSelectMode) {
@@ -1069,13 +1072,10 @@ fun Queue(
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() },
                     ) { }
-                    .background(
-                        if (pureBlack) {
-                            Color.Black
-                        } else {
-                            background
-                        },
-                    ).windowInsetsPadding(
+                    .background(Brush.verticalGradient(listOf(
+                        if (pureBlack) Color.Black else background.copy(alpha = 0.78f),
+                        if (pureBlack) Color.Black else background.copy(alpha = 0.08f),
+                    ))).windowInsetsPadding(
                         WindowInsets.systemBars
                             .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
                     ),
@@ -1202,13 +1202,7 @@ fun Queue(
         Box(
             modifier =
                 Modifier
-                    .background(
-                        if (pureBlack) {
-                            Color.Black
-                        } else {
-                            background
-                        },
-                    ).fillMaxWidth()
+                    .fillMaxWidth()
                     .height(
                         footerHeight +
                             WindowInsets.systemBars
@@ -1216,7 +1210,7 @@ fun Queue(
                                 .calculateBottomPadding(),
                     ).align(Alignment.BottomCenter)
                     .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .sounGlass(RoundedCornerShape(28.dp), sounGlassColors(), backdrop = backdrop)
+                    .sounGlass(RoundedCornerShape(28.dp), sounGlassColors(), backdrop = backdrop, fullPanel = true, diffusion = 12.dp)
                     .clickable {
                         state.collapseSoft()
                     }.windowInsetsPadding(

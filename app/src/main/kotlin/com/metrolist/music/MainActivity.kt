@@ -1056,10 +1056,11 @@ class MainActivity : FragmentActivity() {
                 val glassBackdrop = rememberLayerBackdrop()
                 val ambientBackdrop = rememberLayerBackdrop()
                 val ambientMedia by activePlayerConnection?.mediaMetadata?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(null) }
-                val ambientArtwork = rememberArtworkColors(ambientMedia?.thumbnailUrl, enabled = !pureBlack)
+                val ambientArtwork = rememberArtworkColors(ambientMedia?.thumbnailUrl, enabled = !pureBlack && enableDynamicTheme)
                 val artistNameAliases by ArtistNameAliases.aliases.collectAsStateWithLifecycle()
 
                 CompositionLocalProvider(
+                    com.metrolist.music.ui.theme.LocalSounArtworkAccent provides enableDynamicTheme,
                     LocalSounBackdrop provides glassBackdrop,
                     LocalSounSurfaceBackdrop provides ambientBackdrop,
                     LocalDatabase provides database,

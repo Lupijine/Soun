@@ -17,11 +17,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.drawscope.translate
+import kotlin.math.cos
+import kotlin.math.sin
 
 @Composable
 fun Modifier.sounAmbientBackground(pureBlack: Boolean = false, artwork: List<Color> = emptyList()): Modifier {
     val scheme = MaterialTheme.colorScheme
     if (pureBlack) return background(Color.Black)
+    val drift = rememberAmbientDrift()
     val dark = scheme.surface.luminance() < 0.5f
     val primary by animateColorAsState(artwork.firstOrNull() ?: scheme.primary, tween(900), label = "ambientPrimary")
     val secondary by animateColorAsState(artwork.getOrNull(1) ?: scheme.tertiary, tween(900), label = "ambientSecondary")
@@ -37,8 +41,11 @@ fun Modifier.sounAmbientBackground(pureBlack: Boolean = false, artwork: List<Col
             radius = size.width.coerceAtLeast(1f),
         )
         onDrawBehind {
-            drawRect(firstGlow)
-            drawRect(secondGlow)
+            val phase = drift.value * (2 * Math.PI).toFloat()
+            val dx = sin(phase) * size.width * 0.12f
+            val dy = (cos(phase) - 1f) * size.height * 0.035f
+            translate(dx, dy) { drawRect(firstGlow, topLeft = Offset(-size.width, -size.height), size = size * 3f) }
+            translate(-dx, -dy) { drawRect(secondGlow, topLeft = Offset(-size.width, -size.height), size = size * 3f) }
         }
     }
 }

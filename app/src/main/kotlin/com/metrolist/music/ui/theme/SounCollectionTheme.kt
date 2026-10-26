@@ -7,9 +7,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import com.materialkolor.rememberDynamicColorScheme
+import androidx.compose.runtime.staticCompositionLocalOf
+
+val LocalSounArtworkAccent = staticCompositionLocalOf { true }
 
 @Composable
 fun SounCollectionTheme(color: Color, backdrop: Backdrop? = LocalSounSurfaceBackdrop.current, content: @Composable () -> Unit) {
+    if (!LocalSounArtworkAccent.current) {
+        CompositionLocalProvider(LocalSounSurfaceBackdrop provides backdrop, content = content)
+        return
+    }
     val base = MaterialTheme.colorScheme
     val accents = rememberDynamicColorScheme(seedColor = color, isDark = base.surface.luminance() < 0.5f)
     MaterialTheme(colorScheme = base.copy(

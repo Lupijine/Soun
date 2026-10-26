@@ -31,6 +31,7 @@ internal fun SounCollectionHeader(
     modifier: Modifier = Modifier,
     thumbnail: String? = null,
     moreEnabled: Boolean = enabled,
+    supportingContent: @Composable () -> Unit = {},
 ) {
     Column(modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         if (artwork != null || thumbnail == null) {
@@ -49,6 +50,7 @@ internal fun SounCollectionHeader(
         }
         Text(subtitle, Modifier.padding(horizontal = 24.dp), style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        supportingContent()
         Spacer(Modifier.height(18.dp))
         Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SounActionButton(R.drawable.play, stringResource(R.string.play), onPlay,

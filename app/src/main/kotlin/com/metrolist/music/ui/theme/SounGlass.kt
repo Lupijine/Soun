@@ -35,6 +35,7 @@ import com.kyant.backdrop.highlight.HighlightStyle
 import com.kyant.backdrop.isRenderEffectSupported
 import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
+import androidx.compose.ui.unit.Dp
 
 // Two soft lobes and a diagonal fold give the pane changing surface normals, including its centre.
 internal const val SounPanelLensShader = """
@@ -136,6 +137,7 @@ fun Modifier.sounGlass(
     backdropEnabled: Boolean = true,
     backdrop: Backdrop? = LocalSounBackdrop.current,
     fullPanel: Boolean = false,
+    diffusion: Dp = if (fullPanel) 3.dp else 0.dp,
 ): Modifier {
     val fill = remember(colors.fillTop, colors.fillBottom) {
         Brush.verticalGradient(listOf(colors.fillTop, colors.fillBottom))
@@ -152,7 +154,7 @@ fun Modifier.sounGlass(
                             setFloatUniform("size", size.width, size.height)
                         }
                     }
-                    if (fullPanel) blur(3.dp.toPx())
+                    if (diffusion > 0.dp) blur(diffusion.toPx())
                     else if (Build.VERSION.SDK_INT < 33) blur(5.dp.toPx())
                     lens(18.dp.toPx(), 32.dp.toPx(), depthEffect = true, chromaticAberration = true)
                 },
