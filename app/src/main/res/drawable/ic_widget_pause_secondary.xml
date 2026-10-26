@@ -1,9 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lucide icon (ISC license), converted for Soun -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
     android:height="24dp"
-    android:viewportHeight="24"
     android:viewportWidth="24"
-    android:width="24dp">
+    android:viewportHeight="24">
     <path
         android:fillColor="@color/widget_on_primary_container"
-        android:pathData="M6,19h4V5H6v14zM14,5v14h4V5h-4z"/>
+        android:strokeColor="@color/widget_on_primary_container"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M15.0,4.0h2.0a1.0,1.0 0 0 1 1.0,1.0v14.0a1.0,1.0 0 0 1 -1.0,1.0h-2.0a1.0,1.0 0 0 1 -1.0,-1.0v-14.0a1.0,1.0 0 0 1 1.0,-1.0z" />
+    <path
+        android:fillColor="@color/widget_on_primary_container"
+        android:strokeColor="@color/widget_on_primary_container"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M7.0,4.0h2.0a1.0,1.0 0 0 1 1.0,1.0v14.0a1.0,1.0 0 0 1 -1.0,1.0h-2.0a1.0,1.0 0 0 1 -1.0,-1.0v-14.0a1.0,1.0 0 0 1 1.0,-1.0z" />
 </vector>

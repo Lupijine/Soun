@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import com.metrolist.music.ui.component.SounActionButton
 import com.metrolist.music.R
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.utils.ReleaseInfo
@@ -134,12 +135,11 @@ fun ChangelogScreen(
                     .padding(16.dp)
             ) {
                 val githubReleasesUrl = stringResource(R.string.github_releases_url)
-                ExtendedFloatingActionButton(
+                SounActionButton(
+                    icon = R.drawable.github,
+                    contentDescription = stringResource(R.string.view_on_github),
+                    label = stringResource(R.string.view_on_github),
                     onClick = { uriHandler.openUri(githubReleasesUrl) },
-                    icon = { Icon(painterResource(R.drawable.github), contentDescription = null, modifier = Modifier.size(24.dp)) },
-                    text = { Text(stringResource(R.string.view_on_github)) },
-                    containerColor = MaterialTheme.colorScheme.onPrimary,
-                    contentColor = MaterialTheme.colorScheme.primary
                 )
             }
         }

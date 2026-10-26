@@ -12,6 +12,7 @@ import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,13 +38,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -103,6 +101,12 @@ import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.AlbumGridItem
 import com.metrolist.music.ui.component.ExpandableText
+import com.metrolist.music.ui.component.SounActionButton
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.metrolist.music.ui.theme.sounGlass
+import com.metrolist.music.ui.theme.sounGlassColors
+import com.metrolist.music.ui.theme.sounPanel
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LinkSegment
@@ -166,6 +170,7 @@ fun ArtistScreen(
     val showMonthlyListeners by rememberPreference(key = ShowMonthlyListenersKey, defaultValue = true)
 
     val lazyListState = rememberLazyListState()
+    val artistBackdrop = rememberLayerBackdrop()
     val snackbarHostState = remember { SnackbarHostState() }
     var showLocal by rememberSaveable { mutableStateOf(false) }
     val density = LocalDensity.current
@@ -198,6 +203,7 @@ fun ArtistScreen(
         modifier = Modifier.fillMaxSize(),
     ) {
         LazyColumn(
+            modifier = Modifier.layerBackdrop(artistBackdrop),
             state = lazyListState,
             contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
         ) {
@@ -361,88 +367,34 @@ fun ArtistScreen(
                                     modifier = Modifier.padding(bottom = 16.dp),
                                 )
 
-                                // Buttons Row
-                                Row(
+                                FlowRow(
                                     modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp),
                                 ) {
-                                    // Subscribe Button
-                                    OutlinedButton(
-                                        onClick = {
-                                            viewModel.toggleChannelSubscription()
-                                        },
-                                        colors =
-                                            ButtonDefaults.outlinedButtonColors(
-                                                containerColor =
-                                                    if (isChannelSubscribed) {
-                                                        MaterialTheme.colorScheme.surface
-                                                    } else {
-                                                        Color.Transparent
-                                                    },
-                                            ),
-                                        shape = RoundedCornerShape(50),
-                                        modifier = Modifier.height(40.dp),
-                                    ) {
-                                        Text(
-                                            text = stringResource(if (isChannelSubscribed) R.string.subscribed else R.string.subscribe),
-                                            fontSize = 14.sp,
-                                            color = if (!isChannelSubscribed) MaterialTheme.colorScheme.error else LocalContentColor.current,
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.weight(1f))
-
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        // Radio Button
-                                        if (!showLocal && !isGuest) {
-                                            artistPage?.artist?.radioEndpoint?.let { radioEndpoint ->
-                                                OutlinedButton(
-                                                    onClick = {
-                                                        playerConnection.playQueue(YouTubeQueue(radioEndpoint))
-                                                    },
-                                                    shape = RoundedCornerShape(50),
-                                                    modifier = Modifier.height(40.dp),
-                                                ) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.radio),
-                                                        contentDescription = null,
-                                                        modifier = Modifier.size(20.dp),
-                                                    )
-                                                    Spacer(modifier = Modifier.width(8.dp))
-                                                    Text(
-                                                        text = stringResource(R.string.radio),
-                                                        fontSize = 14.sp,
-                                                    )
-                                                }
-                                            }
+                                    SounActionButton(
+                                        icon = if (isChannelSubscribed) R.drawable.subscribed else R.drawable.subscribe,
+                                        contentDescription = stringResource(if (isChannelSubscribed) R.string.subscribed else R.string.subscribe),
+                                        label = stringResource(if (isChannelSubscribed) R.string.subscribed else R.string.subscribe),
+                                        prominent = isChannelSubscribed,
+                                        onClick = viewModel::toggleChannelSubscription,
+                                    )
+                                    if (!showLocal && !isGuest) {
+                                        artistPage?.artist?.radioEndpoint?.let { endpoint ->
+                                            SounActionButton(
+                                                icon = R.drawable.radio,
+                                                contentDescription = stringResource(R.string.radio),
+                                                label = stringResource(R.string.radio),
+                                                onClick = { playerConnection.playQueue(YouTubeQueue(endpoint)) },
+                                            )
                                         }
-
-                                        // Shuffle Button
-                                        if (!showLocal && !isGuest) {
-                                            artistPage?.artist?.shuffleEndpoint?.let { shuffleEndpoint ->
-                                                IconButton(
-                                                    onClick = {
-                                                        playerConnection.playQueue(YouTubeQueue(shuffleEndpoint))
-                                                    },
-                                                    modifier =
-                                                        Modifier
-                                                            .size(48.dp)
-                                                            .background(
-                                                                MaterialTheme.colorScheme.primary,
-                                                                RoundedCornerShape(24.dp),
-                                                            ),
-                                                ) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.shuffle),
-                                                        contentDescription = "Shuffle",
-                                                        tint = MaterialTheme.colorScheme.onPrimary,
-                                                        modifier = Modifier.size(20.dp),
-                                                    )
-                                                }
-                                            }
+                                        artistPage?.artist?.shuffleEndpoint?.let { endpoint ->
+                                            SounActionButton(
+                                                icon = R.drawable.shuffle,
+                                                contentDescription = stringResource(R.string.shuffle),
+                                                prominent = true,
+                                                onClick = { playerConnection.playQueue(YouTubeQueue(endpoint)) },
+                                            )
                                         }
                                     }
                                 }
@@ -869,8 +821,10 @@ fun ArtistScreen(
         // Library/Local Toggle FAB
         HideOnScrollFAB(
             visible = showLocalFab,
+            backdrop = artistBackdrop,
             lazyListState = lazyListState,
             icon = if (showLocal) R.drawable.language else R.drawable.library_music,
+            contentDescription = stringResource(if (showLocal) R.string.soun_browse_online else R.string.soun_artist_library),
             onClick = {
                 showLocal = showLocal.not()
                 if (!showLocal && artistPage == null) viewModel.fetchArtistsFromYTM()
@@ -902,7 +856,7 @@ fun ArtistScreen(
                         )
                         // Add padding to position it above the other FAB (56dp height + 16dp padding + 8dp spacing)
                         // If the other FAB is visible.
-                        .padding(bottom = if (showLocalFab) 64.dp else 0.dp),
+                        .padding(bottom = if (showLocalFab) 72.dp else 0.dp),
             ) {
                 val onPlayAllClick: () -> Unit = {
                     if (!isGuest) {
@@ -978,28 +932,15 @@ fun ArtistScreen(
                     }
                 }
 
-                if (showLocalFab) {
-                    androidx.compose.material3.SmallFloatingActionButton(
-                        modifier = Modifier.padding(16.dp).offset(x = (-4).dp), // Align center with standard FAB (56dp vs 48dp)
-                        onClick = onPlayAllClick,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.play),
-                            contentDescription = "Play All",
-                        )
-                    }
-                } else {
-                    androidx.compose.material3.FloatingActionButton(
-                        modifier = Modifier.padding(16.dp),
-                        onClick = onPlayAllClick,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.play),
-                            contentDescription = "Play All",
-                            modifier = Modifier.size(32.dp),
-                        )
-                    }
-                }
+                SounActionButton(
+                    icon = R.drawable.play,
+                    contentDescription = stringResource(R.string.play_all),
+                    label = if (showLocalFab) null else stringResource(R.string.play_all),
+                    onClick = onPlayAllClick,
+                    prominent = true,
+                    backdrop = artistBackdrop,
+                    modifier = Modifier.padding(16.dp).height(60.dp),
+                )
             }
         }
 
@@ -1013,15 +954,17 @@ fun ArtistScreen(
     }
 
     TopAppBar(
+        modifier = Modifier.then(if (transparentAppBar) Modifier else Modifier.sounPanel(RoundedCornerShape(0.dp))),
         title = { if (!transparentAppBar) Text(displayArtistName.orEmpty()) },
         navigationIcon = {
             IconButton(
                 onClick = navController::navigateUp,
                 onLongClick = navController::backToMain,
+                modifier = Modifier.sounGlass(RoundedCornerShape(18.dp), sounGlassColors(), backdrop = artistBackdrop, elevation = 4f, fullPanel = true),
             ) {
                 Icon(
                     painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.back_button_desc),
                 )
             }
         },
@@ -1035,10 +978,11 @@ fun ArtistScreen(
                         Toast.makeText(context, R.string.link_copied, Toast.LENGTH_SHORT).show()
                     }
                 },
+                modifier = Modifier.sounGlass(RoundedCornerShape(18.dp), sounGlassColors(), backdrop = artistBackdrop, elevation = 4f, fullPanel = true),
             ) {
                 Icon(
                     painterResource(R.drawable.link),
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.copy_link),
                 )
             }
         },
@@ -1046,7 +990,7 @@ fun ArtistScreen(
             if (transparentAppBar) {
                 TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             } else {
-                TopAppBarDefaults.topAppBarColors()
+                TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent)
             },
     )
 }

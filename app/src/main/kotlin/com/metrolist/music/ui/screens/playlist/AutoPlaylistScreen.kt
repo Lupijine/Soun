@@ -40,7 +40,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -98,6 +97,7 @@ import com.metrolist.innertube.YouTube
 import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
+import com.metrolist.music.ui.component.SounActionButton
 import com.metrolist.music.R
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.SongSortDescendingKey
@@ -704,7 +704,11 @@ fun AutoPlaylistScreen(
                                 .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
                         ).padding(16.dp),
             ) {
-                FloatingActionButton(
+                SounActionButton(
+                    icon = R.drawable.upload,
+                    contentDescription = stringResource(R.string.upload_songs),
+                    label = stringResource(R.string.upload_songs),
+                    prominent = true,
                     onClick = {
                         filePickerLauncher.launch(
                             arrayOf(
@@ -717,12 +721,7 @@ fun AutoPlaylistScreen(
                             ),
                         )
                     },
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.upload),
-                        contentDescription = stringResource(R.string.upload_songs),
-                    )
-                }
+                )
             }
         }
 

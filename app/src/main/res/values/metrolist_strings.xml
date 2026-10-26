@@ -1068,4 +1068,6 @@
     <string name="soun_add_playlist_photo">Add photo</string>
     <string name="soun_change_playlist_photo">Change photo</string>
     <string name="soun_cover_update_failed">Could not update the playlist photo. Please try again.</string>
+    <string name="soun_browse_online">Browse online</string>
+    <string name="soun_artist_library">Artist in your library</string>
 </resources>
