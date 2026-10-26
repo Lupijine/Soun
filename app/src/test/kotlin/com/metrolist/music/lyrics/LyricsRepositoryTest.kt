@@ -77,6 +77,14 @@ class LyricsRepositoryTest {
     }
 
     @Test
+    fun `rechecking legacy BetterLyrics never deletes the offline copy`() = runBlocking {
+        val saved = LyricsEntity(metadata.id, "[00:01.00]Offline copy", "BetterLyrics")
+        database.upsert(saved)
+        assertEquals(LyricsLoadStatus.FOUND, repository.load(metadata))
+        assertEquals(saved, database.lyrics(metadata.id).first())
+    }
+
+    @Test
     fun `legacy not-found entries remain retryable`() = runBlocking {
         database.upsert(LyricsEntity(metadata.id, LyricsEntity.LYRICS_NOT_FOUND))
         assertEquals(LyricsLoadStatus.OFFLINE, repository.load(metadata))

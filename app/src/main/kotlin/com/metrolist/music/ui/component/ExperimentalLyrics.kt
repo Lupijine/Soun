@@ -42,6 +42,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import com.metrolist.music.lyrics.lyricsForSong
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -189,21 +190,14 @@ fun ExperimentalLyrics(
     val currentLyricsEntity by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
     var lastValidLyricsEntity by remember(mediaMetadata?.id) { mutableStateOf<com.metrolist.music.db.entities.LyricsEntity?>(null) }
     
-    LaunchedEffect(currentLyricsEntity) {
-        if (currentLyricsEntity != null) {
+    LaunchedEffect(mediaMetadata?.id, currentLyricsEntity) {
+        if (currentLyricsEntity?.id == mediaMetadata?.id && currentLyricsEntity != null) {
             lastValidLyricsEntity = currentLyricsEntity
         }
     }
     
-    val lyricsEntity = remember(currentLyricsEntity, translationStatus) {
-        if (currentLyricsEntity != null) {
-            currentLyricsEntity
-        } else if (translationStatus is LyricsTranslationHelper.TranslationStatus.Translating || translationStatus is LyricsTranslationHelper.TranslationStatus.Success) {
-            lastValidLyricsEntity
-        } else {
-            null
-        }
-    }
+    val lyricsEntity = lyricsForSong(mediaMetadata?.id, currentLyricsEntity, lastValidLyricsEntity,
+        translationStatus is LyricsTranslationHelper.TranslationStatus.Translating || translationStatus is LyricsTranslationHelper.TranslationStatus.Success)
     val currentSong by playerConnection.currentSong.collectAsStateWithLifecycle(initialValue = null)
     val lyrics = remember(lyricsEntity) { lyricsEntity?.lyrics?.trim() }
 
@@ -223,11 +217,14 @@ fun ExperimentalLyrics(
         }.filter { it.second }.map { it.first }
     }
 
-    val lines by lyricsViewModel.lines.collectAsStateWithLifecycle()
-    val mergedLyricsList by lyricsViewModel.mergedLyricsList.collectAsStateWithLifecycle()
+    val parsedMediaId by lyricsViewModel.mediaId.collectAsStateWithLifecycle()
+    val parsedLines by lyricsViewModel.lines.collectAsStateWithLifecycle()
+    val parsedMergedLyricsList by lyricsViewModel.mergedLyricsList.collectAsStateWithLifecycle()
+    val lines = if (parsedMediaId == mediaMetadata?.id) parsedLines else emptyList()
+    val mergedLyricsList = if (parsedMediaId == mediaMetadata?.id) parsedMergedLyricsList else emptyList()
 
-    LaunchedEffect(lyrics, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator) {
-        lyricsViewModel.processLyrics(lyrics, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator)
+    LaunchedEffect(mediaMetadata?.id, lyrics, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator) {
+        lyricsViewModel.processLyrics(lyrics, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator, mediaMetadata?.id)
     }
 
     val isSynced = remember(lyrics) { lyricsTextLooksSynced(lyrics) }

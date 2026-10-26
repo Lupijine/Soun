@@ -1,6 +1,7 @@
 package com.metrolist.music.lyrics
 
 import android.app.Application
+import com.metrolist.music.db.entities.LyricsEntity
 import android.content.Context
 import android.net.ConnectivityManager
 import android.util.LruCache
@@ -39,6 +40,18 @@ class LyricsHelperCacheTest {
     }
 
     @After fun close() { observer.unregister() }
+
+    @Test fun `verification persists across helpers but is invalidated by changed lyrics or metadata`() {
+        val entry = LyricsEntity("id", "Verified lyrics", "LrcLib")
+        helper.markStoredVerified(metadata, entry)
+        assertTrue(helper.isStoredVerified(metadata, entry))
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val reopened = LyricsHelper(context, observer)
+        assertTrue(reopened.isStoredVerified(metadata, entry))
+        assertFalse(reopened.isStoredVerified(metadata.copy(title = "Everywhere"), entry))
+        assertFalse(reopened.isStoredVerified(metadata, entry.copy(lyrics = "Different lyrics")))
+        assertFalse(reopened.isStoredVerified(metadata, entry.copy(provider = "BetterLyrics")))
+    }
 
     @Test fun `refetch bypasses cached lyrics and invalidates cached search results`() = runBlocking {
         assertEquals(LyricsLoadStatus.FOUND, helper.getLyrics(metadata).status)

@@ -52,8 +52,9 @@ fun Lyrics(
         }
     }
 
-    if (showLyrics && !usableLyrics(saved?.takeIf { it.id == metadata?.id }?.lyrics) && status != LyricsLoadStatus.FOUND) {
-        Box(modifier) { LyricsLoadPanel(status) { retry += 1 } }
+    if (showLyrics && (status != LyricsLoadStatus.FOUND || !usableLyrics(saved?.takeIf { it.id == metadata?.id }?.lyrics))) {
+        val displayedStatus = if (status == LyricsLoadStatus.FOUND) LyricsLoadStatus.NOT_FOUND else status
+        Box(modifier) { LyricsLoadPanel(displayedStatus) { retry += 1 } }
         return
     }
 

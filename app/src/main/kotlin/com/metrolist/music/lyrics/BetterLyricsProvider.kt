@@ -6,6 +6,12 @@
 package com.metrolist.music.lyrics
 
 import android.content.Context
+import com.metrolist.lrclib.LrcLib
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import com.metrolist.music.betterlyrics.BetterLyrics
 import com.metrolist.music.constants.EnableBetterLyricsKey
 import com.metrolist.music.utils.dataStore
@@ -23,5 +29,21 @@ object BetterLyricsProvider : LyricsProvider {
         artist: String,
         duration: Int,
         album: String?,
-    ): Result<String> = BetterLyrics.getLyrics(title, artist, duration, album)
+    ): Result<String> = runCatching {
+        coroutineScope {
+            val reference = async {
+                if (LrcLibLyricsProvider.isEnabled(context)) {
+                    val result = LrcLib.getLyrics(title, artist, duration, album)
+                    (result.exceptionOrNull() as? CancellationException)?.let { throw it }
+                    result.getOrNull()?.let { return@async it }
+                }
+                YouTubeLyricsProvider.getLyrics(context, id, title, artist, duration, album).getOrThrow()
+            }
+            val candidate = async { BetterLyrics.getLyrics(title, artist, duration, album).getOrThrow() }
+            val lyrics = candidate.await()
+            val verifiedLyrics = reference.await()
+            check(withContext(Dispatchers.Default) { sameLyricsBody(lyrics, verifiedLyrics) }) { "Lyrics identity could not be verified" }
+            lyrics
+        }
+    }
 }

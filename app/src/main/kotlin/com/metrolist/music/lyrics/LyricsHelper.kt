@@ -7,6 +7,9 @@ package com.metrolist.music.lyrics
 
 import android.content.Context
 import android.util.LruCache
+import android.util.Base64
+import com.metrolist.music.db.entities.LyricsEntity
+import java.security.MessageDigest
 import com.metrolist.music.constants.LyricsProviderOrderKey
 import com.metrolist.music.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import com.metrolist.music.models.MediaMetadata
@@ -43,6 +46,21 @@ constructor(
             }.distinctUntilChanged()
 
     private val cache = LruCache<LyricsRequest, List<LyricsResult>>(MAX_CACHE_SIZE)
+
+    private val verification by lazy { context.getSharedPreferences("lyrics_identity_v2", Context.MODE_PRIVATE) }
+
+    private fun fingerprint(metadata: MediaMetadata, entry: LyricsEntity): String {
+        val identity = listOf(metadata.id, metadata.title, metadata.artists.joinToString { it.name },
+            metadata.duration.toString(), metadata.album?.title.orEmpty(), entry.provider, entry.lyrics).joinToString("\u0000")
+        return Base64.encodeToString(MessageDigest.getInstance("SHA-256").digest(identity.toByteArray()), Base64.NO_WRAP)
+    }
+
+    internal fun isStoredVerified(metadata: MediaMetadata, entry: LyricsEntity): Boolean =
+        verification.getString(metadata.id, null) == fingerprint(metadata, entry)
+
+    internal fun markStoredVerified(metadata: MediaMetadata, entry: LyricsEntity) {
+        verification.edit().putString(metadata.id, fingerprint(metadata, entry)).apply()
+    }
 
     fun invalidate(mediaId: String) {
         cache.snapshot().keys.filter { it.mediaId == mediaId }.forEach(cache::remove)

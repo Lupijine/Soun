@@ -26,6 +26,9 @@ class LyricsViewModel @Inject constructor() : ViewModel() {
         private val timestampRegex = Regex("\\[\\d{1,2}:\\d{2}")
     }
 
+    private val _mediaId = MutableStateFlow<String?>(null)
+    val mediaId: StateFlow<String?> = _mediaId.asStateFlow()
+
     private var processJob: kotlinx.coroutines.Job? = null
 
     private val _lines = MutableStateFlow<List<LyricsEntry>>(emptyList())
@@ -38,9 +41,15 @@ class LyricsViewModel @Inject constructor() : ViewModel() {
         lyrics: String?,
         enabledLanguages: List<String>,
         romanizeCyrillicByLine: Boolean,
-        showIntervalIndicator: Boolean
+        showIntervalIndicator: Boolean,
+        mediaId: String? = null,
     ) {
         processJob?.cancel()
+        if (_mediaId.value != mediaId) {
+            _lines.value = emptyList()
+            _mergedLyricsList.value = emptyList()
+            _mediaId.value = null
+        }
         processJob = viewModelScope.launch {
             val processedLines = withContext(Dispatchers.Default) {
                 if (lyrics == null || lyrics == LYRICS_NOT_FOUND) {
@@ -65,6 +74,7 @@ class LyricsViewModel @Inject constructor() : ViewModel() {
             
             _lines.value = processedLines
             updateMergedList(processedLines, showIntervalIndicator)
+            _mediaId.value = mediaId
 
             // Romanize in the background after the UI has been updated
             if (lyrics != null && lyrics != LYRICS_NOT_FOUND && enabledLanguages.isNotEmpty()) {

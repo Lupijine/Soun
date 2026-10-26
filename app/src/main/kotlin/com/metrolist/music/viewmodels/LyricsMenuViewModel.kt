@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.metrolist.music.lyrics.usableLyrics
+import com.metrolist.music.lyrics.LyricsLoadStatus
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
@@ -95,7 +96,7 @@ constructor(
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             val result = lyricsHelper.getLyrics(mediaMetadata, forceRefresh = true)
-            if (!usableLyrics(result.lyrics)) return@launch
+            if (!usableLyrics(result.lyrics) && result.status != LyricsLoadStatus.NOT_FOUND) return@launch
             database.withTransaction {
                 // A fresh response must not overwrite edits made while the request was running.
                 if (database.lyrics(mediaMetadata.id).first() == lyricsEntity) {

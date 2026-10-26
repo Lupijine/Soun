@@ -17,18 +17,38 @@ internal fun usableLyrics(text: String?): Boolean =
 
 @Singleton
 class LyricsRepository @Inject constructor(private val database: MusicDatabase, private val helper: LyricsHelper) {
+
     suspend fun load(metadata: MediaMetadata): LyricsLoadStatus {
         val previous = database.lyrics(metadata.id).first()
-        if (usableLyrics(previous?.lyrics)) return LyricsLoadStatus.FOUND
+        val automaticSource = previous != null && LyricsProviderRegistry.providerNames.any { name ->
+            name.equals(previous.provider, ignoreCase = true) ||
+                LyricsProviderRegistry.getProviderByName(name)?.name.equals(previous.provider, ignoreCase = true)
+        }
+        val recheck = usableLyrics(previous?.lyrics) && previous != null && automaticSource &&
+            previous.translatedLyrics.isBlank() && !helper.isStoredVerified(metadata, previous)
+        if (usableLyrics(previous?.lyrics) && !recheck) return LyricsLoadStatus.FOUND
         val result = try {
-            helper.getLyrics(metadata)
+            helper.getLyrics(metadata, forceRefresh = recheck)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
             return LyricsLoadStatus.ERROR
         }
-        if (!usableLyrics(result.lyrics)) return result.status
-        retain(metadata.id, result)
+        if (!usableLyrics(result.lyrics)) {
+            // Keep downloaded lyrics available offline; an online mismatch must not be displayed.
+            return if (recheck && result.status == LyricsLoadStatus.OFFLINE) LyricsLoadStatus.FOUND else result.status
+        }
+        if (recheck) {
+            database.withTransaction {
+                if (database.lyrics(metadata.id).first() == previous) {
+                    database.upsert(LyricsEntity(metadata.id, result.lyrics, result.provider))
+                }
+            }
+        } else {
+            retain(metadata.id, result)
+        }
+        val retained = database.lyrics(metadata.id).first()
+        if (retained?.lyrics == result.lyrics && retained.provider == result.provider) helper.markStoredVerified(metadata, retained)
         return LyricsLoadStatus.FOUND
     }
 

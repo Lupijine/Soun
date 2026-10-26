@@ -39,6 +39,7 @@ import com.metrolist.music.utils.get
 import com.metrolist.music.utils.reportException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -170,7 +171,7 @@ class PlayerConnection(
         }.stateIn(scope, SharingStarted.Lazily, null)
     val currentLyrics =
         mediaMetadata.flatMapLatest { mediaMetadata ->
-            database.lyrics(mediaMetadata?.id)
+            database.lyrics(mediaMetadata?.id).onStart { emit(null) }
         }.stateIn(scope, SharingStarted.Lazily, null)
     val currentFormat =
         mediaMetadata.flatMapLatest { mediaMetadata ->
