@@ -44,6 +44,7 @@ class DownloadStatusStripTest {
     @Test
     fun `failed downloads stay compact until expanded and retry still targets the right song`() {
         val retries = mutableListOf<String?>()
+        val cancellations = mutableListOf<String>()
         compose.runOnUiThread {
             host = Robolectric.buildActivity(ComponentActivity::class.java).setup()
             host!!.get().setContent {
@@ -52,7 +53,7 @@ class DownloadStatusStripTest {
                         Box(Modifier.testTag("strip")) {
                             DownloadStatusStrip(
                                 DownloadPanelState(DownloadOverview(29, 0, 0, listOf(FailedDownload("song-id", "Space Song")), null), false, 447_000_000),
-                                onStorageClick = {}, onPauseChange = {}, onRetry = { retries += it },
+                                onStorageClick = {}, onPauseChange = {}, onRetry = { retries += it }, onCancel = { cancellations += it },
                             )
                         }
                     }
@@ -67,12 +68,15 @@ class DownloadStatusStripTest {
         compose.onNodeWithText("Space Song").assertIsDisplayed()
         compose.onNodeWithText("Retry", ignoreCase = true).performClick()
         compose.runOnIdle { assertEquals(listOf(null, "song-id"), retries) }
+        compose.onNodeWithContentDescription("Cancel download").assertIsDisplayed().performClick()
+        compose.runOnIdle { assertEquals(listOf("song-id"), cancellations) }
     }
     @Test
     fun `active and failed downloads fit a narrow screen and pause and resume remain usable`() {
         val state = mutableStateOf(DownloadPanelState(DownloadOverview(29, 210, 0,
             List(7) { FailedDownload("id$it", "Song $it") }, 0.4f), false, 447_000_000))
         val commands = mutableListOf<Boolean>()
+        val cancelled = mutableListOf<String>()
         var storageClicks = 0
         compose.runOnUiThread {
             host = Robolectric.buildActivity(ComponentActivity::class.java).setup()
@@ -82,7 +86,12 @@ class DownloadStatusStripTest {
                         Column(Modifier.fillMaxSize()) {
                             Box(Modifier.width(320.dp).testTag("strip")) {
                                 DownloadStatusStrip(state.value, { storageClicks++ },
-                                    { commands += it; state.value = state.value.copy(paused = it) }, {})
+                                    { commands += it; state.value = state.value.copy(paused = it) }, {}, { id ->
+                                        cancelled += id
+                                        state.value = state.value.copy(overview = state.value.overview.copy(
+                                            failed = state.value.overview.failed.filterNot { it.id == id },
+                                        ))
+                                    })
                             }
                         }
                     }
@@ -95,6 +104,10 @@ class DownloadStatusStripTest {
         compose.onNodeWithContentDescription("Resume downloads").assertIsDisplayed().performClick()
         assertTrue(compose.onNodeWithTag("strip").getUnclippedBoundsInRoot().height <= 80.dp)
         compose.runOnIdle { assertEquals(listOf(true, false), commands); assertEquals(1, storageClicks) }
+        compose.onNodeWithContentDescription("Show download details").performClick()
+        compose.onAllNodesWithContentDescription("Cancel download").onFirst().assertIsDisplayed().performClick()
+        compose.onNodeWithText("Song 0").assertDoesNotExist()
+        compose.runOnIdle { assertEquals(listOf("id0"), cancelled) }
     }
 
 }

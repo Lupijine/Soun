@@ -334,6 +334,12 @@ constructor(
         }
     }
 
+    fun cancelDownload(id: String) {
+        val download = downloads.value[id] ?: return
+        if (download.state == Download.STATE_COMPLETED || download.state == Download.STATE_REMOVING) return
+        DownloadService.sendRemoveDownload(context, ExoDownloadService::class.java, id, false)
+    }
+
     fun setDownloadsPaused(paused: Boolean) {
         if (paused) {
             DownloadService.sendPauseDownloads(context, ExoDownloadService::class.java, false)

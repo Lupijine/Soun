@@ -1074,4 +1074,5 @@
     <string name="soun_retry_count">Retry %1$d</string>
     <string name="soun_show_download_details">Show download details</string>
     <string name="soun_hide_download_details">Hide download details</string>
+    <string name="soun_cancel_download">Cancel download</string>
 </resources>

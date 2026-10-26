@@ -51,6 +51,9 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.width
+import com.metrolist.music.ui.theme.sounGlass
+import com.metrolist.music.ui.theme.sounGlassColors
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -1113,20 +1116,28 @@ class MainActivity : FragmentActivity() {
                                                     expanded = showPageMenu,
                                                     onDismissRequest = { showPageMenu = false },
                                                     shape = RoundedCornerShape(24.dp),
-                                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.9f),
+                                                    containerColor = Color.Transparent,
+                                                    tonalElevation = 0.dp,
+                                                    shadowElevation = 0.dp,
                                                 ) {
-                                                    DropdownMenuItem(text = { Text(stringResource(R.string.account)) }, onClick = {
-                                                        showPageMenu = false; showAccountDialog = true
-                                                    })
-                                                    if (showHistoryButton) DropdownMenuItem(text = { Text(stringResource(R.string.history)) }, onClick = {
-                                                        showPageMenu = false; navController.navigate("history")
-                                                    })
-                                                    DropdownMenuItem(text = { Text(stringResource(R.string.stats)) }, onClick = {
-                                                        showPageMenu = false; navController.navigate("stats")
-                                                    })
-                                                    DropdownMenuItem(text = { Text(stringResource(R.string.together)) }, onClick = {
-                                                        showPageMenu = false; navController.navigate("listen_together_from_topbar")
-                                                    })
+                                                    Column(Modifier.width(240.dp).sounGlass(
+                                                        RoundedCornerShape(24.dp), sounGlassColors().copy(
+                                                            surfaceTint = MaterialTheme.colorScheme.surface.copy(alpha = 0.36f),
+                                                        ), backdrop = glassBackdrop, fullPanel = true, diffusion = 12.dp,
+                                                    ).padding(vertical = 8.dp)) {
+                                                        DropdownMenuItem(modifier = Modifier.height(56.dp), leadingIcon = { Icon(painterResource(R.drawable.account), null) }, text = { Text(stringResource(R.string.account)) }, onClick = {
+                                                            showPageMenu = false; showAccountDialog = true
+                                                        })
+                                                        if (showHistoryButton) DropdownMenuItem(modifier = Modifier.height(56.dp), leadingIcon = { Icon(painterResource(R.drawable.history), null) }, text = { Text(stringResource(R.string.history)) }, onClick = {
+                                                            showPageMenu = false; navController.navigate("history")
+                                                        })
+                                                        DropdownMenuItem(modifier = Modifier.height(56.dp), leadingIcon = { Icon(painterResource(R.drawable.trending_up), null) }, text = { Text(stringResource(R.string.stats)) }, onClick = {
+                                                            showPageMenu = false; navController.navigate("stats")
+                                                        })
+                                                        DropdownMenuItem(modifier = Modifier.height(56.dp), leadingIcon = { Icon(painterResource(R.drawable.group), null) }, text = { Text(stringResource(R.string.together)) }, onClick = {
+                                                            showPageMenu = false; navController.navigate("listen_together_from_topbar")
+                                                        })
+                                                    }
                                                 }
                                             }
                                         },

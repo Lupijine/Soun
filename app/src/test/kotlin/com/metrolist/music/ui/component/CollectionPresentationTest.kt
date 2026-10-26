@@ -104,7 +104,7 @@ class CollectionPresentationTest {
                                 null, true, { plays++ }, { shuffles++ }, {})
                         }
                         if (downloaded) item { DownloadStatusStrip(DownloadPanelState(DownloadOverview(29, 0, 0,
-                            listOf(FailedDownload("song-id", "Space Song")), null), false, 447_000_000), {}, {}, {}) }
+                            listOf(FailedDownload("song-id", "Space Song")), null), false, 447_000_000), {}, {}, {}, {}) }
                         item { Text("Date added  ↓", Modifier.padding(horizontal = 24.dp, vertical = 16.dp), style = MaterialTheme.typography.labelLarge) }
                         items(6) { index ->
                             ListItem(title = listOf("Space Song", "Серые глаза", "Moon, Moon", "The Line", "Beautiful Life", "Blue Sands")[index],

@@ -41,7 +41,8 @@ fun DownloadOverviewCard(onStorageClick: () -> Unit) {
     }
     DownloadStatusStrip(state, onStorageClick,
         onPauseChange = util::setDownloadsPaused,
-        onRetry = { util.retryFailedDownloads(it) })
+        onRetry = { util.retryFailedDownloads(it) },
+        onCancel = util::cancelDownload)
 }
 
 @Composable
@@ -50,6 +51,7 @@ internal fun DownloadStatusStrip(
     onStorageClick: () -> Unit,
     onPauseChange: (Boolean) -> Unit,
     onRetry: (String?) -> Unit,
+    onCancel: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val overview = state.overview
@@ -105,6 +107,9 @@ internal fun DownloadStatusStrip(
                     Text(failed.title, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                     TextButton(onClick = { onRetry(failed.id) }) { Text(stringResource(R.string.retry)) }
+                    IconButton(onClick = { onCancel(failed.id) }) {
+                        Icon(painterResource(R.drawable.close), stringResource(R.string.soun_cancel_download), Modifier.size(20.dp))
+                    }
                 }
             }
             if (overview.failed.size > 5) Text(stringResource(R.string.soun_more_failed_downloads, overview.failed.size - 5),
