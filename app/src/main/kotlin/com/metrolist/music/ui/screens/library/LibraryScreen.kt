@@ -49,6 +49,8 @@ fun LibraryScreen(viewModel: LibraryMixViewModel = hiltViewModel()) {
     var filter by rememberEnumPreference(ChipSortTypeKey, LibraryFilter.PLAYLISTS)
     var onDevice by rememberSaveable { mutableStateOf(false) }
     var createPlaylist by rememberSaveable { mutableStateOf(false) }
+    val likedColorSource by viewModel.likedColorSource.collectAsStateWithLifecycle()
+    val downloadedColorSource by viewModel.downloadedColorSource.collectAsStateWithLifecycle()
     val songs by viewModel.songs.collectAsStateWithLifecycle()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val albums by viewModel.albums.collectAsStateWithLifecycle()
@@ -83,9 +85,9 @@ fun LibraryScreen(viewModel: LibraryMixViewModel = hiltViewModel()) {
             Column(Modifier.padding(horizontal = 20.dp, vertical = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     SounShortcut(stringResource(R.string.liked_songs), pluralStringResource(R.plurals.n_song, liked, liked),
-                        R.drawable.favorite, Modifier.weight(1f), prominent = true, artwork = R.drawable.soun_liked_chrome) { nav.navigate("auto_playlist/liked") }
+                        R.drawable.favorite, Modifier.weight(1f), prominent = true, artwork = R.drawable.soun_liked_chrome, colorSource = likedColorSource) { nav.navigate("auto_playlist/liked") }
                     SounShortcut(stringResource(R.string.soun_downloads), pluralStringResource(R.plurals.n_song, downloaded.size, downloaded.size),
-                        R.drawable.download, Modifier.weight(1f), artwork = R.drawable.soun_downloads_chrome) { nav.navigate("auto_playlist/downloaded") }
+                        R.drawable.download, Modifier.weight(1f), artwork = R.drawable.soun_downloads_chrome, colorSource = downloadedColorSource) { nav.navigate("auto_playlist/downloaded") }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     SounShortcut(stringResource(R.string.soun_on_device), pluralStringResource(R.plurals.n_song, localSongs.size, localSongs.size),

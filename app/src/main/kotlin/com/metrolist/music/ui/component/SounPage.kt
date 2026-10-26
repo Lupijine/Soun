@@ -43,6 +43,7 @@ fun SounShortcut(
     modifier: Modifier = Modifier,
     prominent: Boolean = false,
     @DrawableRes artwork: Int? = null,
+    colorSource: String? = null,
     onClick: () -> Unit,
 ) {
     val shape = RoundedCornerShape(22.dp)
@@ -50,7 +51,7 @@ fun SounShortcut(
         Column(modifier.heightIn(min = 156.dp).sounPanel(shape).clickable(onClick = onClick).padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                SounPlaylistArtwork(artwork, Modifier.size(56.dp), compact = true)
+                SounPlaylistArtwork(artwork, Modifier.size(56.dp), compact = true, colorSource = colorSource)
                 Spacer(Modifier.weight(1f))
                 Icon(painterResource(R.drawable.arrow_forward), null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }

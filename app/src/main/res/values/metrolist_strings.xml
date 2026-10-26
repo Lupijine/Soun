@@ -1065,4 +1065,7 @@
     <string name="soun_download_failed">Failed</string>
     <string name="soun_storage_used">Storage used</string>
     <string name="soun_manage_storage">Manage</string>
+    <string name="soun_add_playlist_photo">Add photo</string>
+    <string name="soun_change_playlist_photo">Change photo</string>
+    <string name="soun_cover_update_failed">Could not update the playlist photo. Please try again.</string>
 </resources>

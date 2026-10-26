@@ -155,6 +155,7 @@ fun AutoPlaylistScreen(
             else -> stringResource(R.string.offline)
         }
 
+    val collectionColorSource by viewModel.colorSource.collectAsStateWithLifecycle()
     val songs by viewModel.likedSongs.collectAsStateWithLifecycle(null)
     val mutableSongs =
         remember {
@@ -519,6 +520,7 @@ fun AutoPlaylistScreen(
                     item(key = "playlist_header") {
                         AutoPlaylistHeader(
                             name = playlist,
+                            colorSource = collectionColorSource,
                             artwork = when (playlistId) {
                                 "liked" -> R.drawable.soun_liked_chrome
                                 "downloaded" -> R.drawable.soun_downloads_chrome
@@ -863,6 +865,7 @@ private fun AutoPlaylistHeader(
     menuState: com.metrolist.music.ui.component.MenuState,
     modifier: Modifier = Modifier,
     @androidx.annotation.DrawableRes artwork: Int? = null,
+    colorSource: String? = null,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
@@ -876,7 +879,7 @@ private fun AutoPlaylistHeader(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         if (artwork != null) {
-            SounPlaylistArtwork(artwork, Modifier.padding(top = 12.dp, bottom = 24.dp).size(200.dp))
+            SounPlaylistArtwork(artwork, Modifier.padding(top = 12.dp, bottom = 24.dp).size(200.dp), colorSource = colorSource)
         } else {
             // Playlist Thumbnail - Large centered with shadow
             Box(

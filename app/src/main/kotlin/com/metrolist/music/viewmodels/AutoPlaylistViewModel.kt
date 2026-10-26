@@ -45,6 +45,12 @@ constructor(
 ) : ViewModel() {
     val playlist = savedStateHandle.get<String>("playlist")!!
 
+    val colorSource = when (playlist) {
+        "liked" -> database.likedPlaylistColorSource()
+        "downloaded" -> database.downloadedPlaylistColorSource()
+        else -> kotlinx.coroutines.flow.flowOf<String?>(null)
+    }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), null)
+
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing = _isRefreshing.asStateFlow()
 

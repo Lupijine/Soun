@@ -188,6 +188,15 @@ interface DatabaseDao {
         SongSortType.PLAY_TIME -> songsByPlayTimeAsc()
     }.map { it.reversed(descending) }
 
+    @Query("SELECT thumbnailUrl FROM song WHERE liked = 1 ORDER BY likedDate IS NULL, likedDate, rowId LIMIT 1")
+    fun likedPlaylistColorSource(): Flow<String?>
+
+    @Query("SELECT thumbnailUrl FROM song WHERE isDownloaded = 1 AND (isEpisode = 0 OR isEpisode IS NULL) ORDER BY dateDownload IS NULL, dateDownload, rowId LIMIT 1")
+    fun downloadedPlaylistColorSource(): Flow<String?>
+
+    @Query("SELECT song.thumbnailUrl FROM playlist_song_map AS mapping JOIN song ON song.id = mapping.songId WHERE mapping.playlistId = :playlistId ORDER BY mapping.id LIMIT 1")
+    fun playlistColorSource(playlistId: String): Flow<String?>
+
     @Transaction
     @Query("SELECT * FROM song WHERE liked ORDER BY rowId")
     fun likedSongsByRowIdAsc(): Flow<List<Song>>

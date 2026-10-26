@@ -342,6 +342,11 @@ constructor(
     database: MusicDatabase,
     private val syncUtils: SyncUtils,
 ) : ViewModel() {
+    val likedColorSource = database.likedPlaylistColorSource()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    val downloadedColorSource = database.downloadedPlaylistColorSource()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing = _isRefreshing.asStateFlow()
 

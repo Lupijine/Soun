@@ -60,6 +60,7 @@ fun LocalPlaylistMenu(
     onDownload: () -> Unit,
     onQueue: () -> Unit,
     onDismiss: () -> Unit,
+    onEditCover: (() -> Unit)? = null,
 ) {
     val listenTogetherManager = LocalListenTogetherManager.current
     val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
@@ -126,6 +127,14 @@ fun LocalPlaylistMenu(
 
     val menuItems =
         buildList {
+            if (playlist.playlist.isEditable && onEditCover != null) add(
+                Material3MenuItemData(
+                    title = { Text(stringResource(R.string.edit_playlist_cover)) },
+                    icon = { Icon(painterResource(R.drawable.insert_photo), contentDescription = null) },
+                    onClick = { onDismiss(); onEditCover() },
+                ),
+            )
+
             add(
                 Material3MenuItemData(
                     title = { Text(stringResource(R.string.edit)) },
