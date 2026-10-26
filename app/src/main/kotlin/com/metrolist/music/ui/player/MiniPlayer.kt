@@ -387,7 +387,9 @@ private fun NewMiniPlayer(
                 },
     ) {
         val interactionSource = remember { MutableInteractionSource() }
-        val glassColors = sounGlassColors(strong = true)
+        val glassColors = sounGlassColors(strong = true).copy(
+            surfaceTint = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.62f),
+        )
         Box(
             modifier =
                 Modifier
@@ -397,6 +399,7 @@ private fun NewMiniPlayer(
                         RoundedCornerShape(32.dp),
                         glassColors,
                         backdropEnabled = miniPlayerBackground == MiniPlayerBackgroundStyle.DEFAULT,
+                        fullPanel = true,
                     )
                     .then(
                         if (miniPlayerBackground == MiniPlayerBackgroundStyle.DEFAULT) {
