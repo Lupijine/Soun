@@ -30,7 +30,7 @@ class OnlinePlaylistRestoreTest {
             val header = PlaylistItem("cached-list", "CHEYLL VIBES", null, null, null, null, null, null)
             val song = SongItem("cached-song", "Song", emptyList(), thumbnail = "")
             val cache = PlaylistPageCache()
-            cache.put(PlaylistCacheKey("cached-list", YouTube.cookie, YouTube.locale, false),
+            cache.put(PlaylistCacheKey("cached-list", YouTube.cookie, YouTube.locale, false, YouTube.authUser, YouTube.dataSyncId),
                 CachedPlaylistPage(PlaylistPage(header, listOf(song), null, null), SystemClock.elapsedRealtime()))
             val model = OnlinePlaylistViewModel(context, SavedStateHandle(mapOf("playlistId" to "cached-list")), MusicDatabase(room), cache)
             assertFalse(model.isLoading.value)

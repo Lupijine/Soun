@@ -23,6 +23,8 @@ class PlaylistPageCacheTest {
         val cache = PlaylistPageCache()
         cache.put(key, CachedPlaylistPage(page(), 1000))
         assertNull(cache.get(key.copy(account = "account-b"), 2000))
+        assertNull(cache.get(key.copy(authUser = "other-profile"), 2000))
+        assertNull(cache.get(key.copy(dataSyncId = "other-channel"), 2000))
         assertNull(cache.get(key.copy(locale = YouTubeLocale("FR", "fr")), 2000))
         assertNull(cache.get(key.copy(hideVideos = true), 2000))
     }

@@ -6,7 +6,14 @@ import com.metrolist.innertube.pages.PlaylistPage
 import javax.inject.Inject
 import javax.inject.Singleton
 
-internal data class PlaylistCacheKey(val id: String, val account: String?, val locale: YouTubeLocale, val hideVideos: Boolean)
+internal data class PlaylistCacheKey(
+    val id: String,
+    val account: String?,
+    val locale: YouTubeLocale,
+    val hideVideos: Boolean,
+    val authUser: String = "",
+    val dataSyncId: String? = null,
+)
 internal data class CachedPlaylistPage(val page: PlaylistPage, val fetchedAt: Long) {
     fun isFresh(now: Long = SystemClock.elapsedRealtime()) = now - fetchedAt in 0..60_000L
 }

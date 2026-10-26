@@ -57,7 +57,7 @@ class OnlinePlaylistViewModel @Inject constructor(
     val isPodcastPlaylist = normalizedPlaylistId == "RDPN" || normalizedPlaylistId == "SE"
 
     private val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-    private val cacheKey = PlaylistCacheKey(normalizedPlaylistId, YouTube.cookie, YouTube.locale, hideVideoSongs)
+    private val cacheKey = PlaylistCacheKey(normalizedPlaylistId, YouTube.cookie, YouTube.locale, hideVideoSongs, YouTube.authUser, YouTube.dataSyncId)
     private val cachedPage = if (isPodcastPlaylist) null else pageCache.get(cacheKey)
     private var fetchedAt = cachedPage?.fetchedAt ?: 0L
     val playlist = MutableStateFlow<PlaylistItem?>(cachedPage?.page?.playlist)
