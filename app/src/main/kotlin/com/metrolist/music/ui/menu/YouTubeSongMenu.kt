@@ -29,6 +29,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -40,6 +41,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
+import com.metrolist.music.ui.component.sounCollectionRow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -185,7 +188,9 @@ fun YouTubeSongMenu(
         }  
     }  
 
-    ListItem(  
+    ListItem(
+        modifier = Modifier.sounCollectionRow(active = false, selected = false),
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         content = {
             Text(
                 text = song.title,

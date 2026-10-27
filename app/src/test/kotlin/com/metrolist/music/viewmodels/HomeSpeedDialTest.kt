@@ -21,6 +21,13 @@ class HomeSpeedDialTest {
         assertEquals(listOf(pinned, home), result)
     }
 
+    @Test fun `device tracks are excluded from every speed dial source`() {
+        val device = song("content://media/external/audio/media/42")
+        val online = song("online")
+        val result = buildSpeedDialItems(listOf(device), listOf(device), listOf(device, online), listOf(device))
+        assertEquals(listOf(online), result)
+    }
+
     private fun song(id: String) =
         SongItem(
             id = id,
