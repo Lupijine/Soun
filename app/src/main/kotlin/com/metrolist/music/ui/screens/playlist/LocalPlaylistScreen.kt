@@ -1098,6 +1098,9 @@ fun LocalPlaylistHeader(
                 downloadState = downloadState,
                 onEdit = onShowEditDialog,
                 onEditCover = chooseCover.takeIf { !coverBusy },
+                onRemoveCover = removeCover.takeIf { isCustomThumbnail && !coverBusy },
+                isCustomCover = isCustomThumbnail,
+                coverStoredLocally = playlist.playlist.browseId != null && playlist.playlist.thumbnailUrl?.startsWith("file:") == true,
                 onSync = {
                     scope.launch(Dispatchers.IO) {
                         syncUtils.syncPlaylistSuspend(
@@ -1166,22 +1169,8 @@ fun LocalPlaylistHeader(
             onMore = openPlaylistMenu,
             moreEnabled = true,
         )
-        if (editable) {
-            FlowRow(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                OutlinedButton(onClick = chooseCover, enabled = !coverBusy) {
-                    Icon(painterResource(R.drawable.insert_photo), null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(if (isCustomThumbnail) R.string.soun_change_playlist_photo else R.string.soun_add_playlist_photo))
-                }
-                if (playlist.playlist.browseId != null && playlist.playlist.thumbnailUrl?.startsWith("file:") == true) Text(stringResource(R.string.soun_cover_local_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (isCustomThumbnail) TextButton(onClick = removeCover, enabled = !coverBusy) {
-                    Text(stringResource(R.string.remove_custom_image))
-                }
-            }
-            if (coverBusy) LinearProgressIndicator(modifier = Modifier.width(160.dp).padding(top = 4.dp))
-            Spacer(Modifier.height(12.dp))
-        }
+        if (coverBusy) LinearProgressIndicator(modifier = Modifier.width(160.dp).padding(top = 8.dp))
+        Spacer(Modifier.height(12.dp))
 
         val onlineAuthor = onlinePlaylist?.author
         if (onlineAuthor != null) {

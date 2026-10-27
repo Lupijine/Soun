@@ -1081,4 +1081,5 @@
     <string name="soun_device_empty">No audio files found on this device.</string>
     <string name="soun_device_error">Could not read audio files. Check access in settings and try again.</string>
     <string name="soun_cover_local_note">Photo is saved on this device.</string>
+    <string name="soun_volume">Volume</string>
 </resources>

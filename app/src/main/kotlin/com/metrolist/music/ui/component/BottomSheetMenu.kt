@@ -5,6 +5,10 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +16,21 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.Icon
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import com.metrolist.music.R
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,6 +58,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -60,14 +80,17 @@ class MenuState(
     var content by mutableStateOf(content)
     var lightweight by mutableStateOf(false)
         private set
+    var fullScreen by mutableStateOf(false)
+        private set
 
-    fun show(lightweight: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
-        show(null, lightweight, content)
+    fun show(lightweight: Boolean = false, fullScreen: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+        show(null, lightweight, fullScreen, content)
     }
 
-    fun show(backdrop: Backdrop?, lightweight: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+    fun show(backdrop: Backdrop?, lightweight: Boolean = false, fullScreen: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
         this.backdrop = backdrop
         this.lightweight = lightweight
+        this.fullScreen = fullScreen
         isVisible = true
         this.content = content
     }
@@ -138,6 +161,37 @@ fun BottomSheetMenu(
     background: Color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f), // Soun: glass sheet
 ) {
     val focusManager = LocalFocusManager.current
+    if (state.fullScreen) {
+        BackHandler(enabled = state.isVisible) { state.dismiss() }
+        AnimatedVisibility(visible = state.isVisible, enter = fadeIn(), exit = fadeOut()) {
+            Box(Modifier.fillMaxSize().testTag("player-options-panel")) {
+                // Like the queue, keep the refracted field stationary while content scrolls.
+                Box(Modifier.fillMaxSize().graphicsLayer().sounGlass(
+                    RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                    sounGlassColors(strong = false).copy(surfaceTint = background.copy(alpha = 0.28f)),
+                    elevation = 0f, backdrop = state.backdrop ?: LocalSounBackdrop.current,
+                    fullPanel = true, diffusion = 18.dp,
+                ).clickable(interactionSource = null, indication = null) { })
+                Column(Modifier.fillMaxSize().windowInsetsPadding(
+                    WindowInsets.systemBars.only(WindowInsetsSides.Top + WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
+                )) {
+                    Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 8.dp),
+                        horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(48.dp).sounGlass(CircleShape, sounGlassColors(), elevation = 0f,
+                            backdrop = state.backdrop ?: LocalSounBackdrop.current)
+                            .clickable { focusManager.clearFocus(); state.dismiss() }.testTag("player-options-close"),
+                            contentAlignment = Alignment.Center) {
+                            Icon(painterResource(R.drawable.more_horiz), stringResource(R.string.dismiss))
+                        }
+                    }
+                    Column(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp)) {
+                        state.content(this)
+                    }
+                }
+            }
+        }
+        return
+    }
     val sheetState = rememberMaterialBottomSheetState(initialValue = SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
     val maximumHeight = LocalConfiguration.current.screenHeightDp.dp * 0.9f
 

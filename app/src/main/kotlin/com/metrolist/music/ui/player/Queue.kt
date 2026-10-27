@@ -431,8 +431,9 @@ fun Queue(
                                 .clip(CircleShape)
                                 .background(textButtonColor)
                                 .clickable {
-                                    menuState.show(lightweight = true) {
+                                    menuState.show(backdrop, fullScreen = true) {
                                         PlayerMenu(
+                                            showCloseButton = false,
                                             mediaMetadata = mediaMetadata,
                                             playerBottomSheetState = playerBottomSheetState,
                                             onShowDetailsDialog = {

@@ -112,6 +112,7 @@ fun PlayerMenu(
     mediaMetadata: MediaMetadata?,
     playerBottomSheetState: BottomSheetState,
     isQueueTrigger: Boolean? = false,
+    showCloseButton: Boolean = true,
     onShowDetailsDialog: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -247,15 +248,23 @@ fun PlayerMenu(
 
     Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        AsyncImage(model = mediaMetadata.thumbnailUrl, contentDescription = null, contentScale = ContentScale.Crop,
-            modifier = Modifier.size(56.dp).clip(RoundedCornerShape(18.dp)))
+        if (mediaMetadata.thumbnailUrl.isNullOrBlank()) {
+            Box(Modifier.size(56.dp).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), RoundedCornerShape(18.dp)),
+                contentAlignment = Alignment.Center) {
+                Icon(painterResource(R.drawable.music_note), contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(26.dp))
+            }
+        } else {
+            AsyncImage(model = mediaMetadata.thumbnailUrl, contentDescription = null, contentScale = ContentScale.Crop,
+                modifier = Modifier.size(56.dp).clip(RoundedCornerShape(18.dp)))
+        }
         Column(Modifier.weight(1f)) {
             Text(mediaMetadata.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(mediaMetadata.artists.joinToString { it.name }, style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        IconButton(onClick = onDismiss) {
+        if (showCloseButton) IconButton(onClick = onDismiss) {
             Icon(painterResource(R.drawable.close), contentDescription = stringResource(R.string.dismiss))
         }
     }

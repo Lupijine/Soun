@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.test.*
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.width
@@ -324,6 +325,73 @@ class CollectionPresentationTest {
         for ((x, y) in listOf(bitmap.width / 2 to bitmap.height / 5, bitmap.width / 3 to bitmap.height / 2)) {
             assertEquals(android.graphics.Color.BLACK, bitmap.getPixel(x, y))
         }
+    }
+
+    @Test fun `glass volume control retains accessible precise adjustment`() {
+        val volume = mutableStateOf(0.25f)
+        content { VolumeSlider(value = volume.value, onValueChange = { volume.value = it }) }
+        compose.onNodeWithContentDescription("Volume").assertIsDisplayed()
+            .performSemanticsAction(SemanticsActions.SetProgress) { it(0.75f) }
+        compose.runOnIdle { assertEquals(0.75f, volume.value, 0.001f) }
+    }
+
+    @Test fun `playlist cover controls stay accessible in the menu`() {
+        val context = ApplicationProvider.getApplicationContext<Application>()
+        val playlist = com.metrolist.music.db.entities.Playlist(
+            com.metrolist.music.db.entities.PlaylistEntity(id = "test", name = "Playlist", browseId = "remote", thumbnailUrl = "file:///cover.png"),
+            1, emptyList(),
+        )
+        var changes = 0
+        var removals = 0
+        content {
+            com.metrolist.music.ui.menu.LocalPlaylistMenu(
+                playlist = playlist, songs = emptyList(), context = context,
+                downloadState = androidx.media3.exoplayer.offline.Download.STATE_STOPPED,
+                onEdit = {}, onSync = {}, onDelete = {}, onDownload = {}, onQueue = {}, onDismiss = {},
+                onEditCover = { changes++ }, onRemoveCover = { removals++ },
+                isCustomCover = true, coverStoredLocally = true,
+            )
+        }
+        compose.onNodeWithText("Change photo").assertIsDisplayed().performClick()
+        compose.onNodeWithText("Remove custom image").assertIsDisplayed().performClick()
+        compose.runOnIdle { assertEquals(1, changes); assertEquals(1, removals) }
+    }
+
+    @Test fun `full screen player options retain a fixed close button and scroll actions`() {
+        val menu = MenuState()
+        content {
+            Box(Modifier.fillMaxSize()) {
+                BottomSheetMenu(state = menu)
+            }
+        }
+        compose.runOnIdle {
+            menu.show(fullScreen = true) {
+                Text("Player title", Modifier.padding(16.dp))
+                LazyColumn(Modifier.testTag("player-actions")) {
+                    items(25) { index -> Text("Option $index", Modifier.fillMaxWidth().height(56.dp)) }
+                }
+            }
+        }
+        compose.onNodeWithText("Player title").assertIsDisplayed()
+        val panel = compose.onNodeWithTag("player-options-panel").getUnclippedBoundsInRoot()
+        val button = compose.onNodeWithTag("player-options-close").getUnclippedBoundsInRoot()
+        assertTrue(panel.height > 800.dp)
+        assertTrue(button.top < 100.dp && button.right > 300.dp)
+        compose.onNodeWithTag("player-actions").performScrollToIndex(24)
+        compose.onNodeWithText("Option 24").assertIsDisplayed()
+        compose.onNodeWithTag("player-options-close").assertIsDisplayed().performClick()
+        compose.onNodeWithText("Player title").assertDoesNotExist()
+    }
+
+    @Test fun `back closes full screen player options and allows another menu`() {
+        val menu = MenuState()
+        content { Box(Modifier.fillMaxSize()) { BottomSheetMenu(state = menu) } }
+        compose.runOnIdle { menu.show(fullScreen = true) { Text("Full screen options") } }
+        compose.onNodeWithText("Full screen options").assertIsDisplayed()
+        compose.runOnUiThread { host!!.get().onBackPressedDispatcher.onBackPressed() }
+        compose.onNodeWithText("Full screen options").assertDoesNotExist()
+        compose.runOnIdle { menu.show { Text("Next menu", Modifier.padding(20.dp)) } }
+        compose.onNodeWithText("Next menu").assertIsDisplayed()
     }
 
     @Test fun `long menu opened after a short menu expands and scrolls to its last action`() {

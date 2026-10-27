@@ -1330,6 +1330,7 @@ fun BottomSheetPlayer(
                                 state = state,
                                 textButtonColor = textButtonColor,
                                 iconButtonColor = iconButtonColor,
+                                backdrop = playerBackdrop,
                             )
                         }
                     }
@@ -2110,8 +2111,9 @@ private fun PlayerMoreMenuButton(
                 .size(48.dp)
                 .sounGlass(CircleShape, sounGlassColors(), backdrop = backdrop ?: com.metrolist.music.ui.theme.LocalSounBackdrop.current)
                 .clickable {
-                    menuState.show(backdrop, lightweight = true) {
+                    menuState.show(backdrop, fullScreen = true) {
                         PlayerMenu(
+                            showCloseButton = false,
                             mediaMetadata = mediaMetadata,
                             playerBottomSheetState = state,
                             onShowDetailsDialog = {

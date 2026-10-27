@@ -61,6 +61,9 @@ fun LocalPlaylistMenu(
     onQueue: () -> Unit,
     onDismiss: () -> Unit,
     onEditCover: (() -> Unit)? = null,
+    onRemoveCover: (() -> Unit)? = null,
+    isCustomCover: Boolean = false,
+    coverStoredLocally: Boolean = false,
 ) {
     val listenTogetherManager = LocalListenTogetherManager.current
     val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
@@ -129,9 +132,18 @@ fun LocalPlaylistMenu(
         buildList {
             if (playlist.playlist.isEditable && onEditCover != null) add(
                 Material3MenuItemData(
-                    title = { Text(stringResource(R.string.edit_playlist_cover)) },
+                    title = { Text(stringResource(if (isCustomCover) R.string.soun_change_playlist_photo else R.string.soun_add_playlist_photo)) },
+                    description = if (coverStoredLocally) { { Text(stringResource(R.string.soun_cover_local_note)) } } else null,
                     icon = { Icon(painterResource(R.drawable.insert_photo), contentDescription = null) },
                     onClick = { onDismiss(); onEditCover() },
+                ),
+            )
+
+            if (playlist.playlist.isEditable && onRemoveCover != null) add(
+                Material3MenuItemData(
+                    title = { Text(stringResource(R.string.remove_custom_image)) },
+                    icon = { Icon(painterResource(R.drawable.delete), contentDescription = null) },
+                    onClick = { onDismiss(); onRemoveCover() },
                 ),
             )
 
