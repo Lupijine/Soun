@@ -431,7 +431,7 @@ fun Queue(
                                 .clip(CircleShape)
                                 .background(textButtonColor)
                                 .clickable {
-                                    menuState.show {
+                                    menuState.show(lightweight = true) {
                                         PlayerMenu(
                                             mediaMetadata = mediaMetadata,
                                             playerBottomSheetState = playerBottomSheetState,

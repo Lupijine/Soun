@@ -69,4 +69,17 @@ class PlaylistColorSourceTest {
         database.dao.insert(SongEntity("new", "New", thumbnailUrl = "new-cover", liked = true, likedDate = firstDate.plusDays(1)))
         assertNull(database.dao.likedPlaylistColorSource().first())
     }
+    @Test fun `sync preserves a locally chosen cover and still updates remote covers`() = runBlocking {
+        val local = PlaylistEntity(id = "local-cover", name = "Before", browseId = "remote", thumbnailUrl = "file:///private/cover.jpg")
+        val remote = PlaylistEntity(id = "remote-cover", name = "Before", browseId = "remote", thumbnailUrl = "https://old")
+        database.dao.insert(local)
+        database.dao.insert(remote)
+        val update = com.metrolist.innertube.models.PlaylistItem("remote", "After", null, null, "https://new", null, null, null)
+        database.dao.update(local, update)
+        database.dao.update(remote, update)
+        assertEquals("file:///private/cover.jpg", database.dao.playlist(local.id).first()!!.playlist.thumbnailUrl)
+        assertEquals("After", database.dao.playlist(local.id).first()!!.playlist.name)
+        assertEquals("https://new", database.dao.playlist(remote.id).first()!!.playlist.thumbnailUrl)
+    }
+
 }

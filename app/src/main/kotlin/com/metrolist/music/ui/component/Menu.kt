@@ -35,15 +35,15 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun Material3MenuGroup(
-    items: List<Material3MenuItemData>
+    items: List<Material3MenuItemData>,
+    compact: Boolean = false,
 ) {
     // Soun: one rounded panel per group with hairline separators, instead of a
     // stack of separately bordered cards.
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize()
-            .sounSurface(RoundedCornerShape(24.dp))
+            .then(if (compact) Modifier.background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.045f), RoundedCornerShape(18.dp)) else Modifier.animateContentSize().sounSurface(RoundedCornerShape(24.dp)))
     ) {
         items.forEachIndexed { index, item ->
             if (index > 0) {
@@ -60,10 +60,10 @@ fun Material3MenuGroup(
                     colors = item.cardColors,
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
-                    Material3MenuItemRow(item = item)
+                    Material3MenuItemRow(item = item, compact = compact)
                 }
             } else {
-                Material3MenuItemRow(item = item)
+                Material3MenuItemRow(item = item, compact = compact)
             }
         }
     }
@@ -71,7 +71,8 @@ fun Material3MenuGroup(
 
 @Composable
 private fun Material3MenuItemRow(
-    item: Material3MenuItemData
+    item: Material3MenuItemData,
+    compact: Boolean,
 ) {
     Row(
         modifier = Modifier
@@ -80,11 +81,11 @@ private fun Material3MenuItemRow(
                 enabled = item.onClick != null,
                 onClick = { item.onClick?.invoke() }
             )
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = if (compact) 7.dp else 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         item.icon?.let { icon ->
-            Box(Modifier.size(36.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f), CircleShape),
+            Box(Modifier.size(if (compact) 28.dp else 36.dp).then(if (compact) Modifier else Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f), CircleShape)),
                 contentAlignment = Alignment.Center) { icon() }
             Spacer(modifier = Modifier.width(12.dp))
         }

@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import com.kyant.backdrop.Backdrop
 import com.metrolist.music.ui.theme.LocalSounBackdrop
 import com.metrolist.music.ui.theme.sounGlass
+import com.metrolist.music.ui.theme.sounSurface
 import com.metrolist.music.ui.theme.sounGlassColors
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -57,13 +58,16 @@ class MenuState(
     var backdrop by mutableStateOf<Backdrop?>(null)
         private set
     var content by mutableStateOf(content)
+    var lightweight by mutableStateOf(false)
+        private set
 
-    fun show(content: @Composable ColumnScope.() -> Unit) {
-        show(null, content)
+    fun show(lightweight: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+        show(null, lightweight, content)
     }
 
-    fun show(backdrop: Backdrop?, content: @Composable ColumnScope.() -> Unit) {
+    fun show(backdrop: Backdrop?, lightweight: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
         this.backdrop = backdrop
+        this.lightweight = lightweight
         isVisible = true
         this.content = content
     }
@@ -150,7 +154,7 @@ fun BottomSheetMenu(
         modifier = modifier,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().heightIn(max = maximumHeight).sounGlass(
+            modifier = Modifier.fillMaxWidth().heightIn(max = maximumHeight).then(if (state.lightweight) Modifier.sounSurface(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)).background(MaterialTheme.colorScheme.surface.copy(alpha = 0.88f)) else Modifier.sounGlass(
                 RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
                 sounGlassColors().copy(surfaceTint = background.copy(alpha = 0.76f)),
                 backdrop = state.backdrop ?: LocalSounBackdrop.current,
@@ -158,7 +162,7 @@ fun BottomSheetMenu(
                 fullPanel = false,
                 diffusion = 10.dp,
                 elevation = 0f,
-            ),
+            )),
             horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
         ) {
             Box(Modifier.padding(vertical = 12.dp).size(width = 36.dp, height = 4.dp)

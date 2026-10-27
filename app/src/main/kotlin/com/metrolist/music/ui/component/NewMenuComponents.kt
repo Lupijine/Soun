@@ -45,6 +45,7 @@ private fun NewActionButton(
     enabled: Boolean = true,
     backgroundColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.28f),
     contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    compact: Boolean = false,
 ) {
     val animatedBackground by animateColorAsState(
         targetValue = if (enabled) backgroundColor else backgroundColor.copy(alpha = backgroundColor.alpha * 0.5f),
@@ -83,7 +84,7 @@ private fun NewActionButton(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 16.dp),
+                    .padding(horizontal = 6.dp, vertical = if (compact) 8.dp else 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
@@ -114,6 +115,7 @@ fun NewActionGrid(
     actions: List<NewAction>,
     modifier: Modifier = Modifier,
     columns: Int = 3,
+    compact: Boolean = false,
 ) {
     val rows = actions.chunked(columns)
 
@@ -132,6 +134,7 @@ fun NewActionGrid(
                         onClick = action.onClick,
                         modifier = Modifier.weight(1f),
                         enabled = action.enabled,
+                        compact = compact,
                         backgroundColor =
                             if (action.backgroundColor !=
                                 Color.Unspecified

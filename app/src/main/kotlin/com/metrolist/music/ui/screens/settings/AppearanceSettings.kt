@@ -84,7 +84,6 @@ import com.metrolist.music.constants.SwipeSensitivityKey
 import com.metrolist.music.constants.SwipeThumbnailKey
 import com.metrolist.music.constants.SwipeToRemoveSongKey
 import com.metrolist.music.constants.SwipeToSongKey
-import com.metrolist.music.constants.UseNewMiniPlayerDesignKey
 import com.metrolist.music.constants.UseNewPlayerDesignKey
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.EnumDialog
@@ -145,11 +144,6 @@ fun AppearanceSettings(
 
     var showMiniPlayerBackgroundDialog by rememberSaveable { mutableStateOf(false) }
 
-    val (useNewMiniPlayerDesign, onUseNewMiniPlayerDesignChange) =
-        rememberPreference(
-            UseNewMiniPlayerDesignKey,
-            defaultValue = true,
-        )
     val (hidePlayerThumbnail, onHidePlayerThumbnailChange) =
         rememberPreference(
             HidePlayerThumbnailKey,
@@ -830,30 +824,6 @@ fun AppearanceSettings(
                 title = stringResource(id = R.string.mini_player),
                 items =
                     buildList {
-                        add(
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.nav_bar),
-                                title = { Text(stringResource(R.string.soun_floating_mini_player)) },
-                                trailingContent = {
-                                    Switch(
-                                        checked = useNewMiniPlayerDesign,
-                                        onCheckedChange = onUseNewMiniPlayerDesignChange,
-                                        thumbContent = {
-                                            Icon(
-                                                painter =
-                                                    painterResource(
-                                                        id = if (useNewMiniPlayerDesign) R.drawable.check else R.drawable.close,
-                                                    ),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(SwitchDefaults.IconSize),
-                                            )
-                                        },
-                                    )
-                                },
-                                onClick = { onUseNewMiniPlayerDesignChange(!useNewMiniPlayerDesign) },
-                            ),
-                        )
-                        if (useNewMiniPlayerDesign) {
                             add(
                                 Material3SettingsItem(
                                     icon = painterResource(R.drawable.gradient),
@@ -868,7 +838,6 @@ fun AppearanceSettings(
                                     onClick = { showMiniPlayerBackgroundDialog = true },
                                 ),
                             )
-                        }
                     },
             )
 

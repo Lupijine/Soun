@@ -329,6 +329,7 @@ fun PlayerMenu(
         item {
             val startingRadioText = stringResource(R.string.starting_radio)
             NewActionGrid(
+                compact = true,
                 actions =
                     listOfNotNull(
                         if (!isListenTogetherGuest) {
@@ -390,7 +391,7 @@ fun PlayerMenu(
                         ),
                     ),
                 columns = if (isListenTogetherGuest) 2 else 3,
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
             )
         }
 
@@ -399,6 +400,7 @@ fun PlayerMenu(
             val isPodcast = mediaMetadata.album?.let { !it.id.startsWith("MPREb_") } ?: false
 
             Material3MenuGroup(
+                compact = true,
                 items =
                     buildList {
                         // Don't show "View Artist" for podcasts - only show "View Podcast"
@@ -532,6 +534,7 @@ fun PlayerMenu(
 
         item {
             Material3MenuGroup(
+                compact = true,
                 items =
                     listOf(
                         when (download?.state) {
@@ -604,6 +607,7 @@ fun PlayerMenu(
 
         item {
             Material3MenuGroup(
+                compact = true,
                 items =
                     buildList {
                         add(
@@ -665,6 +669,7 @@ fun PlayerMenu(
 
         item {
             Material3MenuGroup(
+                compact = true,
                 items =
                     buildList {
                         add(

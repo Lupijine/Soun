@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens.playlist
 
+import kotlinx.coroutines.ensureActive
+
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.foundation.layout.FlowRow
@@ -926,14 +928,12 @@ fun LocalPlaylistHeader(
     val colorSource by remember(database, playlist.id) { database.playlistColorSource(playlist.id) }
         .collectAsStateWithLifecycle(initialValue = null)
     val isCustomThumbnail = playlist.playlist.thumbnailUrl?.let {
-        if (playlist.playlist.browseId == null) true
-        else it.contains("studio_square_thumbnail") || it.startsWith("content://${context.packageName}")
+        it.startsWith("file:") || it.contains("studio_square_thumbnail") || it.startsWith("content://${context.packageName}")
     } ?: false
     var coverBusy by remember { mutableStateOf(false) }
 
     val result = rememberSaveable { mutableStateOf<Uri?>(null) }
     var pendingCropDestUri by rememberSaveable { mutableStateOf<Uri?>(null) }
-    var showEditNoteDialog by remember { mutableStateOf(false) }
 
     val cropLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
@@ -1010,12 +1010,13 @@ fun LocalPlaylistHeader(
         try {
             val cover = withContext(Dispatchers.IO) {
                 val browseId = playlist.playlist.browseId
-                if (browseId == null) {
-                    persistPlaylistCover(context, uri).also { stored = it }
-                } else {
+                val remote = if (browseId != null) {
                     val bytes = uriToByteArray(context, uri) ?: throw java.io.IOException("Cannot read playlist cover")
-                    YouTube.uploadCustomThumbnailLink(browseId, bytes).getOrThrow()
-                }
+                    val uploaded = YouTube.uploadCustomThumbnailLink(browseId, bytes).getOrNull()
+                    kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                    uploaded?.takeIf { it.isNotBlank() }
+                } else null
+                remote ?: persistPlaylistCover(context, uri).also { stored = it }
             }
             updateCover(cover)
             stored = null
@@ -1039,17 +1040,16 @@ fun LocalPlaylistHeader(
     }
 
     val chooseCover: () -> Unit = {
-        if (playlist.playlist.browseId == null) {
-            pickLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-        } else {
-            showEditNoteDialog = true
-        }
+        pickLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
     }
     val removeCover: () -> Unit = {
         scope.launch {
             coverBusy = true
             try {
-                val restored = withContext(Dispatchers.IO) {
+                val currentCover = playlist.playlist.thumbnailUrl
+                val restored = if (currentCover?.startsWith("file:") == true) withContext(Dispatchers.IO) {
+                    playlist.playlist.browseId?.let { YouTube.playlist(it).getOrNull()?.playlist?.thumbnail }
+                } else withContext(Dispatchers.IO) {
                     playlist.playlist.browseId?.let { YouTube.removeThumbnailPlaylist(it).getOrThrow() }
                 }
                 updateCover(restored)
@@ -1145,32 +1145,6 @@ fun LocalPlaylistHeader(
                 .padding(top = 4.dp, bottom = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        if (showEditNoteDialog) {
-            ActionPromptDialog(
-                title = stringResource(R.string.edit_playlist_cover),
-                onDismiss = { showEditNoteDialog = false },
-                onConfirm = {
-                    showEditNoteDialog = false
-                    pickLauncher.launch(
-                        PickVisualMediaRequest(mediaType = ActivityResultContracts.PickVisualMedia.ImageOnly),
-                    )
-                },
-                onCancel = { showEditNoteDialog = false },
-            ) {
-                if (playlist.playlist.browseId != null) {
-                    Text(
-                        text = stringResource(R.string.edit_playlist_cover_note),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                }
-                Text(
-                    text = stringResource(R.string.edit_playlist_cover_note_wait),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                )
-            }
-        }
         val songCount = if (playlist.songCount == 0) playlist.playlist.remoteSongCount ?: 0 else playlist.songCount
         SounCollectionHeader(
             showActions = false,
@@ -1194,6 +1168,7 @@ fun LocalPlaylistHeader(
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(if (isCustomThumbnail) R.string.soun_change_playlist_photo else R.string.soun_add_playlist_photo))
                 }
+                if (playlist.playlist.browseId != null && playlist.playlist.thumbnailUrl?.startsWith("file:") == true) Text(stringResource(R.string.soun_cover_local_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (isCustomThumbnail) TextButton(onClick = removeCover, enabled = !coverBusy) {
                     Text(stringResource(R.string.remove_custom_image))
                 }
