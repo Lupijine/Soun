@@ -58,12 +58,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           TAG="soun-${GITHUB_SHA:0:7}"
+          VERSION="$("$ANDROID_HOME/build-tools/37.0.0/aapt" dump badging soun.apk | sed -n "s/.* versionName='\([^']*\)'.*/\1/p")"
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not read the version name from the signed APK."
+            exit 1
+          fi
+          TITLE="Soun ${VERSION%%+*}"
           if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "$TITLE"
             gh release upload "$TAG" soun.apk --clobber
           else
             gh release create "$TAG" soun.apk \
               --target "$GITHUB_SHA" \
-              --title "Soun build ${GITHUB_SHA:0:7}" \
+              --title "$TITLE" \
               --notes "Release APK for com.lupijine.soun, built from $GITHUB_SHA."
           fi
