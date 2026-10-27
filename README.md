@@ -1,45 +1,35 @@
-# Soun
+<p align="center">
+  <img src="app/src/main/res/drawable-nodpi/soun_launcher.png" alt="Soun app icon" width="144">
+</p>
 
-A YouTube Music client for Android with a Liquid Glass look: a floating glass tab bar
-with a separate round search button, a glass mini player, and colors that follow the
-album art of the song that's playing.
+<h1 align="center">Soun</h1>
 
-Soun is based on [Metrolist](https://github.com/MetrolistGroup/Metrolist) (v13.7.0),
-which itself builds on InnerTune and OuterTune. All the playback, library, lyrics and
-account features come from Metrolist; Soun changes the name, icon and design.
+<p align="center">A YouTube Music client for Android, with a translucent, music-inspired interface.</p>
 
-## What Soun changes
+Soun is based on [Metrolist](https://github.com/MetrolistGroup/Metrolist), which builds on InnerTune and OuterTune. It brings its own visual identity to music playback, playlists, lyrics, and your library.
 
-- **Name and package:** the app is called Soun and installs as `com.lupijine.soun`,
-  so it can sit next to Metrolist on the same phone.
-- **Icon:** a white triangle on a deep violet background.
-- **Navigation bar:** `ui/component/AppNavigation.kt` draws a floating glass pill for
-  Home, Library (and Listen Together), with Search as its own round glass button.
-- **Mini player:** `ui/player/MiniPlayer.kt` uses a see-through glass pill by default.
-- **Glass style:** `ui/theme/SounGlass.kt` holds the shared glass surface
-  (`Modifier.sounGlass`) and its dark/light colors.
-- **Accent:** Soun violet (`#A99BFF`) is the default theme color, and is listed first
-  in Settings › Appearance › Theme.
-- **Updater:** turned off in every build flavor, so Soun never offers to install
-  a Metrolist update.
+## Features
 
-## Building
+- A floating mini player and navigation bar with glass-inspired surfaces.
+- Playlists, a listening queue, and a library with liked, downloaded, and on-device audio.
+- Synchronized lyrics, theme options, and colors inspired by your music.
+- Offline downloads and account synchronization.
+- Playlist cover customization, with an on-device fallback when a YouTube upload is unavailable.
+
+## Build
+
+Soun requires JDK 21 and the Android SDK. To build the FOSS debug APK:
 
 ```bash
 ./gradlew :app:assembleFossDebug
 ```
 
-The APK lands in `app/build/outputs/apk/`. Requires JDK 21 and the Android SDK.
+The APK is written to `app/build/outputs/apk/foss/debug/`. The debug package is `com.lupijine.soun.debug`; the release package is `com.lupijine.soun`. Release builds require an appropriate signing key before they can be installed or distributed.
 
-If YouTube Music isn't available in your region, you'll need a VPN or proxy set to a
-supported region.
+The [debug build workflow](https://github.com/Lupijine/Soun/actions/workflows/build-debug.yml) can also be started manually from GitHub Actions.
 
-## License
+## Credits and license
 
-GPL-3.0, the same as Metrolist. See [LICENSE](LICENSE). This project is not affiliated
-with YouTube, Google LLC, or the Metrolist team.
+Soun is distributed under the [GNU General Public License v3.0](LICENSE). Thanks to the Metrolist, InnerTune, and OuterTune contributors. Many interface icons are based on [Lucide](https://lucide.dev), which is distributed under the ISC license.
 
-## Icons
-
-Most interface icons are from [Lucide](https://lucide.dev) (ISC license), converted to
-Android vector drawables with a 1.75 stroke.
+Soun is not affiliated with YouTube, Google, or the Metrolist team. YouTube Music availability depends on your region.
