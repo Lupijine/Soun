@@ -8,7 +8,11 @@ on:
       - .github/workflows/build-soun.yml
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: soun-test-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -33,8 +37,17 @@ jobs:
           "$BUILD_TOOLS/zipalign" -f -p 4 app/build/outputs/apk/foss/release/app-foss-release-unsigned.apk soun-aligned.apk
           "$BUILD_TOOLS/apksigner" sign --ks app/persistent-debug.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out soun-test.apk soun-aligned.apk
           "$BUILD_TOOLS/apksigner" verify soun-test.apk
-      - uses: actions/upload-artifact@v4
-        with:
-          name: soun-test-apk
-          path: soun-test.apk
-          if-no-files-found: error
+      - name: Publish test APK in Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="soun-test-${GITHUB_SHA:0:7}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" soun-test.apk --clobber
+          else
+            gh release create "$TAG" soun-test.apk \
+              --target "$GITHUB_SHA" \
+              --prerelease \
+              --title "Soun test build ${GITHUB_SHA:0:7}" \
+              --notes "Test-key signed APK for com.lupijine.soun, built from $GITHUB_SHA."
+          fi

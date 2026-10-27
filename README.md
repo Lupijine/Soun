@@ -26,7 +26,7 @@ Soun requires JDK 21 and the Android SDK. To build the FOSS debug APK:
 
 The APK is written to `app/build/outputs/apk/foss/debug/`. The debug package is `com.lupijine.soun.debug`; the release package is `com.lupijine.soun`. Release builds require an appropriate signing key before they can be installed or distributed.
 
-The [Build Soun APK workflow](https://github.com/Lupijine/Soun/actions/workflows/build-soun.yml) builds a release APK signed with the project test key. Run it from GitHub Actions and download the `soun-test-apk` artifact. Use a private release key for distribution.
+The [Build Soun APK workflow](https://github.com/Lupijine/Soun/actions/workflows/build-soun.yml) builds a release APK signed with the project test key. Run it from GitHub Actions and download `soun-test.apk` from the resulting pre-release in [Releases](https://github.com/Lupijine/Soun/releases). Use a private release key for distribution.
 
 ## Credits and license
 
