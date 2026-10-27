@@ -190,6 +190,8 @@ import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.extensions.toPersistQueue
 import com.metrolist.music.extensions.toQueue
+import com.metrolist.music.extensions.withUpdatedMetadata
+import com.metrolist.music.extensions.isDeviceAudioId
 import com.metrolist.music.lyrics.LyricsHelper
 import com.metrolist.music.models.PersistPlayerState
 import com.metrolist.music.models.PersistQueue
@@ -472,6 +474,7 @@ class MusicService :
     private val notificationGate = PlaybackNotificationGate()
     @Inject lateinit var queueStateWriter: QueueStateWriter
     private var queueSaveJob: Job? = null
+    private var deviceArtworkJob: Job? = null
 
     private var scrobbleManager: ScrobbleManager? = null
 
@@ -2111,9 +2114,9 @@ class MusicService :
 
                 database.query {
                     update(song)
-                    syncUtils.likeSong(song)
+                    if (!isDeviceAudioId(song.id)) syncUtils.likeSong(song)
 
-                    if (dataStore.get(AutoDownloadOnLikeKey, false) && song.liked) {
+                    if (!isDeviceAudioId(song.id) && dataStore.get(AutoDownloadOnLikeKey, false) && song.liked) {
                         downloadUtil.download(song.id)
                     }
                 }
@@ -2458,6 +2461,21 @@ class MusicService :
         previousEpisodePosition = 0L
 
         val newMetadata = mediaItem?.metadata
+        deviceArtworkJob?.cancel()
+        if (newMetadata != null && isDeviceAudioId(newMetadata.id) &&
+            newMetadata.thumbnailUrl?.contains("/device_album_art/") != true
+        ) {
+            deviceArtworkJob = scope.launch {
+                val artwork = withContext(Dispatchers.IO) { extractDeviceArtwork(this@MusicService, newMetadata.id) }
+                if (artwork != null && player.currentMediaItem?.mediaId == newMetadata.id) {
+                    val current = player.currentMediaItem
+                    val metadata = current?.metadata
+                    if (current != null && metadata != null && metadata.thumbnailUrl != artwork) {
+                        player.replaceMediaItem(player.currentMediaItemIndex, current.withUpdatedMetadata(metadata.copy(thumbnailUrl = artwork)))
+                    }
+                }
+            }
+        }
         if (newMetadata?.isEpisode == true) {
             previousEpisodeId = newMetadata.id
             scope.launch {

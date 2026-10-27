@@ -82,6 +82,7 @@ import com.metrolist.music.LocalSyncUtils
 fun AddToPlaylistDialog(
     isVisible: Boolean,
     allowSyncing: Boolean = true,
+    localOnly: Boolean = false,
     initialTextFieldValue: String? = null,
     onGetSong: suspend () -> List<String>, // list of song ids. Songs should be inserted to database in this function.
     onGetSongIds: (suspend () -> List<String>)? = null,
@@ -103,7 +104,10 @@ fun AddToPlaylistDialog(
         AddToPlaylistSortDescendingKey,
         false
     )
-    val playlists by viewModel.allPlaylists.collectAsStateWithLifecycle()
+    val allPlaylists by viewModel.allPlaylists.collectAsStateWithLifecycle()
+    val playlists = remember(allPlaylists, localOnly) {
+        if (localOnly) allPlaylists.filter { it.playlist.browseId == null } else allPlaylists
+    }
     val (innerTubeCookie) = rememberPreference(InnerTubeCookieKey, "")
     val isLoggedIn = remember(innerTubeCookie) {
         "SAPISID" in parseCookieString(innerTubeCookie)
@@ -323,7 +327,7 @@ fun AddToPlaylistDialog(
         CreatePlaylistDialog(
             onDismiss = { showCreatePlaylistDialog = false },
             initialTextFieldValue = initialTextFieldValue,
-            allowSyncing = allowSyncing
+            allowSyncing = allowSyncing && !localOnly
         )
     }
 

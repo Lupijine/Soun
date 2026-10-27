@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -47,6 +48,8 @@ enum class DensityScale(
         fun fromValue(value: Float): DensityScale = entries.find { it.value == value } ?: NATIVE
     }
 }
+
+val PinnedLibraryPlaylistsKey = stringSetPreferencesKey("soun_pinned_library_playlists")
 
 val DefaultOpenTabKey = stringPreferencesKey("defaultOpenTab")
 val SlimNavBarKey = booleanPreferencesKey("slimNavBar")

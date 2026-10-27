@@ -82,6 +82,8 @@ fun PlaylistMenu(
     autoPlaylist: Boolean? = false,
     downloadPlaylist: Boolean? = false,
     songList: List<Song>? = emptyList(),
+    isLibraryPinned: Boolean = false,
+    onToggleLibraryPin: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val database = LocalDatabase.current
@@ -498,6 +500,13 @@ fun PlaylistMenu(
                                 ),
                             )
                         }
+                        if (onToggleLibraryPin != null) add(
+                            Material3MenuItemData(
+                                title = { Text(stringResource(if (isLibraryPinned) R.string.soun_unpin_library else R.string.soun_pin_library)) },
+                                icon = { Icon(painterResource(R.drawable.soun_pin), contentDescription = null) },
+                                onClick = { onToggleLibraryPin(); onDismiss() },
+                            ),
+                        )
                         add(
                             Material3MenuItemData(
                                 title = {

@@ -87,6 +87,10 @@ fun QueueMenu(
     onDismiss: () -> Unit,
 ) {
     mediaMetadata ?: return
+    if (com.metrolist.music.extensions.isDeviceAudioId(mediaMetadata.id)) {
+        DeviceAudioMenu(mediaMetadata, onDismiss)
+        return
+    }
     val navController = LocalNavController.current
     val context = LocalContext.current
     val database = LocalDatabase.current

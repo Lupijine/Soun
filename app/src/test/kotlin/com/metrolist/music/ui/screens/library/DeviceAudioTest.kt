@@ -7,6 +7,7 @@ import android.database.MatrixCursor
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import com.metrolist.music.extensions.toMediaItem
+import com.metrolist.music.extensions.isDeviceAudioId
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -25,8 +26,18 @@ class DeviceAudioTest {
         assertEquals("Local title", songs.single().title)
         assertEquals("Local artist", songs.single().artists.single().name)
         assertEquals(182, songs.single().duration)
+        assertEquals("content://media/external/audio/albumart/7", songs.single().thumbnailUrl)
         assertEquals("content://media/external/audio/media/42", songs.single().toMediaItem().localConfiguration!!.uri.toString())
         assertTrue(provider.lastCursor!!.isClosed)
+    }
+
+    @Test fun `missing album art is represented without inventing a cover`() {
+        ShadowContentResolver.registerProviderInternal("media", AudioProvider(albumId = null))
+        val song = readDeviceAudio(ApplicationProvider.getApplicationContext<android.app.Application>().contentResolver).single()
+        assertNull(song.thumbnailUrl)
+        assertTrue(isDeviceAudioId(song.id))
+        assertFalse(isDeviceAudioId("https://music.youtube.com/watch?v=abc"))
+        assertFalse(isDeviceAudioId("abc"))
     }
 
     @Test(expected = SecurityException::class)
@@ -41,7 +52,7 @@ class DeviceAudioTest {
         readDeviceAudio(ApplicationProvider.getApplicationContext<android.app.Application>().contentResolver)
     }
 
-    private class AudioProvider(private val denied: Boolean = false, private val unavailable: Boolean = false) : ContentProvider() {
+    private class AudioProvider(private val denied: Boolean = false, private val unavailable: Boolean = false, private val albumId: Long? = 7L) : ContentProvider() {
         var lastCursor: Cursor? = null
         override fun onCreate() = true
         override fun query(uri: Uri, projection: Array<out String>?, selection: String?, selectionArgs: Array<out String>?, sortOrder: String?): Cursor? {
@@ -50,7 +61,7 @@ class DeviceAudioTest {
             assertEquals("duration > 0", selection)
             assertTrue(sortOrder!!.contains("COLLATE NOCASE"))
             return MatrixCursor(projection!!).apply {
-                addRow(arrayOf<Any>(42L, "Local title", "Local artist", 182_900L))
+                addRow(arrayOf<Any?>(42L, "Local title", "Local artist", 182_900L, albumId))
                 lastCursor = this
             }
         }

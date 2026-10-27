@@ -327,6 +327,29 @@ class CollectionPresentationTest {
         }
     }
 
+    @Test fun `history source tabs reflect selection and switch sources`() {
+        val selectedSource = mutableStateOf(com.metrolist.music.constants.HistorySource.LOCAL)
+        content {
+            com.metrolist.music.ui.screens.HistorySourceTabs(selectedSource.value) { selectedSource.value = it }
+        }
+        compose.onNodeWithText("Local").assertIsSelected()
+        compose.onNodeWithText("Remote").assertIsNotSelected().performClick()
+        compose.onNodeWithText("Remote").assertIsSelected()
+        compose.onNodeWithText("Local").assertIsNotSelected()
+    }
+
+    @Test fun `missing track artwork renders a visible fallback`() {
+        content {
+            ItemThumbnail(thumbnailUrl = null, isActive = false, isPlaying = false,
+                shape = RoundedCornerShape(12.dp), modifier = Modifier.size(56.dp).testTag("missing-artwork"))
+        }
+        val bitmap = compose.onNodeWithTag("missing-artwork").captureToImage().asAndroidBitmap()
+        val background = bitmap.getPixel(10, 10)
+        assertTrue("Fallback should show a visible music icon", (12 until 44).any { y ->
+            (12 until 44).any { x -> bitmap.getPixel(x, y) != background }
+        })
+    }
+
     @Test fun `glass volume control retains accessible precise adjustment`() {
         val volume = mutableStateOf(0.25f)
         content { VolumeSlider(value = volume.value, onValueChange = { volume.value = it }) }

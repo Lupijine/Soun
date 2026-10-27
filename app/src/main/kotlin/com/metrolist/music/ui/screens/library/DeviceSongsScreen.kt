@@ -11,6 +11,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
@@ -28,6 +32,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.menu.DeviceAudioMenu
 import com.metrolist.music.LocalNavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
@@ -45,6 +51,7 @@ fun DeviceSongsScreen() {
     val context = LocalContext.current
     val nav = LocalNavController.current
     val player = LocalPlayerConnection.current
+    val menu = LocalMenuState.current
     val together = LocalListenTogetherManager.current
     val isGuest = together?.let { it.isInRoom && !it.isHost } == true
     val permission = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
@@ -96,7 +103,16 @@ fun DeviceSongsScreen() {
                     ListItem(
                         headlineContent = { Text(song.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
                         supportingContent = { Text(song.artists.joinToString { it.name }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        leadingContent = { Icon(painterResource(R.drawable.music_note), null) },
+                        leadingContent = {
+                            if (song.thumbnailUrl == null) Icon(painterResource(R.drawable.music_note), null, Modifier.size(48.dp))
+                            else AsyncImage(song.thumbnailUrl, contentDescription = null, contentScale = ContentScale.Crop,
+                                error = painterResource(R.drawable.music_note), modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)))
+                        },
+                        trailingContent = {
+                            IconButton(onClick = { menu.show { DeviceAudioMenu(song, onDismiss = menu::dismiss) } }) {
+                                Icon(painterResource(R.drawable.more_vert), stringResource(R.string.more_options))
+                            }
+                        },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         modifier = Modifier.clickable(enabled = player != null && !isGuest) {
                             player?.playQueue(ListQueue(title = context.getString(R.string.soun_on_device), items = songs.map { it.toMediaItem() }, startIndex = index))
@@ -110,7 +126,7 @@ fun DeviceSongsScreen() {
 
 internal fun readDeviceAudio(resolver: android.content.ContentResolver): List<MediaMetadata> {
     val audio = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-    val columns = arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.TITLE, MediaStore.Audio.Media.ARTIST, MediaStore.Audio.Media.DURATION)
+    val columns = arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.TITLE, MediaStore.Audio.Media.ARTIST, MediaStore.Audio.Media.DURATION, MediaStore.Audio.Media.ALBUM_ID)
     val result = resolver.query(audio, columns, "${MediaStore.Audio.Media.DURATION} > 0", null, "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC")
         ?: throw java.io.IOException("Audio provider returned no result")
     return buildList {
@@ -120,6 +136,9 @@ internal fun readDeviceAudio(resolver: android.content.ContentResolver): List<Me
                 title = cursor.getString(1).orEmpty(),
                 artists = listOf(MediaMetadata.Artist(null, cursor.getString(2).orEmpty())),
                 duration = (cursor.getLong(3) / 1000).toInt(),
+                thumbnailUrl = if (!cursor.isNull(4) && cursor.getLong(4) > 0) {
+                    ContentUris.withAppendedId("content://media/external/audio/albumart".toUri(), cursor.getLong(4)).toString()
+                } else null,
             ))
         }
     }

@@ -35,10 +35,16 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
 import com.metrolist.music.utils.rememberEnumPreference
+import com.metrolist.music.utils.rememberPreference
+import com.metrolist.music.utils.safeDataStoreEdit
+import com.metrolist.music.ui.component.sounCollectionRow
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
 import com.metrolist.music.viewmodels.LibraryMixViewModel
 
 @Composable
 fun LibraryScreen(viewModel: LibraryMixViewModel = hiltViewModel()) {
+    val context = LocalContext.current
     val nav = LocalNavController.current
     val database = LocalDatabase.current
     val player = LocalPlayerConnection.current
@@ -52,6 +58,8 @@ fun LibraryScreen(viewModel: LibraryMixViewModel = hiltViewModel()) {
     val downloadedColorSource by viewModel.downloadedColorSource.collectAsStateWithLifecycle()
     val songs by viewModel.songs.collectAsStateWithLifecycle()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+    val pinnedPlaylists by rememberPreference(PinnedLibraryPlaylistsKey, emptySet<String>())
+    val orderedPlaylists = remember(playlists, pinnedPlaylists) { orderPinnedPlaylists(playlists, pinnedPlaylists) }
     val albums by viewModel.albums.collectAsStateWithLifecycle()
     val artists by viewModel.artists.collectAsStateWithLifecycle()
     val liked by database.likedSongsCount().collectAsStateWithLifecycle(0)
@@ -63,7 +71,7 @@ fun LibraryScreen(viewModel: LibraryMixViewModel = hiltViewModel()) {
         LibraryFilter.SONGS -> songs
         LibraryFilter.ALBUMS -> albums
         LibraryFilter.ARTISTS -> artists
-        else -> playlists
+        else -> orderedPlaylists
     }
     if (createPlaylist) CreatePlaylistDialog(
         onDismiss = { createPlaylist = false },
@@ -100,29 +108,39 @@ fun LibraryScreen(viewModel: LibraryMixViewModel = hiltViewModel()) {
                 modifier = Modifier.padding(24.dp))
         }
         itemsIndexed(content, key = { _, it -> "${it::class.simpleName}_${it.id}" }) { index, entry ->
-            // Soun: rows form one continuous glass list. A separate glass panel per row
-            // drew a bright rim around every item; here rows share one translucent fill
-            // with hairline separators, rounded only at the ends.
             val rowShape = RoundedCornerShape(
                 topStart = if (index == 0) 24.dp else 0.dp, topEnd = if (index == 0) 24.dp else 0.dp,
                 bottomStart = if (index == content.lastIndex) 24.dp else 0.dp, bottomEnd = if (index == content.lastIndex) 24.dp else 0.dp,
             )
             val rowFill = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
             val separator = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)
-            val rowModifier = Modifier.padding(horizontal = 20.dp)
-                .clip(rowShape)
-                .background(rowFill, rowShape)
-                .drawBehind {
-                    if (index > 0) {
-                        drawLine(
-                            color = separator,
-                            start = Offset(88.dp.toPx(), 0f),
-                            end = Offset(size.width - 16.dp.toPx(), 0f),
-                            strokeWidth = 0.5.dp.toPx(),
-                        )
+            val isPinned = entry is Playlist && entry.id in pinnedPlaylists
+            val showEntryMenu: () -> Unit = {
+                menus.show {
+                    when (entry) {
+                        is Playlist -> PlaylistMenu(playlist = entry, coroutineScope = scope, onDismiss = menus::dismiss,
+                            isLibraryPinned = isPinned, onToggleLibraryPin = {
+                                scope.launch {
+                                    context.safeDataStoreEdit { prefs ->
+                                        val current = prefs[PinnedLibraryPlaylistsKey] ?: emptySet()
+                                        prefs[PinnedLibraryPlaylistsKey] = if (entry.id in current) current - entry.id else current + entry.id
+                                    }
+                                }
+                            })
+                        is Album -> AlbumMenu(originalAlbum = entry, onDismiss = menus::dismiss)
+                        is Artist -> ArtistMenu(originalArtist = entry, coroutineScope = scope, onDismiss = menus::dismiss)
+                        is Song -> SongMenu(originalSong = entry, onDismiss = menus::dismiss)
                     }
                 }
-                .combinedClickable(
+            }
+            val rowModifier = if (entry is Playlist) {
+                Modifier.padding(horizontal = 20.dp, vertical = 4.dp).sounCollectionRow(active = false, selected = isPinned)
+            } else {
+                Modifier.padding(horizontal = 20.dp).clip(rowShape).background(rowFill, rowShape).drawBehind {
+                    if (index > 0) drawLine(separator, Offset(88.dp.toPx(), 0f), Offset(size.width - 16.dp.toPx(), 0f), 0.5.dp.toPx())
+                }
+            }
+            val interactiveRow = rowModifier.combinedClickable(
                     onClick = {
                         when (entry) {
                             is Playlist -> nav.navigate("local_playlist/${entry.id}")
@@ -137,23 +155,17 @@ fun LibraryScreen(viewModel: LibraryMixViewModel = hiltViewModel()) {
                             }
                         }
                     },
-                    onLongClick = {
-                        menus.show {
-                            when (entry) {
-                                is Playlist -> PlaylistMenu(playlist = entry, coroutineScope = scope, onDismiss = menus::dismiss)
-                                is Album -> AlbumMenu(originalAlbum = entry, onDismiss = menus::dismiss)
-                                is Artist -> ArtistMenu(originalArtist = entry, coroutineScope = scope, onDismiss = menus::dismiss)
-                                is Song -> SongMenu(originalSong = entry, onDismiss = menus::dismiss)
-                            }
-                        }
-                    },
+                    onLongClick = showEntryMenu,
                 )
             when (entry) {
-                is Playlist -> PlaylistListItem(playlist = entry, modifier = rowModifier)
-                is Album -> AlbumListItem(album = entry, modifier = rowModifier)
-                is Artist -> ArtistListItem(artist = entry, modifier = rowModifier)
+                is Playlist -> PlaylistListItem(playlist = entry, modifier = interactiveRow, trailingContent = {
+                    if (isPinned) Icon(painterResource(R.drawable.soun_pin), stringResource(R.string.soun_playlist_pinned), modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    IconButton(onClick = showEntryMenu) { Icon(painterResource(R.drawable.more_vert), stringResource(R.string.more_options)) }
+                })
+                is Album -> AlbumListItem(album = entry, modifier = interactiveRow)
+                is Artist -> ArtistListItem(artist = entry, modifier = interactiveRow)
                 is Song -> SongListItem(song = entry, isActive = metadata?.id == entry.id, isPlaying = playing,
-                    isSwipeable = false, modifier = rowModifier)
+                    isSwipeable = false, modifier = interactiveRow)
             }
         }
         item {
@@ -187,3 +199,6 @@ private fun SounLibraryTabs(selected: LibraryFilter, onSelect: (LibraryFilter) -
         }
     }
 }
+
+internal fun orderPinnedPlaylists(playlists: List<Playlist>, pinned: Set<String>): List<Playlist> =
+    playlists.sortedBy { it.id !in pinned }

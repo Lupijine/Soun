@@ -44,6 +44,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadService
+import com.metrolist.music.extensions.isDeviceAudioId
 import com.metrolist.innertube.YouTube
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalDownloadUtil
@@ -86,6 +87,7 @@ fun SelectionSongMenu(
     val deletedNSongsTemplate = stringResource(R.string.deleted_n_songs)
     val listenTogetherManager = com.metrolist.music.LocalListenTogetherManager.current
     val isGuest = listenTogetherManager?.isInRoom == true && listenTogetherManager.isHost == false
+    val containsDeviceAudio = songSelection.any { isDeviceAudioId(it.id) }
 
     val allInLibrary by remember {
         mutableStateOf(
@@ -137,6 +139,8 @@ fun SelectionSongMenu(
 
     AddToPlaylistDialog(
         isVisible = showChoosePlaylistDialog,
+        allowSyncing = !containsDeviceAudio,
+        localOnly = containsDeviceAudio,
         onGetSong = { songSelection.map { it.id } },
         onGetSongIds = { songSelection.map { it.id } },
         onDismiss = {
@@ -471,7 +475,7 @@ fun SelectionSongMenu(
                                         }
                                         coroutineScope.launch {
                                             // Use the new reliable method that fetches fresh tokens
-                                            songSelection.forEach { song ->
+                                            songSelection.filterNot { isDeviceAudioId(it.id) }.forEach { song ->
                                                 YouTube.toggleSongLibrary(song.id, false)
                                             }
                                         }
@@ -485,7 +489,7 @@ fun SelectionSongMenu(
                                         coroutineScope.launch {
                                             // Use the new reliable method that fetches fresh tokens
                                             songSelection
-                                                .filter { it.song.inLibrary == null }
+                                                .filter { it.song.inLibrary == null && !isDeviceAudioId(it.id) }
                                                 .forEach { song ->
                                                     YouTube.toggleSongLibrary(song.id, true)
                                                 }
@@ -504,7 +508,7 @@ fun SelectionSongMenu(
             Material3MenuGroup(
                 items =
                     buildList {
-                        add(
+                        if (!containsDeviceAudio) add(
                             when (downloadState) {
                                 Download.STATE_COMPLETED -> {
                                     Material3MenuItemData(
@@ -601,7 +605,7 @@ fun SelectionSongMenu(
                                             if ((!allLiked && !song.song.liked) || allLiked) {
                                                 val s = song.song.toggleLike()
                                                 update(s)
-                                                syncUtils.likeSong(s)
+                                                if (!isDeviceAudioId(song.id)) syncUtils.likeSong(s)
                                             }
                                         }
                                     }
@@ -670,6 +674,7 @@ fun SelectionMediaMetadataMenu(
     val playerConnection = LocalPlayerConnection.current ?: return
     val listenTogetherManager = com.metrolist.music.LocalListenTogetherManager.current
     val isGuest = listenTogetherManager?.isInRoom == true && listenTogetherManager.isHost == false
+    val containsDeviceAudio = songSelection.any { isDeviceAudioId(it.id) }
 
     val allLiked by remember(songSelection) {
         mutableStateOf(songSelection.isNotEmpty() && songSelection.all { it.liked })
@@ -685,6 +690,8 @@ fun SelectionMediaMetadataMenu(
 
     AddToPlaylistDialog(
         isVisible = showChoosePlaylistDialog,
+        allowSyncing = !containsDeviceAudio,
+        localOnly = containsDeviceAudio,
         onGetSong = {
             // Safe: AddToPlaylistDialog wraps this lambda in withContext(Dispatchers.IO)
             songSelection.map { song ->
@@ -917,7 +924,7 @@ fun SelectionMediaMetadataMenu(
                                 },
                             ),
                         )
-                        add(
+                        if (!containsDeviceAudio) add(
                             when (downloadState) {
                                 Download.STATE_COMPLETED -> {
                                     Material3MenuItemData(

@@ -1082,4 +1082,9 @@
     <string name="soun_device_error">Could not read audio files. Check access in settings and try again.</string>
     <string name="soun_cover_local_note">Photo is saved on this device.</string>
     <string name="soun_volume">Volume</string>
+    <string name="soun_history_empty">No listening history yet.</string>
+    <string name="soun_history_no_matches">No matching songs in history.</string>
+    <string name="soun_pin_library">Pin to top of library</string>
+    <string name="soun_unpin_library">Unpin from top of library</string>
+    <string name="soun_playlist_pinned">Pinned to top</string>
 </resources>

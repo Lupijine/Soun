@@ -112,6 +112,10 @@ fun SongMenu(
     onDismiss: () -> Unit,
     isFromCache: Boolean = false,
 ) {
+    if (com.metrolist.music.extensions.isDeviceAudioId(originalSong.id)) {
+        DeviceAudioMenu(originalSong.toMediaMetadata(), onDismiss, event = event, playlistSong = playlistSong)
+        return
+    }
     val navController = LocalNavController.current
     val context = LocalContext.current
     val database = LocalDatabase.current

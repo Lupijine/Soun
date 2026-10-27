@@ -117,6 +117,10 @@ fun PlayerMenu(
     onDismiss: () -> Unit,
 ) {
     mediaMetadata ?: return
+    if (com.metrolist.music.extensions.isDeviceAudioId(mediaMetadata.id)) {
+        DeviceAudioMenu(mediaMetadata, onDismiss, showVolume = isQueueTrigger != true, showCloseButton = showCloseButton)
+        return
+    }
     val navController = LocalNavController.current
     val context = LocalContext.current
     val showNotice = com.metrolist.music.ui.component.LocalSounNotice.current

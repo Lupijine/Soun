@@ -1503,7 +1503,13 @@ fun ItemThumbnail(
             .aspectRatio(thumbnailRatio)
             .clip(shape)
     ) {
-        if (albumIndex == null) {
+        if (albumIndex == null && thumbnailUrl.isNullOrBlank()) {
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
+                contentAlignment = Alignment.Center) {
+                Icon(painterResource(R.drawable.music_note), contentDescription = null,
+                    modifier = Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        } else if (albumIndex == null) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(thumbnailUrl?.resize(544, 544))

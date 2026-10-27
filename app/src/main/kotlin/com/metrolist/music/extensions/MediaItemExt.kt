@@ -77,3 +77,6 @@ fun MediaItem.withUpdatedMetadata(updatedMetadata: MediaMetadata): MediaItem {
                 .build(),
         ).build()
 }
+
+/** True for audio indexed by Android MediaStore, not a YouTube video ID. */
+fun isDeviceAudioId(id: String): Boolean = id.startsWith("content://media/")
