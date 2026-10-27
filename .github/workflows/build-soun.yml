@@ -1,0 +1,40 @@
+name: Build Soun APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/build-soun.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: temurin
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Build release APK
+        run: ./gradlew --console=plain :app:assembleFossRelease
+        env:
+          METROLIST_BUILD_COMMIT: ${{ github.sha }}
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
+      - name: Sign with the project test key
+        run: |
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/37.0.0"
+          "$BUILD_TOOLS/zipalign" -f -p 4 app/build/outputs/apk/foss/release/app-foss-release-unsigned.apk soun-aligned.apk
+          "$BUILD_TOOLS/apksigner" sign --ks app/persistent-debug.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out soun-test.apk soun-aligned.apk
+          "$BUILD_TOOLS/apksigner" verify soun-test.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: soun-test-apk
+          path: soun-test.apk
+          if-no-files-found: error
