@@ -100,11 +100,7 @@ fun AnimatedBottomSheet(
     }
 
     LaunchedEffect(isVisible) {
-        if (isVisible) {
-            sheetState.show()
-        } else {
-            sheetState.hide()
-        }
+        if (!isVisible) sheetState.hide()
     }
 
     if (!sheetState.isVisible && !isVisible) {
@@ -125,7 +121,7 @@ fun AnimatedBottomSheet(
         contentWindowInsets = contentWindowInsets,
         properties = properties,
         content = {
-            lastContent()
+            if (isVisible) content() else lastContent()
         },
     )
 }
@@ -158,7 +154,10 @@ fun BottomSheetMenu(
                 RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
                 sounGlassColors().copy(surfaceTint = background.copy(alpha = 0.76f)),
                 backdrop = state.backdrop ?: LocalSounBackdrop.current,
-                fullPanel = true,
+                // Keep the moving sheet to one blur/lens pass instead of the full-panel shader chain.
+                fullPanel = false,
+                diffusion = 10.dp,
+                elevation = 0f,
             ),
             horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
         ) {

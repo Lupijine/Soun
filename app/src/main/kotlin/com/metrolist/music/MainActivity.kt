@@ -1408,8 +1408,10 @@ class MainActivity : FragmentActivity() {
                                 Modifier.weight(1f)
                                     .then(if (isRenderEffectSupported()) Modifier.layerBackdrop(glassBackdrop) else Modifier),
                             ) {
+                                val ambientMenuState = LocalMenuState.current
                                 Box(Modifier.fillMaxSize().layerBackdrop(ambientBackdrop).sounAmbientBackground(pureBlack, ambientArtwork,
                                     motionEnabled = !playerBottomSheetState.isExpanded && currentRoute?.contains("playlist") != true,
+                                    motionPaused = { ambientMenuState.isVisible },
                                 ))
                                 // NavHost with animations (Material 3 Expressive style)
                                 NavHost(
@@ -1474,15 +1476,10 @@ class MainActivity : FragmentActivity() {
                         }
                     }
 
-                    BottomSheetMenu(
-                        state = LocalMenuState.current,
-                        modifier = Modifier.align(Alignment.BottomCenter),
-                    )
+                    // Modal sheets position themselves in their own window.
+                    BottomSheetMenu(state = LocalMenuState.current)
 
-                    BottomSheetPage(
-                        state = LocalBottomSheetPageState.current,
-                        modifier = Modifier.align(Alignment.BottomCenter),
-                    )
+                    BottomSheetPage(state = LocalBottomSheetPageState.current)
 
                     com.metrolist.music.ui.component.SounSnackbarHost(
                         snackbarHostState,

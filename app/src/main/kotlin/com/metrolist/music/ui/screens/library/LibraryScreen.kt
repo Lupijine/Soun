@@ -47,7 +47,6 @@ fun LibraryScreen(viewModel: LibraryMixViewModel = hiltViewModel()) {
     val menus = LocalMenuState.current
     val scope = rememberCoroutineScope()
     var filter by rememberEnumPreference(ChipSortTypeKey, LibraryFilter.PLAYLISTS)
-    var onDevice by rememberSaveable { mutableStateOf(false) }
     var createPlaylist by rememberSaveable { mutableStateOf(false) }
     val likedColorSource by viewModel.likedColorSource.collectAsStateWithLifecycle()
     val downloadedColorSource by viewModel.downloadedColorSource.collectAsStateWithLifecycle()
@@ -59,10 +58,9 @@ fun LibraryScreen(viewModel: LibraryMixViewModel = hiltViewModel()) {
     val downloaded by database.downloadedSongs(SongSortType.CREATE_DATE, true).collectAsStateWithLifecycle(emptyList())
     val playing by player?.isEffectivelyPlaying?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(false) }
     val metadata by player?.mediaMetadata?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(null) }
-    val localSongs = remember(songs) { songs.filter { it.song.isLocal } }
     val selected = filter.takeIf { it in listOf(LibraryFilter.PLAYLISTS, LibraryFilter.SONGS, LibraryFilter.ALBUMS, LibraryFilter.ARTISTS) } ?: LibraryFilter.PLAYLISTS
     val content: List<LocalItem> = when (selected) {
-        LibraryFilter.SONGS -> if (onDevice) localSongs else songs
+        LibraryFilter.SONGS -> songs
         LibraryFilter.ALBUMS -> albums
         LibraryFilter.ARTISTS -> artists
         else -> playlists
@@ -81,7 +79,7 @@ fun LibraryScreen(viewModel: LibraryMixViewModel = hiltViewModel()) {
                     Icon(painterResource(R.drawable.add), stringResource(R.string.create_playlist))
                 }
             }
-            SounLibraryTabs(selected) { filter = it; onDevice = false }
+            SounLibraryTabs(selected) { filter = it }
             Column(Modifier.padding(horizontal = 20.dp, vertical = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     SounShortcut(stringResource(R.string.liked_songs), pluralStringResource(R.plurals.n_song, liked, liked),
@@ -90,8 +88,8 @@ fun LibraryScreen(viewModel: LibraryMixViewModel = hiltViewModel()) {
                         R.drawable.download, Modifier.weight(1f), artwork = R.drawable.soun_downloads_chrome, colorSource = downloadedColorSource) { nav.navigate("auto_playlist/downloaded") }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    SounShortcut(stringResource(R.string.soun_on_device), pluralStringResource(R.plurals.n_song, localSongs.size, localSongs.size),
-                        R.drawable.offline, Modifier.weight(1f)) { filter = LibraryFilter.SONGS; onDevice = true }
+                    SounShortcut(stringResource(R.string.soun_on_device), stringResource(R.string.soun_device_audio),
+                        R.drawable.offline, Modifier.weight(1f)) { nav.navigate("library/device") }
                     SounShortcut(stringResource(R.string.history), stringResource(R.string.soun_recent_listening),
                         R.drawable.history, Modifier.weight(1f)) { nav.navigate("history") }
                 }

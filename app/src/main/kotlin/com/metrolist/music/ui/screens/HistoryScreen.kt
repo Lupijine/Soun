@@ -30,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -251,7 +252,7 @@ fun HistoryScreen(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .background(MaterialTheme.colorScheme.background),
+                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.18f)),
                         )
                     }
 
@@ -319,7 +320,7 @@ fun HistoryScreen(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .background(MaterialTheme.colorScheme.surface),
+                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.18f)),
                         )
                     }
 
@@ -434,6 +435,7 @@ fun HistoryScreen(
     }
 
     TopAppBar(
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent),
         title = {
             if (inSelectMode) {
                 Text(pluralStringResource(R.plurals.n_selected, selection.size, selection.size))

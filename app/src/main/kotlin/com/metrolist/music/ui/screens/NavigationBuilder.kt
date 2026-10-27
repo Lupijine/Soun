@@ -80,6 +80,10 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable(Screens.Explore.route) { ExploreScreen() }
 
+    composable("library/device") {
+        com.metrolist.music.ui.screens.library.DeviceSongsScreen()
+    }
+
     composable("library/manage") {
         com.metrolist.music.ui.screens.library.LibraryBrowserScreen()
     }

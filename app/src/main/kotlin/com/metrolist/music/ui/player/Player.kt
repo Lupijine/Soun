@@ -878,7 +878,7 @@ fun BottomSheetPlayer(
                             AlbumGlow(
                                 colors = gradientColors,
                                 dark = useDarkTheme,
-                                motionPaused = { !queueSheetState.isCollapsed },
+                                motionPaused = { !queueSheetState.isCollapsed || menuState.isVisible },
                                 modifier = Modifier.fillMaxSize().graphicsLayer { alpha = state.progress.coerceIn(0f, 1f) },
                             )
                         }

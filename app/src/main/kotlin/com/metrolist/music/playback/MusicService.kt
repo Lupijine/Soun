@@ -3713,6 +3713,7 @@ class MusicService :
         playerProvider: () -> ExoPlayer?,
     ): DataSource.Factory {
         return ResolvingDataSource.Factory(createCacheDataSource()) { dataSpec ->
+            if (dataSpec.uri.scheme == "content" && dataSpec.uri.authority == "media") return@Factory dataSpec
             val mediaId = dataSpec.key ?: error("No media id")
             val storedFormat = runBlocking(Dispatchers.IO) { database.format(mediaId).first() }
             applyAudioNormalizationBeforePlayback(

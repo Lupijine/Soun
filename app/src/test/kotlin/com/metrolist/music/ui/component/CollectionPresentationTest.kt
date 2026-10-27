@@ -326,16 +326,24 @@ class CollectionPresentationTest {
         }
     }
 
-    @Test fun `long menu opens fully and its final actions remain scrollable`() {
+    @Test fun `long menu opened after a short menu expands and scrolls to its last action`() {
+        val menu = MenuState()
         content {
-            BottomSheetMenu(modifier = Modifier.testTag("long-menu"), state = androidx.compose.runtime.remember {
-                MenuState(true) {
-                    Text("CHEYLL VIBES", Modifier.padding(16.dp))
-                    LazyColumn(Modifier.testTag("menu-actions")) {
-                        items(18) { index -> Text("Action $index", Modifier.fillMaxWidth().padding(20.dp)) }
-                    }
+            Box(Modifier.fillMaxSize()) {
+                BottomSheetMenu(modifier = Modifier.testTag("long-menu"), state = menu)
+            }
+        }
+        compose.runOnIdle { menu.show { Text("Short action", Modifier.padding(20.dp)) } }
+        compose.onNodeWithText("Short action").assertIsDisplayed()
+        compose.runOnIdle { menu.dismiss() }
+        compose.waitForIdle()
+        compose.runOnIdle {
+            menu.show {
+                Text("CHEYLL VIBES", Modifier.padding(16.dp))
+                LazyColumn(Modifier.testTag("menu-actions")) {
+                    items(18) { index -> Text("Action $index", Modifier.fillMaxWidth().padding(20.dp)) }
                 }
-            })
+            }
         }
         compose.onNodeWithText("CHEYLL VIBES").assertIsDisplayed()
         val bounds = compose.onNodeWithTag("long-menu").getUnclippedBoundsInRoot()

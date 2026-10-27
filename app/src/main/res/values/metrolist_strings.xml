@@ -1075,4 +1075,9 @@
     <string name="soun_show_download_details">Show download details</string>
     <string name="soun_hide_download_details">Hide download details</string>
     <string name="soun_cancel_download">Cancel download</string>
+    <string name="soun_device_audio">Audio files on this device</string>
+    <string name="soun_device_permission">Allow access to audio files to show music stored on your device.</string>
+    <string name="soun_device_settings">Allow access in settings</string>
+    <string name="soun_device_empty">No audio files found on this device.</string>
+    <string name="soun_device_error">Could not read audio files. Check access in settings and try again.</string>
 </resources>
