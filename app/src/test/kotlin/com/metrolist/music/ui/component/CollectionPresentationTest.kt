@@ -114,6 +114,31 @@ class CollectionPresentationTest {
         assertTrue("Artwork overlaps its title", image.bottom <= title.top)
     }
 
+    @Test fun `recognition button and listening animation render over the ambient backdrop`() {
+        var started = false
+        var cancelled = false
+        content {
+            val screen = rememberLayerBackdrop()
+            val ambient = rememberLayerBackdrop()
+            CompositionLocalProvider(
+                com.metrolist.music.ui.theme.LocalSounBackdrop provides screen,
+                com.metrolist.music.ui.theme.LocalSounSurfaceBackdrop provides ambient,
+            ) {
+                Box(Modifier.fillMaxSize().layerBackdrop(screen)) {
+                    Box(Modifier.fillMaxSize().layerBackdrop(ambient).background(Color(0xFF38304A)))
+                    Column {
+                        com.metrolist.music.ui.screens.recognition.ReadyState { started = true }
+                        com.metrolist.music.ui.screens.recognition.ListeningState { cancelled = true }
+                    }
+                }
+            }
+        }
+        compose.onNodeWithTag("recognition-start").performClick()
+        compose.onNodeWithText("Cancel").performClick()
+        assertTrue(started)
+        assertTrue(cancelled)
+    }
+
     @OptIn(ExperimentalFoundationApi::class)
     private fun reviewCollection(name: String, artwork: Int, downloaded: Boolean) {
         val context = ApplicationProvider.getApplicationContext<Application>()

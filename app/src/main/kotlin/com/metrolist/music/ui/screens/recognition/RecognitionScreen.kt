@@ -71,6 +71,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -85,8 +86,7 @@ import coil3.compose.AsyncImage
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.R
 import com.metrolist.music.db.entities.RecognitionHistory
-import com.metrolist.music.ui.theme.sounGlass
-import com.metrolist.music.ui.theme.sounGlassColors
+import com.metrolist.music.ui.theme.sounPanel
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.SearchRoutes
@@ -304,7 +304,7 @@ fun RecognitionScreen(
 }
 
 @Composable
-private fun ReadyState(onStartRecognition: () -> Unit) {
+internal fun ReadyState(onStartRecognition: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp),
@@ -323,14 +323,14 @@ private fun ReadyState(onStartRecognition: () -> Unit) {
                                     Color.Transparent,
                                 ),
                         ),
-                    ).clickable { onStartRecognition() },
+                    ).clickable { onStartRecognition() }.testTag("recognition-start"),
             contentAlignment = Alignment.Center,
         ) {
             Box(
                 modifier =
                     Modifier
                         .size(160.dp)
-                        .sounGlass(CircleShape, sounGlassColors(), elevation = 0f),
+                        .sounPanel(CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -351,7 +351,7 @@ private fun ReadyState(onStartRecognition: () -> Unit) {
 }
 
 @Composable
-private fun ListeningState(onCancel: () -> Unit) {
+internal fun ListeningState(onCancel: () -> Unit) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val scale by infiniteTransition.animateFloat(
         initialValue = 1f,
@@ -398,7 +398,7 @@ private fun ListeningState(onCancel: () -> Unit) {
                 modifier =
                     Modifier
                         .size(160.dp)
-                        .sounGlass(CircleShape, sounGlassColors(), elevation = 0f)
+                        .sounPanel(CircleShape)
                         .clickable { onCancel() },
                 contentAlignment = Alignment.Center,
             ) {
