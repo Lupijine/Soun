@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: soun-test-${{ github.sha }}
+  group: soun-release-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
@@ -25,29 +25,49 @@ jobs:
           java-version: '21'
           distribution: temurin
       - uses: gradle/actions/setup-gradle@v5
+      - name: Check signing configuration
+        env:
+          SIGNING_KEYSTORE: ${{ secrets.KEYSTORE }}
+          SIGNING_ALIAS: ${{ secrets.KEY_ALIAS }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -z "$SIGNING_KEYSTORE" ] || [ -z "$SIGNING_ALIAS" ] || [ -z "$SIGNING_STORE_PASSWORD" ] || [ -z "$SIGNING_KEY_PASSWORD" ]; then
+            echo "::error::Release signing secrets KEYSTORE, KEY_ALIAS, KEYSTORE_PASSWORD and KEY_PASSWORD are required."
+            exit 1
+          fi
       - name: Build release APK
         run: ./gradlew --console=plain :app:assembleFossRelease
         env:
           METROLIST_BUILD_COMMIT: ${{ github.sha }}
           LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
           LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
-      - name: Sign with the project test key
+      - name: Sign release APK
+        env:
+          SIGNING_KEYSTORE: ${{ secrets.KEYSTORE }}
+          SIGNING_ALIAS: ${{ secrets.KEY_ALIAS }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
+          set -euo pipefail
+          umask 077
+          KEYSTORE_PATH="$(mktemp "$RUNNER_TEMP/soun-keystore.XXXXXX")"
+          trap 'rm -f "$KEYSTORE_PATH"' EXIT
+          printf '%s' "$SIGNING_KEYSTORE" | base64 --decode > "$KEYSTORE_PATH"
           BUILD_TOOLS="$ANDROID_HOME/build-tools/37.0.0"
           "$BUILD_TOOLS/zipalign" -f -p 4 app/build/outputs/apk/foss/release/app-foss-release-unsigned.apk soun-aligned.apk
-          "$BUILD_TOOLS/apksigner" sign --ks app/persistent-debug.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out soun-test.apk soun-aligned.apk
-          "$BUILD_TOOLS/apksigner" verify soun-test.apk
-      - name: Publish test APK in Releases
+          "$BUILD_TOOLS/apksigner" sign --ks "$KEYSTORE_PATH" --ks-key-alias "$SIGNING_ALIAS" --ks-pass env:SIGNING_STORE_PASSWORD --key-pass env:SIGNING_KEY_PASSWORD --out soun.apk soun-aligned.apk
+          "$BUILD_TOOLS/apksigner" verify soun.apk
+      - name: Publish APK in Releases
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="soun-test-${GITHUB_SHA:0:7}"
+          TAG="soun-${GITHUB_SHA:0:7}"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" soun-test.apk --clobber
+            gh release upload "$TAG" soun.apk --clobber
           else
-            gh release create "$TAG" soun-test.apk \
+            gh release create "$TAG" soun.apk \
               --target "$GITHUB_SHA" \
-              --prerelease \
-              --title "Soun test build ${GITHUB_SHA:0:7}" \
-              --notes "Test-key signed APK for com.lupijine.soun, built from $GITHUB_SHA."
+              --title "Soun build ${GITHUB_SHA:0:7}" \
+              --notes "Release APK for com.lupijine.soun, built from $GITHUB_SHA."
           fi
