@@ -8,6 +8,7 @@ package com.metrolist.music.ui.component
 import com.metrolist.music.ui.theme.sounSurface
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -43,7 +44,11 @@ fun Material3MenuGroup(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (compact) Modifier.background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.045f), RoundedCornerShape(18.dp)) else Modifier.animateContentSize().sounSurface(RoundedCornerShape(24.dp)))
+            .then(if (compact) Modifier.background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.045f), RoundedCornerShape(18.dp))
+                else if (LocalGlassMenuContent.current) Modifier.animateContentSize()
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.20f), RoundedCornerShape(24.dp))
+                    .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.24f), RoundedCornerShape(24.dp))
+                else Modifier.animateContentSize().sounSurface(RoundedCornerShape(24.dp)))
     ) {
         items.forEachIndexed { index, item ->
             if (index > 0) {

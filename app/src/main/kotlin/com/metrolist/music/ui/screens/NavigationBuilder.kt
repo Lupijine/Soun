@@ -15,14 +15,23 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.dialog
 import androidx.navigation.navArgument
+import com.metrolist.music.LocalDatabase
+import com.metrolist.music.db.entities.Playlist
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.first
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.ui.screens.artist.ArtistAlbumsScreen
@@ -278,8 +287,33 @@ fun NavGraphBuilder.navigationBuilder(
                     type = NavType.StringType
                 },
             ),
-    ) {
-        OnlinePlaylistScreen(navController)
+    ) { entry ->
+        val database = LocalDatabase.current
+        val playlistId = requireNotNull(entry.arguments?.getString("playlistId"))
+        var resolved by remember(playlistId) { mutableStateOf(false) }
+        LaunchedEffect(entry, playlistId) {
+            entry.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                if (!resolved) {
+                    val localId = try {
+                        resolveEditablePlaylistId(playlistId) { database.playlistByBrowseId(it).first() }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        null
+                    }
+                    if (navController.currentBackStackEntry?.id == entry.id) {
+                        if (localId != null) {
+                            navController.navigate("local_playlist/$localId") {
+                                popUpTo(entry.destination.id) { inclusive = true }
+                            }
+                        } else {
+                            resolved = true
+                        }
+                    }
+                }
+            }
+        }
+        if (resolved) OnlinePlaylistScreen(navController)
     }
 
     composable(
@@ -471,4 +505,16 @@ fun NavGraphBuilder.navigationBuilder(
     composable("settings/android_auto") {
         AndroidAutoSettings(navController)
     }
+}
+
+internal suspend fun resolveEditablePlaylistId(
+    browseId: String,
+    find: suspend (String) -> Playlist?,
+): String? {
+    val normalized = browseId.removePrefix("VL")
+    for (id in listOf(browseId, normalized, "VL$normalized").distinct()) {
+        val playlist = find(id)
+        if (playlist?.playlist?.isEditable == true) return playlist.id
+    }
+    return null
 }

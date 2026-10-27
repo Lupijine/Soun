@@ -53,6 +53,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,6 +70,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 val LocalMenuState = compositionLocalOf { MenuState() }
+internal val LocalGlassMenuContent = staticCompositionLocalOf { false }
 
 @Stable
 class MenuState(
@@ -203,6 +206,7 @@ fun BottomSheetMenu(
         },
         sheetState = sheetState,
         containerColor = Color.Transparent,
+        scrimColor = Color.Black.copy(alpha = 0.20f),
         contentColor = MaterialTheme.colorScheme.onSurface,
         dragHandle = null,
         modifier = modifier,
@@ -210,11 +214,11 @@ fun BottomSheetMenu(
         Column(
             modifier = Modifier.fillMaxWidth().heightIn(max = maximumHeight).then(if (state.lightweight) Modifier.sounSurface(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)).background(MaterialTheme.colorScheme.surface.copy(alpha = 0.88f)) else Modifier.sounGlass(
                 RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-                sounGlassColors().copy(surfaceTint = background.copy(alpha = 0.76f)),
+                sounGlassColors().copy(surfaceTint = background.copy(alpha = 0.36f)),
                 backdrop = state.backdrop ?: LocalSounBackdrop.current,
                 // Keep the moving sheet to one blur/lens pass instead of the full-panel shader chain.
                 fullPanel = false,
-                diffusion = 10.dp,
+                diffusion = 12.dp,
                 elevation = 0f,
             )),
             horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
@@ -223,7 +227,9 @@ fun BottomSheetMenu(
                 .clip(RoundedCornerShape(2.dp))
                 .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)))
             Column(Modifier.weight(1f, fill = false).fillMaxWidth().padding(horizontal = 20.dp)) {
-                state.content(this)
+                CompositionLocalProvider(LocalGlassMenuContent provides true) {
+                    state.content(this@Column)
+                }
             }
         }
     }
