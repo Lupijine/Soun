@@ -1930,13 +1930,17 @@ interface DatabaseDao {
         }
     }
 
-    @Update
+    @Query("SELECT * FROM playlist WHERE id = :id LIMIT 1")
+    fun playlistEntityById(id: String): PlaylistEntity?
+
+    @Transaction
     fun update(playlistEntity: PlaylistEntity, playlistItem: PlaylistItem) {
+        val current = playlistEntityById(playlistEntity.id) ?: return
         update(
-            playlistEntity.copy(
+            current.copy(
                 name = playlistItem.title,
                 browseId = playlistItem.id,
-                thumbnailUrl = playlistEntity.thumbnailUrl?.takeIf { it.startsWith("file:") } ?: playlistItem.thumbnail,
+                thumbnailUrl = current.thumbnailUrl?.takeIf { it.startsWith("file:") || it.contains("studio_square_thumbnail") } ?: playlistItem.thumbnail,
                 isEditable = playlistItem.isEditable,
                 remoteSongCount = playlistItem.songCountText?.let { Regex("""\d+""").find(it)?.value?.toIntOrNull() },
                 playEndpointParams = playlistItem.playEndpoint?.params,

@@ -7,6 +7,7 @@ package com.metrolist.music.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -15,6 +16,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
@@ -42,6 +45,7 @@ import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.sounCollectionRow
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.shimmer.GridItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
@@ -98,9 +102,13 @@ fun YouTubeBrowseScreen(
                     },
                 isPlaying = isPlaying,
                 fillMaxWidth = true,
+                thumbnailRatio = 1f,
+                roundedArtwork = true,
                 coroutineScope = coroutineScope,
                 modifier =
                     Modifier
+                        .padding(4.dp)
+                        .sounCollectionRow(active = false, selected = false)
                         .combinedClickable(
                             onClick = {
                                 when (item) {
@@ -197,6 +205,7 @@ fun YouTubeBrowseScreen(
     }
 
     TopAppBar(
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f)),
         title = { Text(browseResult?.title.orEmpty()) },
         navigationIcon = {
             IconButton(

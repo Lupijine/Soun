@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -53,6 +54,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -65,9 +67,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -83,6 +85,8 @@ import coil3.compose.AsyncImage
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.R
 import com.metrolist.music.db.entities.RecognitionHistory
+import com.metrolist.music.ui.theme.sounGlass
+import com.metrolist.music.ui.theme.sounGlassColors
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.SearchRoutes
@@ -199,8 +203,10 @@ fun RecognitionScreen(
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 title = { Text(stringResource(R.string.recognize_music)) },
                 navigationIcon = {
                     IconButton(
@@ -324,15 +330,14 @@ private fun ReadyState(onStartRecognition: () -> Unit) {
                 modifier =
                     Modifier
                         .size(160.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary),
+                        .sounGlass(CircleShape, sounGlassColors(), elevation = 0f),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     painter = painterResource(R.drawable.mic),
                     contentDescription = null,
                     modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary,
+                    tint = MaterialTheme.colorScheme.onSurface,
                 )
             }
         }
@@ -353,7 +358,7 @@ private fun ListeningState(onCancel: () -> Unit) {
         targetValue = 1.2f,
         animationSpec =
             infiniteRepeatable(
-                animation = tween(1000, easing = LinearEasing),
+                animation = tween(1800, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse,
             ),
         label = "scale",
@@ -373,9 +378,9 @@ private fun ListeningState(onCancel: () -> Unit) {
                 modifier =
                     Modifier
                         .size(200.dp)
-                        .scale(scale)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                        .graphicsLayer { scaleX = scale; scaleY = scale; alpha = 0.5f - (scale - 1f) * 1.5f }
+                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.75f), CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), CircleShape),
             )
 
             // Inner pulsing ring
@@ -383,9 +388,9 @@ private fun ListeningState(onCancel: () -> Unit) {
                 modifier =
                     Modifier
                         .size(180.dp)
-                        .scale(scale * 0.9f)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+                        .graphicsLayer { scaleX = 2.1f - scale; scaleY = 2.1f - scale; alpha = 0.2f + (scale - 1f) * 1.5f }
+                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f), CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.06f), CircleShape),
             )
 
             // Main button
@@ -393,8 +398,7 @@ private fun ListeningState(onCancel: () -> Unit) {
                 modifier =
                     Modifier
                         .size(160.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
+                        .sounGlass(CircleShape, sounGlassColors(), elevation = 0f)
                         .clickable { onCancel() },
                 contentAlignment = Alignment.Center,
             ) {
@@ -402,7 +406,7 @@ private fun ListeningState(onCancel: () -> Unit) {
                     painter = painterResource(R.drawable.mic),
                     contentDescription = null,
                     modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary,
+                    tint = MaterialTheme.colorScheme.onSurface,
                 )
             }
         }

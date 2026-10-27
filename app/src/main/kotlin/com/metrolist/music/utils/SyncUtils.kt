@@ -1339,7 +1339,10 @@ class SyncUtils @Inject constructor(
                         .filterNot { it.browseId == null }
                         .forEach { playlist ->
                             try {
-                                database.update(playlist.localToggleLike())
+                                database.withTransaction {
+                                    val current = playlistEntityById(playlist.id)
+                                    if (current?.bookmarkedAt != null) update(current.localToggleLike())
+                                }
                                 delay(DB_OPERATION_DELAY_MS)
                             } catch (e: Exception) {
                                 Timber.e(e, "Failed to update playlist: ${playlist.id}")

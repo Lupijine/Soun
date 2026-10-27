@@ -93,6 +93,27 @@ class CollectionPresentationTest {
         reviewCollection("Liked", R.drawable.soun_liked_chrome, false)
     }
 
+    @Test fun `wide song artwork stays above its title`() {
+        content {
+            GridItem(
+                fillMaxWidth = true,
+                thumbnailRatio = 16f / 9f,
+                title = { Text("Song title", Modifier.testTag("grid-title")) },
+                subtitle = {},
+                thumbnailContent = {
+                    ItemThumbnail(
+                        thumbnailUrl = null, isActive = false, isPlaying = false,
+                        shape = RoundedCornerShape(12.dp), thumbnailRatio = 16f / 9f,
+                        modifier = Modifier.testTag("grid-artwork"),
+                    )
+                },
+            )
+        }
+        val image = compose.onNodeWithTag("grid-artwork").getUnclippedBoundsInRoot()
+        val title = compose.onNodeWithTag("grid-title").getUnclippedBoundsInRoot()
+        assertTrue("Artwork overlaps its title", image.bottom <= title.top)
+    }
+
     @OptIn(ExperimentalFoundationApi::class)
     private fun reviewCollection(name: String, artwork: Int, downloaded: Boolean) {
         val context = ApplicationProvider.getApplicationContext<Application>()

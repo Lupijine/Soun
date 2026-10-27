@@ -1319,6 +1319,7 @@ fun YouTubeGridItem(
                 isActive = isActive,
                 isPlaying = isPlaying,
                 shape = thumbShape,
+                thumbnailRatio = thumbnailRatio,
                 forceCrop = roundedArtwork,
             )
         }

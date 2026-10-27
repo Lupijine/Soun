@@ -82,4 +82,23 @@ class PlaylistColorSourceTest {
         assertEquals("https://new", database.dao.playlist(remote.id).first()!!.playlist.thumbnailUrl)
     }
 
+    @Test fun `sync uses the latest cover when its playlist snapshot is stale`() = runBlocking {
+        val stale = PlaylistEntity(id = "saved", name = "Before", browseId = "remote", thumbnailUrl = "https://old")
+        database.dao.insert(stale)
+        database.dao.update(stale.copy(thumbnailUrl = "file:///private/new.png"))
+        val remote = com.metrolist.innertube.models.PlaylistItem("remote", "Updated", null, null, "https://remote", null, null, null)
+        database.dao.update(stale, remote)
+        val saved = database.dao.playlist(stale.id).first()!!.playlist
+        assertEquals("file:///private/new.png", saved.thumbnailUrl)
+        assertEquals("Updated", saved.name)
+    }
+
+    @Test fun `sync keeps a custom YouTube cover while the remote listing catches up`() = runBlocking {
+        val saved = PlaylistEntity(id = "custom", name = "Before", browseId = "remote", thumbnailUrl = "https://example/studio_square_thumbnail/cover")
+        database.dao.insert(saved)
+        val remote = com.metrolist.innertube.models.PlaylistItem("remote", "After", null, null, "https://older", null, null, null)
+        database.dao.update(saved, remote)
+        assertEquals(saved.thumbnailUrl, database.dao.playlist(saved.id).first()!!.playlist.thumbnailUrl)
+    }
+
 }

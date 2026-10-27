@@ -32,6 +32,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
@@ -41,6 +42,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -58,6 +60,7 @@ import com.metrolist.music.constants.ThumbnailCornerRadius
 import com.metrolist.music.db.entities.RecognitionHistory
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.sounCollectionRow
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.SearchRoutes
@@ -147,8 +150,10 @@ fun RecognitionHistoryScreen(navController: NavController) {
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 title = { Text(stringResource(R.string.recognition_history)) },
                 navigationIcon = {
                     IconButton(
@@ -183,6 +188,7 @@ fun RecognitionHistoryScreen(navController: NavController) {
                 contentAlignment = Alignment.Center,
             ) {
                 Column(
+                    modifier = Modifier.padding(horizontal = 32.dp).sounCollectionRow(active = false, selected = false).padding(32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Icon(
@@ -193,7 +199,7 @@ fun RecognitionHistoryScreen(navController: NavController) {
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "No recognition history",
+                        text = stringResource(R.string.soun_recognition_history_empty),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -244,11 +250,12 @@ private fun RecognitionHistoryItem(
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
+                .sounCollectionRow(active = false, selected = false)
                 .clickable { onClick() },
         shape = RoundedCornerShape(ThumbnailCornerRadius),
         colors =
             CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                containerColor = Color.Transparent,
             ),
     ) {
         Row(

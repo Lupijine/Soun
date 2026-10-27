@@ -364,7 +364,7 @@ fun OnlineSearchResult(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
+                .background(if (pureBlack) Color.Black else Color.Transparent)
                 .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)),
     ) {
         // Google-style SearchBar with Material 3 design
@@ -449,7 +449,7 @@ fun OnlineSearchResult(
 
         // Main content area below search bar
         Box(modifier = Modifier.weight(1f).fillMaxWidth()
-            .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)) {
+            .background(if (pureBlack) Color.Black else Color.Transparent)) {
             if (!isSearchFocused) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),

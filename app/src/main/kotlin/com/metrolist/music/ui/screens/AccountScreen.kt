@@ -30,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
@@ -56,6 +57,7 @@ import com.metrolist.music.db.entities.PodcastEntity
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.sounCollectionRow
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.shimmer.GridItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ListItemPlaceHolder
@@ -116,8 +118,12 @@ fun AccountScreen(
                     YouTubeGridItem(
                         item = item,
                         fillMaxWidth = true,
+                        thumbnailRatio = 1f,
+                        roundedArtwork = true,
                         modifier =
                             Modifier
+                                .padding(4.dp)
+                                .sounCollectionRow(active = false, selected = false)
                                 .combinedClickable(
                                     onClick = {
                                         navController.navigate("online_playlist/${item.id}")
@@ -153,8 +159,12 @@ fun AccountScreen(
                     YouTubeGridItem(
                         item = item,
                         fillMaxWidth = true,
+                        thumbnailRatio = 1f,
+                        roundedArtwork = true,
                         modifier =
                             Modifier
+                                .padding(4.dp)
+                                .sounCollectionRow(active = false, selected = false)
                                 .combinedClickable(
                                     onClick = {
                                         navController.navigate("album/${item.id}")
@@ -189,8 +199,12 @@ fun AccountScreen(
                     YouTubeGridItem(
                         item = item,
                         fillMaxWidth = true,
+                        thumbnailRatio = 1f,
+                        roundedArtwork = true,
                         modifier =
                             Modifier
+                                .padding(4.dp)
+                                .sounCollectionRow(active = false, selected = false)
                                 .combinedClickable(
                                     onClick = {
                                         navController.navigate("artist/${item.id}")
@@ -319,6 +333,7 @@ fun AccountScreen(
     }
 
     TopAppBar(
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f)),
         title = { Text(stringResource(R.string.account)) },
         navigationIcon = {
             IconButton(
