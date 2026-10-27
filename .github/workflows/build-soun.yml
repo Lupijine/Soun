@@ -27,13 +27,11 @@ jobs:
       - uses: gradle/actions/setup-gradle@v5
       - name: Check signing configuration
         env:
-          SIGNING_KEYSTORE: ${{ secrets.KEYSTORE }}
-          SIGNING_ALIAS: ${{ secrets.KEY_ALIAS }}
-          SIGNING_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          SIGNING_KEYSTORE: ${{ secrets.SOUN_KEYSTORE }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SOUN_KEYSTORE_PASSWORD }}
         run: |
-          if [ -z "$SIGNING_KEYSTORE" ] || [ -z "$SIGNING_ALIAS" ] || [ -z "$SIGNING_STORE_PASSWORD" ] || [ -z "$SIGNING_KEY_PASSWORD" ]; then
-            echo "::error::Release signing secrets KEYSTORE, KEY_ALIAS, KEYSTORE_PASSWORD and KEY_PASSWORD are required."
+          if [ -z "$SIGNING_KEYSTORE" ] || [ -z "$SIGNING_STORE_PASSWORD" ]; then
+            echo "::error::Release signing secrets SOUN_KEYSTORE and SOUN_KEYSTORE_PASSWORD are required."
             exit 1
           fi
       - name: Build release APK
@@ -44,10 +42,8 @@ jobs:
           LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
       - name: Sign release APK
         env:
-          SIGNING_KEYSTORE: ${{ secrets.KEYSTORE }}
-          SIGNING_ALIAS: ${{ secrets.KEY_ALIAS }}
-          SIGNING_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          SIGNING_KEYSTORE: ${{ secrets.SOUN_KEYSTORE }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SOUN_KEYSTORE_PASSWORD }}
         run: |
           set -euo pipefail
           umask 077
@@ -56,7 +52,7 @@ jobs:
           printf '%s' "$SIGNING_KEYSTORE" | base64 --decode > "$KEYSTORE_PATH"
           BUILD_TOOLS="$ANDROID_HOME/build-tools/37.0.0"
           "$BUILD_TOOLS/zipalign" -f -p 4 app/build/outputs/apk/foss/release/app-foss-release-unsigned.apk soun-aligned.apk
-          "$BUILD_TOOLS/apksigner" sign --ks "$KEYSTORE_PATH" --ks-key-alias "$SIGNING_ALIAS" --ks-pass env:SIGNING_STORE_PASSWORD --key-pass env:SIGNING_KEY_PASSWORD --out soun.apk soun-aligned.apk
+          "$BUILD_TOOLS/apksigner" sign --ks "$KEYSTORE_PATH" --ks-pass env:SIGNING_STORE_PASSWORD --out soun.apk soun-aligned.apk
           "$BUILD_TOOLS/apksigner" verify soun.apk
       - name: Publish APK in Releases
         env:
