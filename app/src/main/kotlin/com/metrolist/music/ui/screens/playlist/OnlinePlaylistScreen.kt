@@ -92,6 +92,7 @@ import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.ExpandableText
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.SounCollectionActions
 import com.metrolist.music.ui.component.SounCollectionHeader
 import com.metrolist.music.ui.component.YouTubeListItem
 import com.metrolist.music.ui.menu.YouTubePlaylistMenu
@@ -203,7 +204,7 @@ fun OnlinePlaylistScreen(
     val collectionBackdrop = rememberLayerBackdrop()
     SounCollectionTheme(palette.firstOrNull() ?: SounAccent, collectionBackdrop) {
         Box(Modifier.fillMaxSize()) {
-            SounCollectionBackground(palette, pureBlack, lightField = collectionBackdrop)
+            SounCollectionBackground(palette, pureBlack, lightField = collectionBackdrop, motionPaused = { lazyListState.isScrollInProgress })
             LazyColumn(
                 modifier = Modifier.graphicsLayer(),
                 state = lazyListState,
@@ -269,9 +270,27 @@ fun OnlinePlaylistScreen(
                                     dbPlaylist = dbPlaylist,
                                     colorSource = colorSource,
                                     coroutineScope = coroutineScope,
-                                    continuation = viewModel.continuation,
                                     isPodcastPlaylist = isPodcastPlaylist,
                                     modifier = Modifier.animateItem(),
+                                )
+                            }
+                            stickyHeader(key = "playlist_actions") {
+                                SounCollectionActions(
+                                    enabled = songs.isNotEmpty() && !isListenTogetherGuest,
+                                    onPlay = {
+                                        playerConnection.playQueue(YouTubePlaylistQueue(
+                                            playlistId = playlist.id, playlistTitle = playlist.title,
+                                            initialSongs = songs, initialContinuation = viewModel.continuation,
+                                        ))
+                                    },
+                                    onShuffle = {
+                                        val endpoint = playlist.shuffleEndpoint
+                                        if (endpoint != null) playerConnection.playQueue(YouTubeQueue(endpoint))
+                                        else playerConnection.playQueue(YouTubePlaylistQueue(
+                                            playlistId = playlist.id, playlistTitle = playlist.title,
+                                            initialSongs = songs.shuffled(), initialContinuation = viewModel.continuation,
+                                        ))
+                                    },
                                 )
                             }
                         }
@@ -505,7 +524,6 @@ private fun OnlinePlaylistHeader(
     dbPlaylist: Playlist?,
     colorSource: String?,
     coroutineScope: CoroutineScope,
-    continuation: String?,
     isPodcastPlaylist: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -521,6 +539,7 @@ private fun OnlinePlaylistHeader(
         if (totalDuration > 0) " · " + makeTimeString(totalDuration * 1000L) else ""
     val liked = playlist.id.removePrefix("VL") == "LM"
     SounCollectionHeader(
+        showActions = false,
         name = playlist.title,
         subtitle = subtitle,
         artwork = if (liked) R.drawable.soun_liked_chrome else null,
@@ -529,20 +548,6 @@ private fun OnlinePlaylistHeader(
         enabled = songs.isNotEmpty() && !isListenTogetherGuest,
         moreEnabled = true,
         modifier = modifier,
-        onPlay = {
-            playerConnection.playQueue(YouTubePlaylistQueue(
-                playlistId = playlist.id, playlistTitle = playlist.title,
-                initialSongs = songs, initialContinuation = continuation,
-            ))
-        },
-        onShuffle = {
-            val endpoint = playlist.shuffleEndpoint
-            if (endpoint != null) playerConnection.playQueue(YouTubeQueue(endpoint))
-            else playerConnection.playQueue(YouTubePlaylistQueue(
-                playlistId = playlist.id, playlistTitle = playlist.title,
-                initialSongs = songs.shuffled(), initialContinuation = continuation,
-            ))
-        },
         onMore = {
             menuState.show {
                 YouTubePlaylistMenu(playlist, songs, coroutineScope, menuState::dismiss)

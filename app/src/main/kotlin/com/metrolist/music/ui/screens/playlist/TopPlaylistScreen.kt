@@ -85,6 +85,7 @@ import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.SortHeader
+import com.metrolist.music.ui.component.SounCollectionActions
 import com.metrolist.music.ui.component.SounCollectionHeader
 import com.metrolist.music.ui.menu.SelectionSongMenu
 import com.metrolist.music.ui.menu.SongMenu
@@ -252,7 +253,7 @@ fun TopPlaylistScreen(
         Box(
             modifier = Modifier.fillMaxSize(),
         ) {
-            SounCollectionBackground(palette, pureBlack, lightField = collectionBackdrop)
+            SounCollectionBackground(palette, pureBlack, lightField = collectionBackdrop, motionPaused = { state.isScrollInProgress })
             LazyColumn(
                 modifier = Modifier.graphicsLayer(),
                 state = state,
@@ -278,6 +279,13 @@ fun TopPlaylistScreen(
                                     onShowRemoveDownloadDialog = { showRemoveDownloadDialog = true },
                                 menuState = menuState,
                                     modifier = Modifier.animateItem()
+                                )
+                            }
+                            stickyHeader(key = "playlist_actions") {
+                                SounCollectionActions(
+                                    enabled = songs!!.isNotEmpty(),
+                                    onPlay = { playerConnection.playQueue(ListQueue(title = name, items = songs!!.map { it.toMediaItem() })) },
+                                    onShuffle = { playerConnection.playQueue(ListQueue(title = name, items = songs!!.shuffled().map { it.toMediaItem() })) },
                                 )
                             }
                         }
@@ -548,28 +556,13 @@ private fun TopPlaylistHeader(
     val downloadUtil = LocalDownloadUtil.current
 
     SounCollectionHeader(
+        showActions = false,
         name = name,
         subtitle = pluralStringResource(R.plurals.n_song, songs.size, songs.size) + if (likeLength > 0) " · " + makeTimeString(likeLength * 1000L) else "",
         artwork = null,
         colorSource = colorSource,
         enabled = songs.isNotEmpty(),
         modifier = modifier,
-        onPlay = {
-            playerConnection.playQueue(
-                ListQueue(
-                    title = name,
-                    items = songs.map { it.toMediaItem() },
-                ),
-            )
-        },
-        onShuffle = {
-            playerConnection.playQueue(
-                ListQueue(
-                    title = name,
-                    items = songs.shuffled().map { it.toMediaItem() },
-                ),
-            )
-        },
         onMore = {
             menuState.show {
                 TopPlaylistMenu(

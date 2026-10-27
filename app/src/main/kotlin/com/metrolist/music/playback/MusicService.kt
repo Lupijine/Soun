@@ -474,6 +474,7 @@ class MusicService :
 
     @Volatile
     private var latestMediaNotification: Notification? = null
+    private val notificationGate = PlaybackNotificationGate()
 
     private var scrobbleManager: ScrobbleManager? = null
 
@@ -621,15 +622,10 @@ class MusicService :
         )
 
         playerInitialized.value = false
+    }
 
-        // Call startForeground() as early as possible to satisfy the
-        // 5-second timeout imposed by Context.startForegroundService().
-        // On some OEMs (e.g. MIUI), even a DataStore read can be slow
-        // enough to miss the window, so we promote before any I/O.
-        ensureForegroundChannelExists()
-        if (!ensureStartedAsForegroundOrStop()) {
-            return
-        }
+    private fun initializePlayer() {
+        if (::player.isInitialized) return
 
         // Read ALL startup preferences in one shot so that subsequent code
         // never calls dataStore.get() (which does runBlocking internally).
@@ -4173,17 +4169,6 @@ class MusicService :
         }
     }
 
-    /**
-     * [Context.startForegroundService] requires [startForeground] to succeed quickly. If we cannot
-     * enter the foreground state, stop immediately so the system does not ANR the app process.
-     */
-    private fun ensureStartedAsForegroundOrStop(): Boolean =
-        startForegroundSafely(
-            notification = createFallbackForegroundNotification(),
-            deniedMessage = "Foreground service start not allowed; stopping service to avoid ANR",
-            failureMessage = "Failed to enter foreground; stopping service to avoid ANR",
-        )
-
     private fun ensureForegroundWithLatestNotificationOrStop(): Boolean =
         startForegroundSafely(
             notification = latestMediaNotification ?: createFallbackForegroundNotification(),
@@ -4326,7 +4311,10 @@ class MusicService :
         shutdownDeferred.complete(Unit)
     }
 
-    override fun onBind(intent: Intent?) = super.onBind(intent) ?: binder
+    override fun onBind(intent: Intent?): android.os.IBinder? {
+        initializePlayer()
+        return super.onBind(intent) ?: binder
+    }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         if (dataStore.get(StopMusicOnTaskClearKey, false)) {
@@ -4364,6 +4352,7 @@ class MusicService :
         session: MediaSession,
         startInForegroundRequired: Boolean,
     ) {
+        if (!notificationGate.shouldShow(session.player.playWhenReady, startInForegroundRequired)) return
         try {
             super.onUpdateNotification(session, startInForegroundRequired)
         } catch (e: ForegroundServiceStartNotAllowedException) {
@@ -4390,11 +4379,15 @@ class MusicService :
         // media control.
         val isNotificationDismissal =
             intent?.getBooleanExtra(MediaNotification.NOTIFICATION_DISMISSED_EVENT_KEY, false) == true
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isNotificationDismissal) {
+        val isWidgetRefresh = intent?.action == MusicWidgetReceiver.ACTION_UPDATE_WIDGET ||
+            intent?.action == PlaylistWidgetReceiver.ACTION_UPDATE_WIDGET
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isNotificationDismissal && !isWidgetRefresh) {
             if (!ensureForegroundWithLatestNotificationOrStop()) {
                 return START_NOT_STICKY
             }
         }
+
+        initializePlayer()
 
         when (intent?.action) {
             ACTION_ALARM_TRIGGER -> {

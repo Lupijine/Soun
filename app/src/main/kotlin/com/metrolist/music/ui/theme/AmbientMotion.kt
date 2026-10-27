@@ -44,3 +44,17 @@ internal fun rememberAmbientDrift(): State<Float> {
         }
     }
 }
+
+/** Freeze without subscribing to animation ticks; resume without jumping ahead. */
+internal class AmbientPhase {
+    private var previous: Float? = null
+    private var phase = 0f
+
+    fun advance(source: Float?): Float {
+        if (source != null) {
+            previous?.let { phase = (phase + (source - it + 1f) % 1f) % 1f }
+        }
+        previous = source
+        return phase
+    }
+}

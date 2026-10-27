@@ -82,6 +82,7 @@ import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.SortHeader
+import com.metrolist.music.ui.component.SounCollectionActions
 import com.metrolist.music.ui.component.SounCollectionHeader
 import com.metrolist.music.ui.menu.CachePlaylistMenu
 import com.metrolist.music.ui.menu.SelectionSongMenu
@@ -195,7 +196,7 @@ fun CachePlaylistScreen(
         Box(
             modifier = Modifier.fillMaxSize(),
         ) {
-            SounCollectionBackground(palette, pureBlack, lightField = collectionBackdrop)
+            SounCollectionBackground(palette, pureBlack, lightField = collectionBackdrop, motionPaused = { lazyListState.isScrollInProgress })
             LazyColumn(
                 modifier = Modifier.graphicsLayer(),
                 state = lazyListState,
@@ -227,6 +228,14 @@ fun CachePlaylistScreen(
                                 colorSource = colorSource,
                                 menuState = menuState,
                                 modifier = Modifier.animateItem()
+                            )
+                        }
+                        stickyHeader(key = "playlist_actions") {
+                            val title = stringResource(R.string.cached_playlist)
+                            SounCollectionActions(
+                                enabled = filteredSongs.isNotEmpty(),
+                                onPlay = { playerConnection.playQueue(ListQueue(title = title, items = filteredSongs.map { it.toMediaItem() })) },
+                                onShuffle = { playerConnection.playQueue(ListQueue(title = title, items = filteredSongs.shuffled().map { it.toMediaItem() })) },
                             )
                         }
                     }
@@ -487,28 +496,13 @@ private fun CachePlaylistHeader(
     val downloadUtil = LocalDownloadUtil.current
 
     SounCollectionHeader(
+        showActions = false,
         name = stringResource(R.string.cached_playlist),
         subtitle = pluralStringResource(R.plurals.n_song, songs.size, songs.size),
         artwork = null,
         colorSource = colorSource,
         enabled = songs.isNotEmpty(),
         modifier = modifier,
-        onPlay = {
-            playerConnection.playQueue(
-                ListQueue(
-                    title = "Cache Songs",
-                    items = songs.map { it.toMediaItem() },
-                )
-            )
-        },
-        onShuffle = {
-            playerConnection.playQueue(
-                ListQueue(
-                    title = "Cache Songs",
-                    items = songs.shuffled().map { it.toMediaItem() },
-                )
-            )
-        },
         onMore = {
             menuState.show {
                 CachePlaylistMenu(

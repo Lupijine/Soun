@@ -7,7 +7,6 @@ package com.metrolist.music
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.ForegroundServiceStartNotAllowedException
 import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Intent
@@ -69,7 +68,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -289,6 +287,7 @@ class MainActivity : FragmentActivity() {
     private var playerConnectionSnapshot by mutableStateOf<PlayerConnection?>(null)
 
     private var isServiceBound = false
+    private var launchVideoVisible by mutableStateOf(false)
 
     private val serviceConnection =
         object : ServiceConnection {
@@ -327,34 +326,20 @@ class MainActivity : FragmentActivity() {
         }
     }
 
-    override fun onStart() {
-        super.onStart()
+    private fun requestNotificationPermission() {
         // Request notification permission on Android 13+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1000)
             }
         }
+    }
 
-        // Start the playback service explicitly once so it can outlive binding.
-        // Re-issuing startForegroundService() while an existing service instance is already
-        // running can trigger "did not then call startForeground" on some Android 9 devices
-        // when the framework expects a fresh foreground promotion for that start request.
-        if (!MusicService.isRunning) {
-            val serviceIntent = Intent(this, MusicService::class.java)
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    ContextCompat.startForegroundService(this, serviceIntent)
-                } else {
-                    startService(serviceIntent)
-                }
-            } catch (e: ForegroundServiceStartNotAllowedException) {
-                Timber.w(e, "Cannot start foreground service from background")
-            } catch (e: IllegalStateException) {
-                Timber.w(e, "Failed to start foreground service")
-            }
-        }
+    override fun onStart() {
+        super.onStart()
+        if (!launchVideoVisible) requestNotificationPermission()
 
+        // Browsing binds the player; Media3 starts the foreground service when playback begins.
         // Bind to service - if already bound, this is a no-op but ensures we stay connected
         if (!isServiceBound) {
             bindService(
@@ -413,6 +398,8 @@ class MainActivity : FragmentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        launchVideoVisible = savedInstanceState == null && !MusicService.isRunning &&
+            (intent.action == Intent.ACTION_MAIN || intent.action == null)
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
@@ -489,14 +476,33 @@ class MainActivity : FragmentActivity() {
         }
 
         setContent {
-            MetrolistApp(
-                latestVersionName = latestVersionName,
-                onLatestVersionNameChange = { latestVersionName = it },
-                playerConnection = playerConnectionSnapshot,
-                database = database,
-                downloadUtil = downloadUtil,
-                syncUtils = syncUtils,
-            )
+            Box(Modifier.fillMaxSize()) {
+                MetrolistApp(
+                    latestVersionName = latestVersionName,
+                    onLatestVersionNameChange = { latestVersionName = it },
+                    playerConnection = playerConnectionSnapshot,
+                    database = database,
+                    downloadUtil = downloadUtil,
+                    syncUtils = syncUtils,
+                )
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = launchVideoVisible,
+                    enter = androidx.compose.animation.EnterTransition.None,
+                    exit = fadeOut(tween(250)),
+                ) {
+                    val home: HomeViewModel = hiltViewModel()
+                    val loading by home.isLoading.collectAsStateWithLifecycle()
+                    com.metrolist.music.ui.component.SounLaunchScreen(
+                        ready = playerConnectionSnapshot != null && !loading,
+                        onFinished = {
+                            if (launchVideoVisible) {
+                                launchVideoVisible = false
+                                requestNotificationPermission()
+                            }
+                        },
+                    )
+                }
+            }
         }
     }
 
@@ -1004,6 +1010,14 @@ class MainActivity : FragmentActivity() {
                     mutableStateOf(null)
                 }
                 val snackbarHostState = remember { SnackbarHostState() }
+                val showNotice: (String) -> Unit = remember(snackbarHostState, coroutineScope) {
+                    { message ->
+                        coroutineScope.launch {
+                            snackbarHostState.currentSnackbarData?.dismiss()
+                            snackbarHostState.showSnackbar(message)
+                        }
+                    }
+                }
 
                 LaunchedEffect(Unit) {
                     if (pendingIntent != null) {
@@ -1068,6 +1082,7 @@ class MainActivity : FragmentActivity() {
                     com.metrolist.music.ui.theme.LocalAmbientDrift provides ambientDrift,
                     LocalSounBackdrop provides glassBackdrop,
                     LocalSounSurfaceBackdrop provides ambientBackdrop,
+                    com.metrolist.music.ui.component.LocalSounNotice provides showNotice,
                     LocalDatabase provides database,
                     LocalNavController provides navController,
                     LocalContentColor provides if (pureBlack) Color.White else contentColorFor(MaterialTheme.colorScheme.surface),
@@ -1085,7 +1100,6 @@ class MainActivity : FragmentActivity() {
                     }
 
                     Scaffold(
-                        snackbarHost = { SnackbarHost(snackbarHostState) },
                         topBar = {
                             AnimatedVisibility(
                                 visible = shouldShowTopBar,
@@ -1468,6 +1482,14 @@ class MainActivity : FragmentActivity() {
                     BottomSheetPage(
                         state = LocalBottomSheetPageState.current,
                         modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+
+                    com.metrolist.music.ui.component.SounSnackbarHost(
+                        snackbarHostState,
+                        Modifier.align(Alignment.BottomCenter).padding(
+                            bottom = if (playerBottomSheetState.isExpanded) 112.dp
+                                else playerAwareWindowInsets.asPaddingValues().calculateBottomPadding() + 16.dp,
+                        ),
                     )
 
                     if (showAccountDialog) {

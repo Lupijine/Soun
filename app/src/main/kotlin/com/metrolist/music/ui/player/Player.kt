@@ -23,7 +23,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.view.WindowManager
-import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -221,6 +220,7 @@ fun BottomSheetPlayer(
     pureBlack: Boolean,
 ) {
     val context = LocalContext.current
+    val showNotice = com.metrolist.music.ui.component.LocalSounNotice.current
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     val menuState = LocalMenuState.current
     val sleepTimerDefaultSetTemplate = stringResource(R.string.sleep_timer_default_set)
@@ -653,11 +653,7 @@ fun BottomSheetPlayer(
                                             settings[SleepTimerDefaultKey] = sleepTimerValue
                                         }
                                     }
-                                    Toast.makeText(
-                                        context,
-                                        String.format(sleepTimerDefaultSetTemplate, sleepTimerValue.roundToInt()),
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
+                                    showNotice(String.format(sleepTimerDefaultSetTemplate, sleepTimerValue.roundToInt()))
                                 },
                                 colors = IconButtonDefaults.filledIconButtonColors(
                                     containerColor = MaterialTheme.colorScheme.primary,
@@ -674,11 +670,7 @@ fun BottomSheetPlayer(
                                             settings[SleepTimerDefaultKey] = sleepTimerValue
                                         }
                                     }
-                                    Toast.makeText(
-                                        context,
-                                        String.format(sleepTimerDefaultSetTemplate, sleepTimerValue.roundToInt()),
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
+                                    showNotice(String.format(sleepTimerDefaultSetTemplate, sleepTimerValue.roundToInt()))
                                 },
                             ) {
                                 Text(stringResource(R.string.set_as_default))
@@ -1002,9 +994,7 @@ fun BottomSheetPlayer(
                                         onLongClick = {
                                             val clip = ClipData.newPlainText(copiedTitleStr, title)
                                             clipboardManager.setPrimaryClip(clip)
-                                            Toast
-                                                .makeText(context, copiedTitleStr, Toast.LENGTH_SHORT)
-                                                .show()
+                                            showNotice(copiedTitleStr)
                                         },
                                     ),
                         )
@@ -1085,12 +1075,7 @@ fun BottomSheetPlayer(
                                                             annotatedString,
                                                         )
                                                     clipboardManager.setPrimaryClip(clip)
-                                                    Toast
-                                                        .makeText(
-                                                            context,
-                                                            copiedArtistStr,
-                                                            Toast.LENGTH_SHORT,
-                                                        ).show()
+                                                    showNotice(copiedArtistStr)
                                                 },
                                             ),
                                 )

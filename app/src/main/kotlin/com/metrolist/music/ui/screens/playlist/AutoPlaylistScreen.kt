@@ -99,6 +99,7 @@ import com.metrolist.innertube.YouTube
 import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
+import com.metrolist.music.ui.component.SounCollectionActions
 import com.metrolist.music.ui.component.SounCollectionHeader
 import com.metrolist.music.ui.component.SounActionButton
 import com.metrolist.music.R
@@ -522,6 +523,7 @@ fun AutoPlaylistScreen(
                 ) },
                 pureBlack = pureBlack,
                 lightField = collectionBackdrop,
+                motionPaused = { state.isScrollInProgress },
             )
             LazyColumn(
                 modifier = Modifier.graphicsLayer(),
@@ -548,6 +550,13 @@ fun AutoPlaylistScreen(
                                 onShowRemoveDownloadDialog = { showRemoveDownloadDialog = true },
                                 menuState = menuState,
                                 modifier = Modifier.animateItem(),
+                            )
+                        }
+                        stickyHeader(key = "playlist_actions") {
+                            SounCollectionActions(
+                                enabled = songs!!.isNotEmpty(),
+                                onPlay = { playerConnection.playQueue(ListQueue(title = playlist, items = songs!!.map { it.toMediaItem() })) },
+                                onShuffle = { playerConnection.playQueue(ListQueue(title = playlist, items = songs!!.shuffled().map { it.toMediaItem() })) },
                             )
                         }
                     }
@@ -925,6 +934,7 @@ private fun AutoPlaylistHeader(
     }
 
     SounCollectionHeader(
+        showActions = false,
         name = name,
         subtitle = listOfNotNull(
             pluralStringResource(R.plurals.n_song, songs.size, songs.size),
@@ -933,8 +943,6 @@ private fun AutoPlaylistHeader(
         artwork = artwork,
         colorSource = colorSource,
         enabled = songs.isNotEmpty(),
-        onPlay = { playerConnection.playQueue(ListQueue(title = name, items = songs.map { it.toMediaItem() })) },
-        onShuffle = { playerConnection.playQueue(ListQueue(title = name, items = songs.shuffled().map { it.toMediaItem() })) },
         onMore = openPlaylistMenu,
         thumbnail = songs.firstOrNull()?.song?.thumbnailUrl,
         modifier = modifier,

@@ -13,6 +13,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -91,36 +92,42 @@ class CollectionPresentationTest {
         reviewCollection("Liked", R.drawable.soun_liked_chrome, false)
     }
 
+    @OptIn(ExperimentalFoundationApi::class)
     private fun reviewCollection(name: String, artwork: Int, downloaded: Boolean) {
         val context = ApplicationProvider.getApplicationContext<Application>()
         runBlocking { context.imageLoader.execute(ImageRequest.Builder(context).data(artwork).size(640).build()) }
         var plays = 0
         var shuffles = 0
         content {
-            Box(Modifier.fillMaxSize().testTag("collection")) {
-                SounCollectionBackground(if (downloaded) listOf(Color(0xFF786EAA), Color(0xFF5F9AB2)) else listOf(Color(0xFF9A5D8A), Color(0xFF657DAF)))
-                Column {
-                    Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(painterResource(R.drawable.arrow_back), null)
-                        Text(name, Modifier.weight(1f).padding(horizontal = 16.dp), style = MaterialTheme.typography.titleLarge)
-                        Icon(painterResource(R.drawable.search), null)
-                    }
-                    LazyColumn {
-                        item {
-                            SounCollectionHeader(name, if (downloaded) "29 songs · 4:59:15" else "488 songs · 2:08:44:15", artwork,
-                                null, true, { plays++ }, { shuffles++ }, {})
+            SounCollectionTheme(Color(0xFF9A5D8A)) {
+                Box(Modifier.fillMaxSize().testTag("collection")) {
+                    SounCollectionBackground(if (downloaded) listOf(Color(0xFF786EAA), Color(0xFF5F9AB2)) else listOf(Color(0xFF9A5D8A), Color(0xFF657DAF)))
+                    Column {
+                        Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(painterResource(R.drawable.arrow_back), null)
+                            Text(name, Modifier.weight(1f).padding(horizontal = 16.dp), style = MaterialTheme.typography.titleLarge)
+                            Icon(painterResource(R.drawable.search), null)
                         }
-                        if (downloaded) item { DownloadStatusStrip(DownloadPanelState(DownloadOverview(29, 0, 0,
-                            listOf(FailedDownload("song-id", "Space Song")), null), false, 447_000_000), {}, {}, {}, {}) }
-                        item { Text("Date added  ↓", Modifier.padding(horizontal = 24.dp, vertical = 16.dp), style = MaterialTheme.typography.labelLarge) }
-                        items(6) { index ->
-                            ListItem(title = listOf("Space Song", "Серые глаза", "Moon, Moon", "The Line", "Beautiful Life", "Blue Sands")[index],
-                                subtitle = { Text(listOf("Beach House · 5:21", "Ирина Салтыкова · 3:26", "Sofia Rotaru · 4:36")[index % 3], style = MaterialTheme.typography.bodySmall) },
-                                thumbnailContent = { Box(Modifier.size(48.dp).background(
-                                    listOf(Color(0xFF782F46), Color(0xFF6579A1), Color(0xFF648575))[index % 3], RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
-                                    Icon(painterResource(R.drawable.music_note), null, Modifier.size(20.dp))
-                                } }, isActive = index == 0,
-                                trailingContent = { Icon(painterResource(R.drawable.more_vert), null) })
+                        LazyColumn {
+                            item {
+                                SounCollectionHeader(name, if (downloaded) "29 songs · 4:59:15" else "488 songs · 2:08:44:15", artwork,
+                                    null, true, onMore = {}, showActions = false)
+                            }
+                            stickyHeader {
+                                SounCollectionActions(true, { plays++ }, { shuffles++ })
+                            }
+                            if (downloaded) item { DownloadStatusStrip(DownloadPanelState(DownloadOverview(29, 0, 0,
+                                listOf(FailedDownload("song-id", "Space Song")), null), false, 447_000_000), {}, {}, {}, {}) }
+                            item { Text("Date added  ↓", Modifier.padding(horizontal = 24.dp, vertical = 16.dp), style = MaterialTheme.typography.labelLarge) }
+                            items(6) { index ->
+                                ListItem(title = listOf("Space Song", "Серые глаза", "Moon, Moon", "The Line", "Beautiful Life", "Blue Sands")[index],
+                                    subtitle = { Text(listOf("Beach House · 5:21", "Ирина Салтыкова · 3:26", "Sofia Rotaru · 4:36")[index % 3], style = MaterialTheme.typography.bodySmall) },
+                                    thumbnailContent = { Box(Modifier.size(48.dp).background(
+                                        listOf(Color(0xFF782F46), Color(0xFF6579A1), Color(0xFF648575))[index % 3], RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
+                                        Icon(painterResource(R.drawable.music_note), null, Modifier.size(20.dp))
+                                    } }, isActive = index == 0,
+                                    trailingContent = { Icon(painterResource(R.drawable.more_vert), null) })
+                            }
                         }
                     }
                 }
@@ -134,6 +141,9 @@ class CollectionPresentationTest {
         val shuffleWidth = compose.onNodeWithText("Shuffle", ignoreCase = true).getUnclippedBoundsInRoot().width
         assertEquals(playWidth.value, shuffleWidth.value, 1f)
         saveImage("collection", if (downloaded) "downloaded-page.png" else "liked-page.png")
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Blue Sands"))
+        compose.onNodeWithText("Play", ignoreCase = true).assertIsDisplayed().performClick()
+        compose.runOnIdle { assertEquals(2, plays) }
     }
 
     @Test fun `empty editable playlist keeps its menu available while playback is disabled`() {
@@ -240,6 +250,43 @@ class CollectionPresentationTest {
         assertTrue("The visible light field must move", changed > 50)
         assertEquals("Motion must stay in the draw phase", oldCompositions, compositions)
         assertEquals("Static content must reuse its layer", oldDraws, foregroundDraws)
+    }
+
+    @Test fun `collection light freezes during scrolling and resumes without a jump`() {
+        val phase = mutableStateOf(0f)
+        val scrolling = mutableStateOf(false)
+        content {
+            CompositionLocalProvider(LocalAmbientDrift provides phase) {
+                SounCollectionBackground(listOf(Color.Red, Color.Blue),
+                    modifier = Modifier.testTag("paused-light"), motionPaused = { scrolling.value })
+            }
+        }
+        fun snapshot() = compose.onNodeWithTag("paused-light").captureToImage().asAndroidBitmap()
+        snapshot()
+        compose.runOnIdle { phase.value = 0.25f }
+        snapshot()
+        compose.runOnIdle { scrolling.value = true }
+        val frozen = snapshot()
+        compose.runOnIdle { phase.value = 0.7f }
+        assertTrue("Scrolling must freeze the field", frozen.sameAs(snapshot()))
+        compose.runOnIdle { scrolling.value = false }
+        assertTrue("Resuming must preserve the visible light position", frozen.sameAs(snapshot()))
+        compose.runOnIdle { phase.value = 0.8f }
+        assertTrue("Movement must resume", !frozen.sameAs(snapshot()))
+    }
+
+    @Test fun `glass notices preserve snackbar actions`() {
+        val state = SnackbarHostState()
+        var result: SnackbarResult? = null
+        content {
+            androidx.compose.runtime.LaunchedEffect(Unit) {
+                result = state.showSnackbar("Removed from playlist", actionLabel = "Undo", duration = SnackbarDuration.Indefinite)
+            }
+            SounSnackbarHost(state)
+        }
+        compose.onNodeWithText("Removed from playlist").assertIsDisplayed()
+        compose.onNodeWithText("Undo").performClick()
+        compose.runOnIdle { assertEquals(SnackbarResult.ActionPerformed, result) }
     }
 
     @Test fun `pure black collection has no coloured light or translucent overlay`() {

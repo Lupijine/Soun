@@ -25,24 +25,25 @@ internal fun SounCollectionHeader(
     @DrawableRes artwork: Int?,
     colorSource: String?,
     enabled: Boolean,
-    onPlay: () -> Unit,
-    onShuffle: () -> Unit,
+    onPlay: () -> Unit = {},
+    onShuffle: () -> Unit = {},
     onMore: () -> Unit,
     modifier: Modifier = Modifier,
     thumbnail: String? = null,
     moreEnabled: Boolean = enabled,
+    showActions: Boolean = true,
     supportingContent: @Composable () -> Unit = {},
 ) {
     Column(modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         if (artwork != null || thumbnail == null) {
-            SounPlaylistArtwork(artwork, Modifier.padding(vertical = 4.dp).size(176.dp), colorSource = colorSource)
+            SounPlaylistArtwork(artwork, Modifier.padding(top = 12.dp, bottom = 16.dp).size(248.dp), colorSource = colorSource)
         } else {
             AsyncImage(thumbnail, null, contentScale = ContentScale.Crop,
-                modifier = Modifier.padding(vertical = 8.dp).size(176.dp).clip(RoundedCornerShape(18.dp)))
+                modifier = Modifier.padding(top = 24.dp, bottom = 28.dp).size(216.dp).clip(RoundedCornerShape(28.dp)))
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Spacer(Modifier.size(48.dp))
-            Text(name, Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
+            Text(name, Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
             IconButton(onClick = onMore, enabled = moreEnabled) {
                 Icon(painterResource(R.drawable.more_horiz), stringResource(R.string.more_options))
@@ -51,12 +52,19 @@ internal fun SounCollectionHeader(
         Text(subtitle, Modifier.padding(horizontal = 24.dp), style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         supportingContent()
-        Spacer(Modifier.height(18.dp))
-        Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            SounActionButton(R.drawable.play, stringResource(R.string.play), onPlay,
-                Modifier.weight(1f), label = stringResource(R.string.play), enabled = enabled, prominent = true)
-            SounActionButton(R.drawable.shuffle, stringResource(R.string.shuffle), onShuffle,
-                Modifier.weight(1f), label = stringResource(R.string.shuffle), enabled = enabled)
-        }
+        if (showActions) SounCollectionActions(enabled, onPlay, onShuffle)
+    }
+}
+
+@Composable
+internal fun SounCollectionActions(enabled: Boolean, onPlay: () -> Unit, onShuffle: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        SounActionButton(R.drawable.soun_collection_play, stringResource(R.string.play), onPlay,
+            Modifier.weight(1f), label = stringResource(R.string.play), enabled = enabled, prominent = true)
+        SounActionButton(R.drawable.soun_collection_shuffle, stringResource(R.string.shuffle), onShuffle,
+            Modifier.weight(1f), label = stringResource(R.string.shuffle), enabled = enabled)
     }
 }

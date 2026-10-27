@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import kotlinx.coroutines.flow.first
 import com.metrolist.music.utils.persistPlaylistCover
 import com.metrolist.music.utils.deletePlaylistCover
+import com.metrolist.music.ui.component.SounCollectionActions
 import com.metrolist.music.ui.component.SounCollectionHeader
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.metrolist.music.ui.theme.SounCollectionTheme
@@ -493,7 +494,7 @@ fun LocalPlaylistScreen(
         Box(
             modifier = Modifier.fillMaxSize(),
         ) {
-            SounCollectionBackground(palette.ifEmpty { listOf(com.metrolist.music.ui.theme.SounAccent) }, pureBlack = pureBlack, lightField = collectionBackdrop)
+            SounCollectionBackground(palette.ifEmpty { listOf(com.metrolist.music.ui.theme.SounAccent) }, pureBlack = pureBlack, lightField = collectionBackdrop, motionPaused = { lazyListState.isScrollInProgress })
             LazyColumn(
                 modifier = Modifier.graphicsLayer(),
                 state = lazyListState,
@@ -512,6 +513,13 @@ fun LocalPlaylistScreen(
                                 onStartSearch = { isSearching = true },
                                 snackbarHostState = snackbarHostState,
                                 modifier = Modifier.animateItem(),
+                            )
+                        }
+                        stickyHeader(key = "playlist_actions") {
+                            SounCollectionActions(
+                                enabled = songs.isNotEmpty(),
+                                onPlay = { playerConnection.playQueue(ListQueue(title = playlist.playlist.name, items = songs.map { it.song.toMediaItem() })) },
+                                onShuffle = { playerConnection.playQueue(ListQueue(title = playlist.playlist.name, items = songs.shuffled().map { it.song.toMediaItem() })) },
                             )
                         }
                     }
@@ -1165,6 +1173,7 @@ fun LocalPlaylistHeader(
         }
         val songCount = if (playlist.songCount == 0) playlist.playlist.remoteSongCount ?: 0 else playlist.songCount
         SounCollectionHeader(
+            showActions = false,
             name = playlist.playlist.name,
             subtitle = listOfNotNull(
                 pluralStringResource(R.plurals.n_song, songCount, songCount),
@@ -1174,8 +1183,6 @@ fun LocalPlaylistHeader(
             colorSource = colorSource,
             thumbnail = playlist.playlist.thumbnailUrl,
             enabled = songs.isNotEmpty(),
-            onPlay = { playerConnection.playQueue(ListQueue(title = playlist.playlist.name, items = songs.map { it.song.toMediaItem() })) },
-            onShuffle = { playerConnection.playQueue(ListQueue(title = playlist.playlist.name, items = songs.shuffled().map { it.song.toMediaItem() })) },
             onMore = openPlaylistMenu,
             moreEnabled = true,
         )

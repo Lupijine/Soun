@@ -138,7 +138,6 @@ import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import kotlin.math.roundToInt
 import com.metrolist.music.constants.SleepTimerDefaultKey
-import android.widget.Toast
 import androidx.compose.runtime.derivedStateOf
 import com.metrolist.music.constants.SleepTimerFadeOutKey
 import com.metrolist.music.constants.SleepTimerStopAfterCurrentSongKey
@@ -167,6 +166,7 @@ fun Queue(
 ) {
     val navController = LocalNavController.current
     val context = LocalContext.current
+    val showNotice = com.metrolist.music.ui.component.LocalSounNotice.current
     val haptic = LocalHapticFeedback.current
     val clipboardManager = LocalClipboard.current
     val menuState = LocalMenuState.current
@@ -636,11 +636,7 @@ fun Queue(
                                                     settings[SleepTimerDefaultKey] = sleepTimerValue
                                                 }
                                             }
-                                            Toast.makeText(
-                                                context,
-                                                String.format(sleepTimerDefaultSetTemplate, sleepTimerValue.roundToInt()),
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
+                                            showNotice(String.format(sleepTimerDefaultSetTemplate, sleepTimerValue.roundToInt()))
                                         },
                                         colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                                             containerColor = MaterialTheme.colorScheme.primary,
@@ -657,11 +653,7 @@ fun Queue(
                                                     settings[SleepTimerDefaultKey] = sleepTimerValue
                                                 }
                                             }
-                                            Toast.makeText(
-                                                context,
-                                                String.format(sleepTimerDefaultSetTemplate, sleepTimerValue.roundToInt()),
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
+                                            showNotice(String.format(sleepTimerDefaultSetTemplate, sleepTimerValue.roundToInt()))
                                         },
                                     ) {
                                         Text(stringResource(R.string.set_as_default))

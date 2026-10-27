@@ -118,6 +118,7 @@ fun PlayerMenu(
     mediaMetadata ?: return
     val navController = LocalNavController.current
     val context = LocalContext.current
+    val showNotice = com.metrolist.music.ui.component.LocalSounNotice.current
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val playerVolume = playerConnection.service.playerVolume.collectAsStateWithLifecycle()
@@ -342,7 +343,7 @@ fun PlayerMenu(
                                 },
                                 text = stringResource(R.string.start_radio),
                                 onClick = {
-                                    Toast.makeText(context, startingRadioText, Toast.LENGTH_SHORT).show()
+                                    showNotice(startingRadioText)
                                     playerConnection.startRadioSeamlessly()
                                     onDismiss()
                                 },
@@ -383,9 +384,7 @@ fun PlayerMenu(
                                         "https://music.youtube.com/watch?v=${mediaMetadata.id}",
                                     )
                                 clipboard.setPrimaryClip(clip)
-                                android.widget.Toast
-                                    .makeText(context, R.string.link_copied, android.widget.Toast.LENGTH_SHORT)
-                                    .show()
+                                showNotice(context.getString(R.string.link_copied))
                                 onDismiss()
                             },
                         ),

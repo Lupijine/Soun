@@ -262,7 +262,11 @@ inline fun ListItem(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = if (isActive) {
+        modifier = if (com.metrolist.music.ui.theme.LocalSounCollectionRows.current) {
+            modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                .height(ListItemHeight)
+                .sounCollectionRow(isActive, isSelected == true)
+        } else if (isActive) {
             modifier // playing highlight
                 .height(ListItemHeight)
                 .padding(horizontal = 8.dp)
@@ -318,8 +322,8 @@ inline fun ListItem(
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
+                style = if (com.metrolist.music.ui.theme.LocalSounCollectionRows.current) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
+                fontWeight = if (com.metrolist.music.ui.theme.LocalSounCollectionRows.current) FontWeight.SemiBold else FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

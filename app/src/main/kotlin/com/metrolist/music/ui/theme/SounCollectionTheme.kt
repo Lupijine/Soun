@@ -9,12 +9,14 @@ import androidx.compose.ui.graphics.luminance
 import com.materialkolor.rememberDynamicColorScheme
 import androidx.compose.runtime.staticCompositionLocalOf
 
+val LocalSounCollectionRows = staticCompositionLocalOf { false }
+
 val LocalSounArtworkAccent = staticCompositionLocalOf { true }
 
 @Composable
 fun SounCollectionTheme(color: Color, backdrop: Backdrop? = LocalSounSurfaceBackdrop.current, content: @Composable () -> Unit) {
     if (!LocalSounArtworkAccent.current) {
-        CompositionLocalProvider(LocalSounSurfaceBackdrop provides backdrop, content = content)
+        CompositionLocalProvider(LocalSounSurfaceBackdrop provides backdrop, LocalSounCollectionRows provides true, content = content)
         return
     }
     val base = MaterialTheme.colorScheme
@@ -26,6 +28,6 @@ fun SounCollectionTheme(color: Color, backdrop: Backdrop? = LocalSounSurfaceBack
         secondaryContainer = accents.secondaryContainer, onSecondaryContainer = accents.onSecondaryContainer,
         tertiary = accents.tertiary, onTertiary = accents.onTertiary,
     )) {
-        CompositionLocalProvider(LocalSounSurfaceBackdrop provides backdrop, content = content)
+        CompositionLocalProvider(LocalSounSurfaceBackdrop provides backdrop, LocalSounCollectionRows provides true, content = content)
     }
 }
