@@ -8,7 +8,9 @@ import java.io.IOException
 internal fun persistPlaylistCover(context: Context, source: Uri): String {
     val directory = File(context.filesDir, "playlist_covers")
     if (!directory.isDirectory && !directory.mkdirs()) throw IOException("Cannot create playlist cover directory")
-    val destination = File.createTempFile("cover_", ".jpg", directory)
+    val isPng = context.contentResolver.getType(source)?.equals("image/png", ignoreCase = true) == true ||
+        source.lastPathSegment?.endsWith(".png", ignoreCase = true) == true
+    val destination = File.createTempFile("cover_", if (isPng) ".png" else ".jpg", directory)
     try {
         val copied = context.contentResolver.openInputStream(source)?.use { input ->
             destination.outputStream().use { output -> input.copyTo(output) }

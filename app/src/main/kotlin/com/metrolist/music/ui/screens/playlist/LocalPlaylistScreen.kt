@@ -957,13 +957,16 @@ fun LocalPlaylistHeader(
             ActivityResultContracts.PickVisualMedia(),
         ) { uri ->
             uri?.let { sourceUri ->
-                val destFile = java.io.File(context.cacheDir, "playlist_cover_crop_${System.currentTimeMillis()}.jpg")
+                val isPng = context.contentResolver.getType(sourceUri)?.equals("image/png", ignoreCase = true) == true ||
+                    sourceUri.lastPathSegment?.endsWith(".png", ignoreCase = true) == true
+                val extension = if (isPng) "png" else "jpg"
+                val destFile = java.io.File(context.cacheDir, "playlist_cover_crop_${System.currentTimeMillis()}.$extension")
                 val destUri = FileProvider.getUriForFile(context, "${context.packageName}.FileProvider", destFile)
                 pendingCropDestUri = destUri
 
                 val options =
                     UCrop.Options().apply {
-                        setCompressionFormat(Bitmap.CompressFormat.JPEG)
+                        setCompressionFormat(if (isPng) Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG)
                         setCompressionQuality(90)
                         setHideBottomControls(true)
                         setToolbarTitle(editPlaylistCoverStr)
@@ -1010,7 +1013,10 @@ fun LocalPlaylistHeader(
         try {
             val cover = withContext(Dispatchers.IO) {
                 val browseId = playlist.playlist.browseId
-                val remote = if (browseId != null) {
+                // YouTube may flatten transparent PNGs; keep those covers locally.
+                val isPng = uri.lastPathSegment?.endsWith(".png", ignoreCase = true) == true ||
+                    context.contentResolver.getType(uri)?.equals("image/png", ignoreCase = true) == true
+                val remote = if (browseId != null && !isPng) {
                     val bytes = uriToByteArray(context, uri) ?: throw java.io.IOException("Cannot read playlist cover")
                     val uploaded = YouTube.uploadCustomThumbnailLink(browseId, bytes).getOrNull()
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()

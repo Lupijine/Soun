@@ -328,6 +328,7 @@ fun PlaylistMenu(
                                     )
                                 },
                                 text = stringResource(R.string.play),
+                                enabled = songs.isNotEmpty(),
                                 onClick = {
                                     onDismiss()
                                     if (songs.isNotEmpty()) {
@@ -340,6 +341,10 @@ fun PlaylistMenu(
                                     }
                                 },
                             )
+                        } else {
+                            null
+                        },
+                        if (!isGuest) {
                             NewAction(
                                 icon = {
                                     Icon(
@@ -350,6 +355,7 @@ fun PlaylistMenu(
                                     )
                                 },
                                 text = stringResource(R.string.shuffle),
+                                enabled = songs.isNotEmpty(),
                                 onClick = {
                                     onDismiss()
                                     if (songs.isNotEmpty()) {
@@ -365,7 +371,7 @@ fun PlaylistMenu(
                         } else {
                             null
                         },
-                        NewAction(
+                        playlist.playlist.shareLink?.let { shareLink -> NewAction(
                             icon = {
                                 Icon(
                                     painter = painterResource(R.drawable.share),
@@ -383,15 +389,15 @@ fun PlaylistMenu(
                                         type = "text/plain"
                                         putExtra(
                                             Intent.EXTRA_TEXT,
-                                            "https://music.youtube.com/playlist?list=${dbPlaylist?.playlist?.browseId}",
+                                            shareLink,
                                         )
                                     }
                                 context.startActivity(Intent.createChooser(intent, null))
                             },
-                        ),
+                        ) },
                     ),
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
-                columns = if (isGuest) 2 else 3,
+                columns = if (isGuest) 1 else if (playlist.playlist.shareLink == null) 2 else 3,
             )
         }
 
@@ -607,30 +613,6 @@ fun PlaylistMenu(
                                     },
                                     onClick = {
                                         showDeletePlaylistDialog = true
-                                    },
-                                ),
-                            )
-                        }
-                        playlist.playlist.shareLink?.let { shareLink ->
-                            add(
-                                Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.share)) },
-                                    description = { Text(text = stringResource(R.string.share_desc)) },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.share),
-                                            contentDescription = null,
-                                        )
-                                    },
-                                    onClick = {
-                                        val intent =
-                                            Intent().apply {
-                                                action = Intent.ACTION_SEND
-                                                type = "text/plain"
-                                                putExtra(Intent.EXTRA_TEXT, shareLink)
-                                            }
-                                        context.startActivity(Intent.createChooser(intent, null))
-                                        onDismiss()
                                     },
                                 ),
                             )

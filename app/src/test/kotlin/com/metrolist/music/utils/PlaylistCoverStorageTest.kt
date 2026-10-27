@@ -28,6 +28,23 @@ class PlaylistCoverStorageTest {
     }
 
     @Test
+    fun `transparent png cover retains alpha after saving and removal of crop`() {
+        val image = java.awt.image.BufferedImage(2, 2, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+        image.setRGB(0, 0, 0x00000000)
+        image.setRGB(1, 1, 0xffff0080.toInt())
+        val crop = File(context.cacheDir, "transparent.png")
+        javax.imageio.ImageIO.write(image, "png", crop)
+        val stored = persistPlaylistCover(context, Uri.fromFile(crop))
+        crop.delete()
+        val file = File(Uri.parse(stored).path!!)
+        assertTrue(file.name.endsWith(".png"))
+        val decoded = javax.imageio.ImageIO.read(file)
+        assertEquals(0, (decoded.getRGB(0, 0) ushr 24) and 0xff)
+        assertEquals(255, (decoded.getRGB(1, 1) ushr 24) and 0xff)
+        deletePlaylistCover(context, stored)
+    }
+
+    @Test
     fun `cleanup only removes managed covers`() {
         val original = File(context.filesDir, "original.jpg").apply { writeText("user image") }
         val stored = persistPlaylistCover(context, Uri.fromFile(original))
