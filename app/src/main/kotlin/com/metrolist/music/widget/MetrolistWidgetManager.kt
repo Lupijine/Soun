@@ -48,6 +48,9 @@ class MetrolistWidgetManager @Inject constructor(
     private var cachedArtworkUri: String? = null
     private var cachedAlbumArt: Bitmap? = null
     private var cachedCircularAlbumArt: Bitmap? = null
+    private var cachedRoundedAlbumArt: Bitmap? = null
+    private val roundedDefaultIcon by lazy { getRoundedDefaultIcon(48f) }
+    private val cachedCircularDefaultIcon by lazy { getCircularDefaultIcon() }
 
     suspend fun updateWidgets(
         title: String,
@@ -57,8 +60,15 @@ class MetrolistWidgetManager @Inject constructor(
         isLiked: Boolean,
         duration: Long = 0,
         currentPosition: Long = 0
-    ) {
+    ) = withContext(Dispatchers.IO) {
         val appWidgetManager = AppWidgetManager.getInstance(context)
+
+        val widgetIds = appWidgetManager.getAppWidgetIds(ComponentName(context, MusicWidgetReceiver::class.java))
+        val turntableWidgetIds = appWidgetManager.getAppWidgetIds(ComponentName(context, TurntableWidgetReceiver::class.java))
+        if (widgetIds.isEmpty() && turntableWidgetIds.isEmpty()) {
+            playlistWidgetManager.updateWidgets(title, artist, artworkUri, isPlaying, isLiked, duration, currentPosition)
+            return@withContext
+        }
 
         // Use cached album art if URI hasn't changed, otherwise load new one
         val albumArt: Bitmap?
@@ -74,11 +84,10 @@ class MetrolistWidgetManager @Inject constructor(
             cachedArtworkUri = artworkUri
             cachedAlbumArt = albumArt
             cachedCircularAlbumArt = circularAlbumArt
+            cachedRoundedAlbumArt = albumArt?.let { getRoundedCornerBitmap(it, 48f) }
         }
 
         // Update main music player widgets
-        val componentName = ComponentName(context, MusicWidgetReceiver::class.java)
-        val widgetIds = appWidgetManager.getAppWidgetIds(componentName)
         if (widgetIds.isNotEmpty()) {
             widgetIds.forEach { widgetId ->
                 val options = appWidgetManager.getAppWidgetOptions(widgetId)
@@ -97,8 +106,6 @@ class MetrolistWidgetManager @Inject constructor(
         }
 
         // Update turntable widgets
-        val turntableComponentName = ComponentName(context, TurntableWidgetReceiver::class.java)
-        val turntableWidgetIds = appWidgetManager.getAppWidgetIds(turntableComponentName)
         if (turntableWidgetIds.isNotEmpty()) {
             val turntableViews = createTurntableRemoteViews(
                 circularAlbumArt,
@@ -171,10 +178,10 @@ class MetrolistWidgetManager @Inject constructor(
 
         // Set album art with rounded corners
         if (albumArt != null) {
-            val roundedAlbumArt = getRoundedCornerBitmap(albumArt, 48f)
+            val roundedAlbumArt = cachedRoundedAlbumArt ?: getRoundedCornerBitmap(albumArt, 48f)
             views.setImageViewBitmap(R.id.widget_album_art, roundedAlbumArt)
         } else {
-            views.setImageViewBitmap(R.id.widget_album_art, getRoundedDefaultIcon(48f))
+            views.setImageViewBitmap(R.id.widget_album_art, roundedDefaultIcon)
         }
 
         // Set play/pause icon
@@ -275,10 +282,10 @@ class MetrolistWidgetManager @Inject constructor(
 
         // Set album art with rounded corners
         if (albumArt != null) {
-            val roundedAlbumArt = getRoundedCornerBitmap(albumArt, 48f)
+            val roundedAlbumArt = cachedRoundedAlbumArt ?: getRoundedCornerBitmap(albumArt, 48f)
             views.setImageViewBitmap(R.id.widget_compact_album_art, roundedAlbumArt)
         } else {
-            views.setImageViewBitmap(R.id.widget_compact_album_art, getRoundedDefaultIcon(48f))
+            views.setImageViewBitmap(R.id.widget_compact_album_art, roundedDefaultIcon)
         }
 
         // Set play/pause icon - using low style icons
@@ -307,11 +314,11 @@ class MetrolistWidgetManager @Inject constructor(
 
         // Set album art with rounded corners (48f to match 12dp at ~4x density for 48dp view)
         if (albumArt != null) {
-            val roundedAlbumArt = getRoundedCornerBitmap(albumArt, 48f)
+            val roundedAlbumArt = cachedRoundedAlbumArt ?: getRoundedCornerBitmap(albumArt, 48f)
             views.setImageViewBitmap(R.id.widget_wide_album_art, roundedAlbumArt)
         } else {
             // Create rounded default icon
-            views.setImageViewBitmap(R.id.widget_wide_album_art, getRoundedDefaultIcon(48f))
+            views.setImageViewBitmap(R.id.widget_wide_album_art, roundedDefaultIcon)
         }
 
         // Set play/pause icon - using low style icons
@@ -342,7 +349,7 @@ class MetrolistWidgetManager @Inject constructor(
             views.setImageViewBitmap(R.id.widget_turntable_album_art, circularAlbumArt)
         } else {
             // Load and make the default icon circular
-            views.setImageViewBitmap(R.id.widget_turntable_album_art, getCircularDefaultIcon())
+            views.setImageViewBitmap(R.id.widget_turntable_album_art, cachedCircularDefaultIcon)
         }
 
         // Set play/pause icon - using secondary color icons for turntable

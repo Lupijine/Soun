@@ -289,6 +289,35 @@ class CollectionPresentationTest {
         compose.runOnIdle { assertEquals(SnackbarResult.ActionPerformed, result) }
     }
 
+    @Test fun `retained queue content survives closing and reopening without rebuilding its list`() {
+        lateinit var sheet: BottomSheetState
+        lateinit var list: androidx.compose.foundation.lazy.LazyListState
+        var creations = 0
+        content {
+            sheet = rememberBottomSheetState(0.dp, 700.dp, 80.dp, initialAnchor = collapsedAnchor)
+            BottomSheet(sheet, retainContent = true, collapsedContent = { Text("Queue bar") }) {
+                androidx.compose.runtime.remember { creations++ }
+                list = androidx.compose.foundation.lazy.rememberLazyListState()
+                LazyColumn(state = list, modifier = Modifier.testTag("retained-queue")) {
+                    items(100) { Text("Track $it", Modifier.fillMaxWidth().height(48.dp)) }
+                }
+            }
+        }
+        compose.runOnIdle { sheet.expandSoft() }
+        compose.waitForIdle()
+        compose.onNodeWithTag("retained-queue").performScrollToIndex(40)
+        compose.runOnIdle { sheet.collapseSoft() }
+        compose.waitForIdle()
+        compose.onNodeWithText("Queue bar").assertIsDisplayed()
+        compose.runOnIdle { sheet.expandSoft() }
+        compose.waitForIdle()
+        compose.onNodeWithText("Track 40").assertIsDisplayed()
+        compose.runOnIdle {
+            assertEquals(1, creations)
+            assertEquals(40, list.firstVisibleItemIndex)
+        }
+    }
+
     @Test fun `pure black collection has no coloured light or translucent overlay`() {
         content { SounCollectionBackground(listOf(Color.White, Color.Magenta), pureBlack = true, modifier = Modifier.testTag("black-page")) }
         val bitmap = compose.onNodeWithTag("black-page").captureToImage().asAndroidBitmap()

@@ -27,6 +27,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -64,11 +67,13 @@ fun BottomSheet(
     onDismiss: (() -> Unit)? = null,
     collapsedContent: @Composable BoxScope.() -> Unit,
     isExpandable: Boolean = true,
+    retainContent: Boolean = false,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val density = LocalDensity.current
-    
-    if (!state.isCollapsed && !state.isDismissed) {
+    var contentWasShown by remember { mutableStateOf(false) }
+    if (!state.isCollapsed && !state.isDismissed) SideEffect { contentWasShown = true }
+
+    if ((!state.isCollapsed && !state.isDismissed) || (retainContent && contentWasShown)) {
         Box(
             modifier = modifier
                 .graphicsLayer {
@@ -133,13 +138,14 @@ fun BottomSheet(
         }
 
         // main content
-        if (!state.isCollapsed) {
+        if (!state.isCollapsed || (retainContent && contentWasShown)) {
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
                         alpha = ((state.progress - 0.15f) * 4).coerceIn(0f, 1f)
-                    },
+                    }
+                    .then(if (state.isCollapsed) Modifier.clearAndSetSemantics { } else Modifier),
                 content = content
             )
         }
@@ -276,56 +282,55 @@ class BottomSheetState(
         }
     }
 
-    val preUpPostDownNestedScrollConnection
-        get() = object : NestedScrollConnection {
-            var isTopReached = false
+    val preUpPostDownNestedScrollConnection: NestedScrollConnection = object : NestedScrollConnection {
+        var isTopReached = false
 
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (isExpanded && available.y < 0) {
-                    isTopReached = false
-                }
-
-                return if (isTopReached && available.y < 0 && source == NestedScrollSource.UserInput) {
-                    dispatchRawDelta(available.y)
-                    available
-                } else {
-                    Offset.Zero
-                }
-            }
-
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source: NestedScrollSource,
-            ): Offset {
-                if (!isTopReached) {
-                    isTopReached = consumed.y == 0f && available.y > 0
-                }
-
-                return if (isTopReached && source == NestedScrollSource.UserInput) {
-                    dispatchRawDelta(available.y)
-                    available
-                } else {
-                    Offset.Zero
-                }
-            }
-
-            override suspend fun onPreFling(available: Velocity): Velocity {
-                return if (isTopReached) {
-                    val velocity = -available.y
-                    performFling(velocity, null)
-
-                    available
-                } else {
-                    Velocity.Zero
-                }
-            }
-
-            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+            if (isExpanded && available.y < 0) {
                 isTopReached = false
-                return Velocity.Zero
+            }
+
+            return if (isTopReached && available.y < 0 && source == NestedScrollSource.UserInput) {
+                dispatchRawDelta(available.y)
+                available
+            } else {
+                Offset.Zero
             }
         }
+
+        override fun onPostScroll(
+            consumed: Offset,
+            available: Offset,
+            source: NestedScrollSource,
+        ): Offset {
+            if (!isTopReached) {
+                isTopReached = consumed.y == 0f && available.y > 0
+            }
+
+            return if (isTopReached && source == NestedScrollSource.UserInput) {
+                dispatchRawDelta(available.y)
+                available
+            } else {
+                Offset.Zero
+            }
+        }
+
+        override suspend fun onPreFling(available: Velocity): Velocity {
+            return if (isTopReached) {
+                val velocity = -available.y
+                performFling(velocity, null)
+
+                available
+            } else {
+                Velocity.Zero
+            }
+        }
+
+        override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+            isTopReached = false
+            return Velocity.Zero
+        }
+    }
 }
 
 const val expandedAnchor = 2

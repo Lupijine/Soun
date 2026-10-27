@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.player
 
+import androidx.compose.ui.graphics.graphicsLayer
 import com.kyant.backdrop.Backdrop
 import com.metrolist.music.ui.theme.sounGlass
 import com.metrolist.music.ui.theme.sounGlassColors
@@ -266,7 +267,16 @@ fun Queue(
     BottomSheet(
         state = state,
         modifier = modifier,
-        background = {},
+        retainContent = true,
+        // Keep the expensive refracted field stationary; only the cached controls/list translate.
+        background = {
+            Box(Modifier.fillMaxSize().graphicsLayer()
+                .then(if (pureBlack) Modifier.background(Color.Black) else Modifier.sounGlass(
+                    RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                    sounGlassColors(strong = false).copy(surfaceTint = background.copy(alpha = 0.28f)),
+                    elevation = 0f, backdrop = backdrop, fullPanel = true, diffusion = 18.dp,
+                )))
+        },
         collapsedContent = {
             if (useNewPlayerDesign) { // Soun: same glass bar with lyrics open
                 Box(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp)
@@ -680,7 +690,7 @@ fun Queue(
         val queueTitle by playerConnection.queueTitle.collectAsStateWithLifecycle()
         val queueWindows by playerConnection.queueWindows.collectAsStateWithLifecycle()
         val automix by playerConnection.service.automixItems.collectAsStateWithLifecycle()
-        val mutableQueueWindows = remember { mutableStateListOf<Timeline.Window>() }
+        val mutableQueueWindows = remember { mutableStateListOf<Timeline.Window>().apply { addAll(queueWindows) } }
         val queueLength =
             remember(queueWindows) {
                 queueWindows.sumOf { it.mediaItem.metadata!!.duration }
@@ -767,16 +777,7 @@ fun Queue(
             }
         }
 
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .then(if (pureBlack) Modifier.background(Color.Black) else Modifier.sounGlass(
-                        RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                        sounGlassColors(strong = false).copy(surfaceTint = background.copy(alpha = 0.28f)),
-                        elevation = 0f, backdrop = backdrop, fullPanel = true, diffusion = 18.dp,
-                    )),
-        ) {
+        Box(Modifier.fillMaxSize()) {
             LazyColumn(
                 state = lazyListState,
                 contentPadding =
@@ -787,7 +788,7 @@ fun Queue(
                                 bottom = footerHeight + 8.dp,
                             ),
                         ).asPaddingValues(),
-                modifier = Modifier.nestedScroll(state.preUpPostDownNestedScrollConnection),
+                modifier = Modifier.graphicsLayer().nestedScroll(state.preUpPostDownNestedScrollConnection),
             ) {
                 item(key = "queue_top_spacer") {
                     Spacer(
