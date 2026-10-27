@@ -50,23 +50,26 @@ class QueueStateWriter internal constructor(directory: File, private val scope: 
 
     internal suspend fun read(): SavedPlaybackState? = mutex.withLock {
         withContext(Dispatchers.IO) {
-            try {
-                val queue = read(queueFile) as? PersistQueue ?: return@withContext null
-                SavedPlaybackState(queue, read(automixFile) as? PersistQueue, read(playerFile) as? PersistPlayerState)
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Exception) {
-                Timber.w(error, "Discarding unreadable playback state")
-                queueFile.delete()
-                automixFile.delete()
-                playerFile.delete()
-                null
-            }
+            val queue = read<PersistQueue>(queueFile) ?: return@withContext null
+            SavedPlaybackState(queue, read<PersistQueue>(automixFile), read<PersistPlayerState>(playerFile))
         }
     }
 
-    private fun read(file: AtomicFile): Any? =
-        if (!file.baseFile.exists()) null else file.openRead().use { ObjectInputStream(it).use { input -> input.readObject() } }
+    private inline fun <reified T> read(file: AtomicFile): T? = try {
+        file.openRead().use { stream ->
+            ObjectInputStream(stream).use { input ->
+                input.readObject() as? T ?: throw java.io.InvalidObjectException("Unexpected playback state type")
+            }
+        }
+    } catch (_: java.io.FileNotFoundException) {
+        null
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: Exception) {
+        Timber.w(error, "Discarding unreadable playback file %s", file.baseFile.name)
+        file.delete()
+        null
+    }
 
     private fun write(file: AtomicFile, value: Serializable) {
         val stream = file.startWrite()

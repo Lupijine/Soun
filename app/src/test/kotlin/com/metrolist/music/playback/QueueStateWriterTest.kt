@@ -67,6 +67,28 @@ class QueueStateWriterTest {
         assertSavedState(expected, writer.read())
     }
 
+    @Test fun `corrupt optional player state does not discard a valid queue`() = runBlocking {
+        val writer = QueueStateWriter(directory.root, scope)
+        val expected = snapshot("keep queue")
+        writer.save(expected).join()
+        directory.root.resolve(MusicService.PERSISTENT_PLAYER_STATE_FILE).writeText("broken")
+        val restored = writer.read()!!
+        assertEquals(expected.queue.title, restored.queue.title)
+        assertNotNull(restored.automix)
+        assertNull(restored.player)
+        assertTrue(directory.root.resolve(MusicService.PERSISTENT_QUEUE_FILE).exists())
+        assertEquals(expected.queue.title, writer.read()!!.queue.title)
+    }
+
+    @Test fun `legacy atomic backup is recovered when the base file is missing`() = runBlocking {
+        val writer = QueueStateWriter(directory.root, scope)
+        val expected = snapshot("recover backup")
+        writer.save(expected).join()
+        val queue = directory.root.resolve(MusicService.PERSISTENT_QUEUE_FILE)
+        assertTrue(queue.renameTo(java.io.File(queue.path + ".bak")))
+        assertSavedState(expected, writer.read())
+    }
+
     private fun assertSavedState(expected: SavedPlaybackState, actual: SavedPlaybackState?) {
         assertNotNull(actual)
         actual!!

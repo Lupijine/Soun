@@ -725,6 +725,7 @@ fun Queue(
                             ),
                         ).asPaddingValues(),
             ) { from, to ->
+                if (mutableQueueWindows.isEmpty()) return@rememberReorderableLazyListState
                 val currentDragInfo = dragInfo
                 dragInfo =
                     if (currentDragInfo == null) {
@@ -742,6 +743,10 @@ fun Queue(
         LaunchedEffect(reorderableState.isAnyItemDragging) {
             if (!reorderableState.isAnyItemDragging) {
                 dragInfo?.let { (from, to) ->
+                    if (queueWindows.isEmpty()) {
+                        dragInfo = null
+                        return@let
+                    }
                     val safeFrom = (from - headerItems).coerceIn(0, queueWindows.lastIndex)
                     val safeTo = (to - headerItems).coerceIn(0, queueWindows.lastIndex)
 
@@ -765,6 +770,7 @@ fun Queue(
         }
 
         LaunchedEffect(queueWindows) {
+            dragInfo = null
             mutableQueueWindows.apply {
                 clear()
                 addAll(queueWindows)
@@ -772,8 +778,8 @@ fun Queue(
         }
 
         LaunchedEffect(mutableQueueWindows, currentWindowIndex) {
-            if (currentWindowIndex != -1) {
-                lazyListState.scrollToItem(currentWindowIndex)
+            if (currentWindowIndex in queueWindows.indices) {
+                lazyListState.scrollToItem(currentWindowIndex + headerItems)
             }
         }
 

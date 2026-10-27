@@ -1614,7 +1614,7 @@ class MusicService :
             }
         }
 
-        if (!database.hasRelatedSongs(mediaId)) {
+        if (!mediaId.startsWith("content://media/") && !database.hasRelatedSongs(mediaId)) {
             val relatedEndpoint =
                 YouTube.next(WatchEndpoint(videoId = mediaId)).getOrNull()?.relatedEndpoint
                     ?: return
@@ -2958,6 +2958,12 @@ class MusicService :
             .w(error, "Player error occurred for $mediaId: errorCode=${error.errorCode}, message=${error.message}")
         reportException(error)
 
+        // Missing or inaccessible device files cannot be repaired by refreshing a network stream.
+        if (mediaId?.startsWith("content://media/") == true && !isAudioRendererError(error)) {
+            if (dataStore.get(AutoSkipNextOnErrorKey, false)) skipOnError() else stopOnError()
+            return
+        }
+
         if (mediaId != null && hasExceededRetryLimit(mediaId)) {
             Timber.tag(TAG).w("Song $mediaId has exceeded retry limit, skipping")
             markSongAsFailed(mediaId)
@@ -3713,8 +3719,13 @@ class MusicService :
         playerProvider: () -> ExoPlayer?,
     ): DataSource.Factory {
         return ResolvingDataSource.Factory(createCacheDataSource()) { dataSpec ->
-            if (dataSpec.uri.scheme == "content" && dataSpec.uri.authority == "media") return@Factory dataSpec
             val mediaId = dataSpec.key ?: error("No media id")
+            if (dataSpec.uri.scheme == "content" && dataSpec.uri.authority == "media") {
+                applyAudioNormalizationBeforePlayback(normalizationProcessor, playerProvider, mediaId, null, null)
+                currentStreamClient.value = null
+                recoverSongDeduped(mediaId)
+                return@Factory dataSpec
+            }
             val storedFormat = runBlocking(Dispatchers.IO) { database.format(mediaId).first() }
             applyAudioNormalizationBeforePlayback(
                 processor = normalizationProcessor,

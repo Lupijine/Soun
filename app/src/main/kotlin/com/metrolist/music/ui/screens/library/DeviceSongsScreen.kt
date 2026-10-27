@@ -15,6 +15,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.text.style.TextOverflow
+import com.metrolist.music.LocalListenTogetherManager
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -42,6 +45,8 @@ fun DeviceSongsScreen() {
     val context = LocalContext.current
     val nav = LocalNavController.current
     val player = LocalPlayerConnection.current
+    val together = LocalListenTogetherManager.current
+    val isGuest = together?.let { it.isInRoom && !it.isHost } == true
     val permission = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
     fun hasAccess() = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
     var allowed by remember { mutableStateOf(hasAccess()) }
@@ -51,7 +56,13 @@ fun DeviceSongsScreen() {
     var songs by remember { mutableStateOf(emptyList<MediaMetadata>()) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed = it }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { allowed = hasAccess(); refresh++ }
-    LaunchedEffect(Unit) { if (!allowed) launcher.launch(permission) }
+    var permissionRequested by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (!allowed && !permissionRequested) {
+            permissionRequested = true
+            launcher.launch(permission)
+        }
+    }
     LaunchedEffect(allowed, refresh) {
         loading = allowed
         failed = false
@@ -83,11 +94,11 @@ fun DeviceSongsScreen() {
             else -> LazyColumn {
                 itemsIndexed(songs, key = { _, song -> song.id }) { index, song ->
                     ListItem(
-                        headlineContent = { Text(song.title) },
-                        supportingContent = { Text(song.artists.joinToString { it.name }) },
+                        headlineContent = { Text(song.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+                        supportingContent = { Text(song.artists.joinToString { it.name }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         leadingContent = { Icon(painterResource(R.drawable.music_note), null) },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        modifier = Modifier.clickable {
+                        modifier = Modifier.clickable(enabled = player != null && !isGuest) {
                             player?.playQueue(ListQueue(title = context.getString(R.string.soun_on_device), items = songs.map { it.toMediaItem() }, startIndex = index))
                         },
                     )
@@ -100,8 +111,10 @@ fun DeviceSongsScreen() {
 internal fun readDeviceAudio(resolver: android.content.ContentResolver): List<MediaMetadata> {
     val audio = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
     val columns = arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.TITLE, MediaStore.Audio.Media.ARTIST, MediaStore.Audio.Media.DURATION)
+    val result = resolver.query(audio, columns, "${MediaStore.Audio.Media.DURATION} > 0", null, "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC")
+        ?: throw java.io.IOException("Audio provider returned no result")
     return buildList {
-        resolver.query(audio, columns, "${MediaStore.Audio.Media.DURATION} > 0", null, "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC")?.use { cursor ->
+        result.use { cursor ->
             while (cursor.moveToNext()) add(MediaMetadata(
                 id = ContentUris.withAppendedId(audio, cursor.getLong(0)).toString(),
                 title = cursor.getString(1).orEmpty(),

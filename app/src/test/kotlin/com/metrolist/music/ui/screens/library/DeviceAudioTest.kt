@@ -35,10 +35,17 @@ class DeviceAudioTest {
         readDeviceAudio(ApplicationProvider.getApplicationContext<android.app.Application>().contentResolver)
     }
 
-    private class AudioProvider(private val denied: Boolean = false) : ContentProvider() {
+    @Test(expected = java.io.IOException::class)
+    fun `unavailable audio provider is an error rather than an empty library`() {
+        ShadowContentResolver.registerProviderInternal("media", AudioProvider(unavailable = true))
+        readDeviceAudio(ApplicationProvider.getApplicationContext<android.app.Application>().contentResolver)
+    }
+
+    private class AudioProvider(private val denied: Boolean = false, private val unavailable: Boolean = false) : ContentProvider() {
         var lastCursor: Cursor? = null
         override fun onCreate() = true
-        override fun query(uri: Uri, projection: Array<out String>?, selection: String?, selectionArgs: Array<out String>?, sortOrder: String?): Cursor {
+        override fun query(uri: Uri, projection: Array<out String>?, selection: String?, selectionArgs: Array<out String>?, sortOrder: String?): Cursor? {
+            if (unavailable) return null
             if (denied) throw SecurityException("Audio access denied")
             assertEquals("duration > 0", selection)
             assertTrue(sortOrder!!.contains("COLLATE NOCASE"))
