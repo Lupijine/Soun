@@ -70,6 +70,7 @@ fun BottomSheet(
     retainContent: Boolean = false,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val menuState = LocalMenuState.current
     var contentWasShown by remember { mutableStateOf(false) }
     if (!state.isCollapsed && !state.isDismissed) SideEffect { contentWasShown = true }
 
@@ -121,7 +122,7 @@ fun BottomSheet(
             }
     ) {
         if (!state.isCollapsed && !state.isDismissed) {
-            PredictiveBackHandler { progress ->
+            PredictiveBackHandler(enabled = !(menuState.isVisible && menuState.fullScreen)) { progress ->
                 val initialValue = state.value
                 try {
                     val range = initialValue - state.collapsedBound

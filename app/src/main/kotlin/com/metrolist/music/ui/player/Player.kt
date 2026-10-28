@@ -313,7 +313,7 @@ fun BottomSheetPlayer(
         }
     }
 
-    BackHandler(enabled = state.isExpanded) {
+    BackHandler(enabled = state.isExpanded && !(menuState.isVisible && menuState.fullScreen)) {
         state.collapseSoft()
     }
 

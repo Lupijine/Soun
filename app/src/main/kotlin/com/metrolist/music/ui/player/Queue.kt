@@ -104,6 +104,9 @@ import androidx.datastore.preferences.core.edit
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
+import com.metrolist.music.LocalDatabase
+import com.metrolist.music.extensions.isDeviceAudioId
+import com.metrolist.music.ui.menu.AddToPlaylistDialog
 import com.metrolist.music.LocalNavController
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
@@ -690,6 +693,21 @@ fun Queue(
     ) {
         val queueTitle by playerConnection.queueTitle.collectAsStateWithLifecycle()
         val queueWindows by playerConnection.queueWindows.collectAsStateWithLifecycle()
+        val database = LocalDatabase.current
+        var showSaveQueue by rememberSaveable { mutableStateOf(false) }
+        var queueToSave by remember { mutableStateOf(emptyList<MediaMetadata>()) }
+        AddToPlaylistDialog(
+            isVisible = showSaveQueue,
+            initialTextFieldValue = queueTitle,
+            localOnly = queueToSave.any { isDeviceAudioId(it.id) },
+            allowSyncing = queueToSave.none { isDeviceAudioId(it.id) },
+            onGetSong = {
+                database.withTransaction { queueToSave.forEach { insert(it) } }
+                queueToSave.map { it.id }
+            },
+            onGetSongIds = { queueToSave.map { it.id } },
+            onDismiss = { showSaveQueue = false },
+        )
         val automix by playerConnection.service.automixItems.collectAsStateWithLifecycle()
         val mutableQueueWindows = remember { mutableStateListOf<Timeline.Window>().apply { addAll(queueWindows) } }
         val queueLength =
@@ -1105,6 +1123,16 @@ fun Queue(
                     exit = fadeOut() + slideOutVertically { it },
                 ) {
                     Row {
+                        IconButton(
+                            onClick = {
+                                queueToSave = queueWindows.mapNotNull { it.mediaItem.metadata }
+                                if (queueToSave.isNotEmpty()) showSaveQueue = true
+                            },
+                            enabled = queueWindows.isNotEmpty(),
+                            modifier = Modifier.size(48.dp).sounGlass(CircleShape, sounGlassColors(), backdrop = backdrop),
+                        ) {
+                            Icon(painterResource(R.drawable.playlist_add), contentDescription = stringResource(R.string.soun_save_queue))
+                        }
                         IconButton(
                             onClick = { locked = !locked },
                             modifier = Modifier.size(48.dp).sounGlass(CircleShape, sounGlassColors(), backdrop = backdrop),

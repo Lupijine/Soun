@@ -452,6 +452,30 @@ class CollectionPresentationTest {
         compose.onNodeWithText("Player title").assertDoesNotExist()
     }
 
+    @Test fun `back dismisses player options before collapsing an expanded player`() {
+        val menu = MenuState()
+        lateinit var playerState: BottomSheetState
+        content {
+            CompositionLocalProvider(LocalMenuState provides menu) {
+                playerState = rememberBottomSheetState(dismissedBound = 0.dp, collapsedBound = 64.dp,
+                    expandedBound = 600.dp, initialAnchor = expandedAnchor)
+                Box(Modifier.fillMaxSize()) {
+                    BottomSheet(state = playerState, collapsedContent = { Text("Mini player") }) { Text("Expanded player") }
+                    BottomSheetMenu(state = menu)
+                }
+            }
+        }
+        compose.waitUntil(5000) { playerState.isExpanded }
+        compose.runOnIdle { menu.show(fullScreen = true) { Text("Options") } }
+        compose.onNodeWithText("Options").assertIsDisplayed()
+        compose.runOnUiThread { host!!.get().onBackPressedDispatcher.onBackPressed() }
+        compose.waitForIdle()
+        assertTrue(playerState.isExpanded)
+        compose.onNodeWithText("Options").assertDoesNotExist()
+        compose.runOnUiThread { host!!.get().onBackPressedDispatcher.onBackPressed() }
+        compose.waitUntil(5000) { playerState.isCollapsed }
+    }
+
     @Test fun `back closes full screen player options and allows another menu`() {
         val menu = MenuState()
         content { Box(Modifier.fillMaxSize()) { BottomSheetMenu(state = menu) } }
