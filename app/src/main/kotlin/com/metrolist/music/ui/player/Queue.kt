@@ -438,7 +438,7 @@ fun Queue(
                                             playerBottomSheetState = playerBottomSheetState,
                                             onShowDetailsDialog = {
                                                 mediaMetadata?.id?.let {
-                                                    bottomSheetPageState.show {
+                                                    bottomSheetPageState.show(glass = true) {
                                                         ShowMediaInfo(it)
                                                     }
                                                 }
@@ -891,7 +891,7 @@ fun Queue(
                                                                 playerBottomSheetState = playerBottomSheetState,
                                                                 onShowDetailsDialog = {
                                                                     window.mediaItem.mediaId.let {
-                                                                        bottomSheetPageState.show {
+                                                                        bottomSheetPageState.show(glass = true) {
                                                                             ShowMediaInfo(it)
                                                                         }
                                                                     }
@@ -1048,7 +1048,7 @@ fun Queue(
                                                         playerBottomSheetState = playerBottomSheetState,
                                                         onShowDetailsDialog = {
                                                             item.mediaId.let {
-                                                                bottomSheetPageState.show {
+                                                                bottomSheetPageState.show(glass = true) {
                                                                     ShowMediaInfo(it)
                                                                 }
                                                             }

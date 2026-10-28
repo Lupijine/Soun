@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.metrolist.music.db.entities.Event
 import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.db.entities.PlaylistSongMap
 import com.metrolist.music.db.entities.SongEntity
@@ -99,6 +100,14 @@ class PlaylistColorSourceTest {
         val remote = com.metrolist.innertube.models.PlaylistItem("remote", "After", null, null, "https://older", null, null, null)
         database.dao.update(saved, remote)
         assertEquals(saved.thumbnailUrl, database.dao.playlist(saved.id).first()!!.playlist.thumbnailUrl)
+    }
+
+    @Test fun `statistics include a song without cover art`() = runBlocking {
+        database.dao.insert(SongEntity(id = "content://media/external/audio/media/42", title = "Local song", thumbnailUrl = null))
+        database.dao.insert(Event(songId = "content://media/external/audio/media/42", timestamp = firstDate, playTime = 12000))
+        val songs = database.dao.mostPlayedSongsStats(firstDate.minusDays(1), limit = -1, toTimeStamp = firstDate.plusDays(1)).first()
+        assertEquals(1, songs.size)
+        assertNull(songs.single().thumbnailUrl)
     }
 
 }

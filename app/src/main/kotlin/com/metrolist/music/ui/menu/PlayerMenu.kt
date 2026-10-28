@@ -95,6 +95,8 @@ import com.metrolist.music.db.entities.Song
 import com.metrolist.music.db.entities.SpeedDialItem
 import com.metrolist.music.ui.component.BottomSheetState
 import com.metrolist.music.ui.component.ListDialog
+import com.metrolist.music.ui.component.DefaultDialog
+import com.metrolist.music.ui.component.sounCollectionRow
 import com.metrolist.music.ui.component.Material3MenuGroup
 import com.metrolist.music.ui.component.Material3MenuItemData
 import com.metrolist.music.ui.component.NewAction
@@ -775,124 +777,45 @@ fun PlayerMenu(
 @Composable
 fun TempoPitchDialog(onDismiss: () -> Unit) {
     val playerConnection = LocalPlayerConnection.current ?: return
-    var tempo by remember {
-        mutableFloatStateOf(playerConnection.player.playbackParameters.speed)
+    var tempo by remember { mutableFloatStateOf(playerConnection.player.playbackParameters.speed) }
+    var transposeValue by remember { mutableIntStateOf(round(12 * log2(playerConnection.player.playbackParameters.pitch)).toInt()) }
+    val update = { playerConnection.player.playbackParameters = PlaybackParameters(tempo, 2f.pow(transposeValue.toFloat() / 12)) }
+    val inRoom = com.metrolist.music.LocalListenTogetherManager.current?.isInRoom == true
+    DefaultDialog(onDismiss = onDismiss, horizontalAlignment = Alignment.Start,
+        title = { Text(stringResource(R.string.tempo_and_pitch)) },
+        buttons = {
+            TextButton(onClick = { tempo = 1f; transposeValue = 0; update() }) { Text(stringResource(R.string.reset)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.ok)) }
+        }) {
+        if (!inRoom) {
+            Text(stringResource(R.string.speed), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            ValueAdjuster(icon = R.drawable.speed, currentValue = tempo,
+                values = (0..35).map { round((0.25f + it * 0.05f) * 100) / 100 },
+                onValueUpdate = { tempo = it; update() }, valueText = { "x$it" },
+                modifier = Modifier.padding(top = 6.dp, bottom = 14.dp))
+        }
+        Text(stringResource(R.string.soun_pitch), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ValueAdjuster(icon = R.drawable.discover_tune, currentValue = transposeValue, values = (-12..12).toList(),
+            onValueUpdate = { transposeValue = it; update() }, valueText = { "${if (it > 0) "+" else ""}$it" },
+            modifier = Modifier.padding(top = 6.dp))
     }
-    var transposeValue by remember {
-        mutableIntStateOf(round(12 * log2(playerConnection.player.playbackParameters.pitch)).toInt())
-    }
-    val updatePlaybackParameters = {
-        playerConnection.player.playbackParameters =
-            PlaybackParameters(tempo, 2f.pow(transposeValue.toFloat() / 12))
-    }
-    val listenTogetherManager = com.metrolist.music.LocalListenTogetherManager.current
-    val isInRoom = listenTogetherManager?.isInRoom ?: false
-
-    AlertDialog(
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-        onDismissRequest = onDismiss,
-        title = {
-            Text(stringResource(R.string.tempo_and_pitch))
-        },
-        dismissButton = {
-            TextButton(
-                onClick = {
-                    tempo = 1f
-                    transposeValue = 0
-                    updatePlaybackParameters()
-                },
-            ) {
-                Text(stringResource(R.string.reset))
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = onDismiss,
-            ) {
-                Text(stringResource(android.R.string.ok))
-            }
-        },
-        text = {
-            Column {
-                if (!isInRoom) {
-                    ValueAdjuster(
-                        icon = R.drawable.speed,
-                        currentValue = tempo,
-                        values = (0..35).map { round((0.25f + it * 0.05f) * 100) / 100 },
-                        onValueUpdate = {
-                            tempo = it
-                            updatePlaybackParameters()
-                        },
-                        valueText = { "x$it" },
-                        modifier = Modifier.padding(bottom = 12.dp),
-                    )
-                }
-                ValueAdjuster(
-                    icon = R.drawable.discover_tune,
-                    currentValue = transposeValue,
-                    values = (-12..12).toList(),
-                    onValueUpdate = {
-                        transposeValue = it
-                        updatePlaybackParameters()
-                    },
-                    valueText = { "${if (it > 0) "+" else ""}$it" },
-                )
-            }
-        },
-    )
 }
 
 @Composable
 fun SpeedDialog(onDismiss: () -> Unit) {
     val playerConnection = LocalPlayerConnection.current ?: return
-    var speed by remember {
-        mutableFloatStateOf(playerConnection.player.playbackParameters.speed)
+    var speed by remember { mutableFloatStateOf(playerConnection.player.playbackParameters.speed) }
+    val update = { playerConnection.player.playbackParameters = PlaybackParameters(speed, speed) }
+    DefaultDialog(onDismiss = onDismiss, horizontalAlignment = Alignment.Start,
+        title = { Text(stringResource(R.string.speed)) },
+        buttons = {
+            TextButton(onClick = { speed = 1f; update() }) { Text(stringResource(R.string.reset)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.ok)) }
+        }) {
+        ValueAdjuster(icon = R.drawable.speed, currentValue = speed,
+            values = (0..35).map { round((0.25f + it * 0.05f) * 100) / 100 },
+            onValueUpdate = { speed = it; update() }, valueText = { "x$it" })
     }
-    val updatePlaybackParameters = {
-        playerConnection.player.playbackParameters =
-            PlaybackParameters(speed, speed)
-    }
-    val listenTogetherManager = com.metrolist.music.LocalListenTogetherManager.current
-
-    AlertDialog(
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-        onDismissRequest = onDismiss,
-        title = {
-            Text(stringResource(R.string.speed))
-        },
-        dismissButton = {
-            TextButton(
-                onClick = {
-                    speed = 1f
-                    updatePlaybackParameters()
-                },
-            ) {
-                Text(stringResource(R.string.reset))
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = onDismiss,
-            ) {
-                Text(stringResource(android.R.string.ok))
-            }
-        },
-        text = {
-            Column {
-                ValueAdjuster(
-                    icon = R.drawable.speed,
-                    currentValue = speed,
-                    values = (0..35).map { round((0.25f + it * 0.05f) * 100) / 100 },
-                    onValueUpdate = {
-                        speed = it
-                        updatePlaybackParameters()
-                    },
-                    valueText = { "x$it" },
-                    modifier = Modifier.padding(bottom = 12.dp),
-                )
-            }
-        },
-    )
 }
 @Composable
 fun <T> ValueAdjuster(
@@ -904,9 +827,9 @@ fun <T> ValueAdjuster(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        horizontalArrangement = Arrangement.spacedBy(24.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth().sounCollectionRow(active = false, selected = false).padding(horizontal = 12.dp, vertical = 4.dp),
     ) {
         Icon(
             painter = painterResource(icon),
@@ -915,7 +838,7 @@ fun <T> ValueAdjuster(
         )
 
         IconButton(
-            enabled = currentValue != values.first(),
+            enabled = values.indexOf(currentValue) > 0,
             onClick = {
                 onValueUpdate(values[values.indexOf(currentValue) - 1])
             },
@@ -930,11 +853,11 @@ fun <T> ValueAdjuster(
             text = valueText(currentValue),
             style = MaterialTheme.typography.titleMedium,
             textAlign = TextAlign.Center,
-            modifier = Modifier.width(80.dp),
+            modifier = Modifier.weight(1f),
         )
 
         IconButton(
-            enabled = currentValue != values.last(),
+            enabled = values.indexOf(currentValue) in 0 until values.lastIndex,
             onClick = {
                 onValueUpdate(values[values.indexOf(currentValue) + 1])
             },

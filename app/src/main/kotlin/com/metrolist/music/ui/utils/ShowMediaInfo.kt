@@ -118,7 +118,6 @@ fun ShowMediaInfo(videoId: String) {
                     .asPaddingValues()
             )
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
     ) {
         if (info != null) {
             item(contentType = "MediaDetails") {
@@ -219,14 +218,16 @@ fun ShowMediaInfo(videoId: String) {
 
                     Material3SettingsGroup(
                         title = stringResource(R.string.general),
-                        items = cardsBaseList
+                        items = cardsBaseList,
+                        compact = true, glass = true,
                     )
 
                     Spacer(Modifier.height(8.dp))
 
                     Material3SettingsGroup(
                         title = stringResource(R.string.information),
-                        items = cardsExtendedList
+                        items = cardsExtendedList,
+                        compact = true, glass = true,
                     )
 
                     Spacer(Modifier.height(8.dp))
@@ -235,6 +236,7 @@ fun ShowMediaInfo(videoId: String) {
 
                     Material3SettingsGroup(
                         title = stringResource(R.string.description),
+                        compact = true, glass = true,
                         items = listOf(
                             Material3SettingsItem(
                                 title = { Text(stringResource(R.string.description)) },

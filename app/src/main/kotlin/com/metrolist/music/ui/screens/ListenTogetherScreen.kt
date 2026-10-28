@@ -62,6 +62,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -239,7 +240,6 @@ fun ListenTogetherScreen(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
                 .imePadding(),
         contentPadding =
             PaddingValues(
@@ -418,6 +418,7 @@ fun ListenTogetherScreen(
 
     if (shouldShowTopBar) {
         TopAppBar(
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
             title = { Text(stringResource(R.string.together)) },
             navigationIcon = {
                 IconButton(
@@ -535,7 +536,7 @@ private fun ConnectionStatusCard(
                         ConnectionState.CONNECTING, ConnectionState.RECONNECTING -> MaterialTheme.colorScheme.secondaryContainer
                         ConnectionState.ERROR -> MaterialTheme.colorScheme.errorContainer
                         ConnectionState.DISCONNECTED -> MaterialTheme.colorScheme.surfaceContainerHigh
-                    },
+                    }.copy(alpha = 0.5f),
             ),
     ) {
         Column(
@@ -655,7 +656,7 @@ private fun RoomStatusCard(
         shape = RoundedCornerShape(24.dp),
         colors =
             CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.48f),
             ),
     ) {
         Column(
@@ -757,7 +758,7 @@ private fun ConnectedUsersSection(
         shape = RoundedCornerShape(20.dp),
         colors =
             CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.48f),
             ),
     ) {
         Column(
@@ -903,7 +904,7 @@ private fun PendingJoinRequestsSection(
         shape = RoundedCornerShape(20.dp),
         colors =
             CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.48f),
             ),
     ) {
         Column(
@@ -982,7 +983,7 @@ private fun PendingSuggestionsSection(
         shape = RoundedCornerShape(20.dp),
         colors =
             CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.48f),
             ),
     ) {
         Column(
@@ -1069,7 +1070,7 @@ private fun JoinCreateRoomSection(
         shape = RoundedCornerShape(24.dp),
         colors =
             CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.48f),
             ),
     ) {
         Column(
@@ -1285,7 +1286,7 @@ private fun SettingsLinkCard(onClick: () -> Unit) {
         shape = RoundedCornerShape(16.dp),
         colors =
             CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.48f),
             ),
     ) {
         Row(

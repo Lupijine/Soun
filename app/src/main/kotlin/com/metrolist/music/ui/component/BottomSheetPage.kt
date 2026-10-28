@@ -42,7 +42,11 @@ class BottomSheetPageState(
     var isVisible by mutableStateOf(isVisible)
     var content by mutableStateOf(content)
 
-    fun show(content: @Composable ColumnScope.() -> Unit) {
+    var glass by mutableStateOf(false)
+        private set
+
+    fun show(glass: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+        this.glass = glass
         isVisible = true
         this.content = content
     }
@@ -69,7 +73,7 @@ fun BottomSheetPage(
             state.isVisible = false
         },
         sheetState = sheetState,
-        containerColor = background,
+        containerColor = if (state.glass) background.copy(alpha = 0.68f) else background,
         contentColor = MaterialTheme.colorScheme.onSurface,
         dragHandle = {
             Box(
@@ -82,6 +86,7 @@ fun BottomSheetPage(
         },
         modifier = modifier.fillMaxHeight()
     ) {
+        if (state.glass) com.metrolist.music.ui.theme.SounWindowBlur()
         Column(
             modifier = Modifier
                 .fillMaxWidth()

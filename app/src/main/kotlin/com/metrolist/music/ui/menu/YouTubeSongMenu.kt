@@ -711,7 +711,7 @@ fun YouTubeSongMenu(
                             },
                             onClick = {
                                 onDismiss()
-                                bottomSheetPageState.show {
+                                bottomSheetPageState.show(glass = true) {
                                     ShowMediaInfo(song.id)
                                 }
                             }

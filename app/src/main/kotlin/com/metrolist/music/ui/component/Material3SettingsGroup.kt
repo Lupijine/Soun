@@ -45,6 +45,7 @@ fun Material3SettingsGroup(
     items: List<Material3SettingsItem>,
     useLowContrast: Boolean = false,
     compact: Boolean = false,
+    glass: Boolean = false,
 ) {
     Column(
         modifier = Modifier
@@ -76,10 +77,11 @@ fun Material3SettingsGroup(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .animateContentSize(),
-                    shape = shape,
+                        .animateContentSize()
+                        .then(if (glass) Modifier.sounCollectionRow(active = false, selected = false) else Modifier),
+                    shape = if (glass) RoundedCornerShape(22.dp) else shape,
                     colors = CardDefaults.cardColors(
-                        containerColor = if (!useLowContrast) {
+                        containerColor = if (glass) androidx.compose.ui.graphics.Color.Transparent else if (!useLowContrast) {
                             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (compact) 0.14f else 0.3f)
                         } else {
                             MaterialTheme.colorScheme.surfaceContainerLow
