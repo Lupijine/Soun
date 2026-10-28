@@ -1965,11 +1965,11 @@ object YouTube {
                                 .mapNotNull { item ->
                                     when {
                                         item.musicResponsiveListItemRenderer != null -> {
-                                            convertToChartItem(item.musicResponsiveListItemRenderer)
+                                            chartItem(item.musicResponsiveListItemRenderer)
                                         }
 
                                         item.musicTwoRowItemRenderer != null -> {
-                                            convertMusicTwoRowItem(item.musicTwoRowItemRenderer)
+                                            chartItem(item.musicTwoRowItemRenderer)
                                         }
 
                                         else -> {
@@ -2003,7 +2003,7 @@ object YouTube {
                             renderer.items
                                 .mapNotNull { item ->
                                     item.musicTwoRowItemRenderer?.let { renderer ->
-                                        convertMusicTwoRowItem(renderer)
+                                        chartItem(renderer)
                                     }
                                 }.filterNotNull()
 
@@ -2035,6 +2035,12 @@ object YouTube {
             title.contains("Top", ignoreCase = true) -> ChartsPage.ChartType.TOP
             else -> ChartsPage.ChartType.GENRE
         }
+
+    internal fun chartItem(renderer: MusicResponsiveListItemRenderer): YTItem? =
+        convertToChartItem(renderer) ?: LibraryPage.fromMusicResponsiveListItemRenderer(renderer)
+
+    internal fun chartItem(renderer: MusicTwoRowItemRenderer): YTItem? =
+        convertMusicTwoRowItem(renderer) ?: LibraryPage.fromMusicTwoRowItemRenderer(renderer)
 
     private fun convertToChartItem(renderer: MusicResponsiveListItemRenderer): YTItem? {
         return try {

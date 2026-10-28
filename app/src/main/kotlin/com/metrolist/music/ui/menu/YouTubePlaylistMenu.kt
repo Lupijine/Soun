@@ -469,6 +469,11 @@ fun YouTubePlaylistMenu(
                         }
                     },
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
+                columns = if (isGuest) 3 else listOfNotNull(
+                    playlist.playEndpoint,
+                    playlist.shuffleEndpoint,
+                    playlist.radioEndpoint,
+                ).size.coerceIn(1, 3),
             )
         }
 

@@ -20,7 +20,7 @@ class ChartsViewModel @Inject constructor() : ViewModel() {
     private val _chartsPage = MutableStateFlow<ChartsPage?>(null)
     val chartsPage = _chartsPage.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(false)
+    private val _isLoading = MutableStateFlow(true)
     val isLoading = _isLoading.asStateFlow()
 
     private val _error = MutableStateFlow<String?>(null)
