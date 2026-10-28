@@ -761,6 +761,8 @@
     <string name="recognition_error">Recognition error</string>
     <string name="try_again">Try again</string>
     <string name="recognition_history">Recognition history</string>
+    <string name="soun_recognition_ready_hint">Find the music playing around you</string>
+    <string name="soun_recognition_listening_hint">Finding the music around you</string>
     <string name="soun_recognition_history_empty">No recognition history</string>
     <string name="clear_recognition_history">Clear recognition history</string>
     <string name="clear_recognition_history_confirm">Are you sure you want to clear all recognition history?</string>

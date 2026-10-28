@@ -36,7 +36,7 @@ import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.ui.component.IconButton
-import com.metrolist.music.ui.component.sounCollectionRow
+import com.metrolist.music.ui.component.sounCatalogCard
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.shimmer.ListItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
@@ -132,7 +132,7 @@ fun MoodAndGenresButton(
         modifier =
         modifier
             .height(MoodAndGenresButtonHeight)
-            .sounCollectionRow(active = false, selected = false)
+            .sounCatalogCard()
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp),
     ) {

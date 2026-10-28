@@ -412,12 +412,13 @@ fun GridItem(
     thumbnailRatio: Float = 1f,
     fillMaxWidth: Boolean = false,
     roundedArtwork: Boolean = false,
+    catalogCard: Boolean = false,
 ) {
     val gridHeight = currentGridThumbnailHeight()
     Column(
         modifier = if (fillMaxWidth) {
             modifier
-                .padding(12.dp)
+                .padding(if (catalogCard) 8.dp else 12.dp)
                 .fillMaxWidth()
         } else {
             modifier
@@ -437,14 +438,14 @@ fun GridItem(
             thumbnailContent()
         }
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(if (catalogCard) 10.dp else 6.dp))
 
-        title()
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            badges()
-
-            subtitle()
+        Column(Modifier.padding(horizontal = if (catalogCard) 4.dp else 0.dp, vertical = if (catalogCard) 3.dp else 0.dp)) {
+            title()
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                badges()
+                subtitle()
+            }
         }
     }
 }
@@ -1266,6 +1267,7 @@ fun YouTubeGridItem(
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
     roundedArtwork: Boolean = false,
+    catalogCard: Boolean = false,
 ) = GridItem(
     title = {
         Text(
@@ -1274,9 +1276,9 @@ fun YouTubeGridItem(
             } else {
                 item.title
             },
-            style = if (roundedArtwork) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
+            style = if (catalogCard) MaterialTheme.typography.titleSmall else if (roundedArtwork) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
+            maxLines = if (catalogCard) 2 else 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = if (item is ArtistItem) TextAlign.Center else TextAlign.Start,
             modifier = Modifier.fillMaxWidth()
@@ -1354,6 +1356,7 @@ fun YouTubeGridItem(
     thumbnailRatio = thumbnailRatio,
     fillMaxWidth = fillMaxWidth,
     roundedArtwork = roundedArtwork && item !is ArtistItem,
+    catalogCard = catalogCard,
     modifier = modifier
 )
 

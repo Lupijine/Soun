@@ -38,7 +38,7 @@ import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
-import com.metrolist.music.ui.component.sounCollectionRow
+import com.metrolist.music.ui.component.sounCatalogCard
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.shimmer.GridItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
@@ -79,11 +79,12 @@ fun NewReleaseScreen(
                 fillMaxWidth = true,
                 thumbnailRatio = 1f,
                 roundedArtwork = true,
+                catalogCard = true,
                 coroutineScope = coroutineScope,
                 modifier =
                     Modifier
                         .padding(4.dp)
-                        .sounCollectionRow(active = false, selected = false)
+                        .sounCatalogCard()
                         .combinedClickable(
                             onClick = {
                                 navController.navigate("album/${album.id}")

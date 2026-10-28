@@ -30,3 +30,16 @@ fun Modifier.sounCollectionRow(active: Boolean, selected: Boolean): Modifier {
             colors.primary.copy(alpha = if (active || selected) 0.32f else 0.12f),
         )), shape)
 }
+
+@Composable
+fun Modifier.sounCatalogCard(): Modifier {
+    val colors = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(22.dp)
+    return clip(shape)
+        .background(Brush.verticalGradient(listOf(
+            colors.primary.copy(alpha = 0.12f),
+            colors.surfaceContainerHigh.copy(alpha = 0.22f),
+            colors.surface.copy(alpha = 0.26f),
+        )))
+        .border(0.75.dp, Color.White.copy(alpha = 0.14f), shape)
+}

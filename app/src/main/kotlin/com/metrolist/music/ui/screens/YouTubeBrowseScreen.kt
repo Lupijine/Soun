@@ -45,7 +45,7 @@ import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
-import com.metrolist.music.ui.component.sounCollectionRow
+import com.metrolist.music.ui.component.sounCatalogCard
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.shimmer.GridItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
@@ -104,11 +104,12 @@ fun YouTubeBrowseScreen(
                 fillMaxWidth = true,
                 thumbnailRatio = 1f,
                 roundedArtwork = true,
+                    catalogCard = true,
                 coroutineScope = coroutineScope,
                 modifier =
                     Modifier
                         .padding(4.dp)
-                        .sounCollectionRow(active = false, selected = false)
+                        .sounCatalogCard()
                         .combinedClickable(
                             onClick = {
                                 when (item) {

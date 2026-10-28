@@ -71,6 +71,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -305,120 +308,65 @@ fun RecognitionScreen(
 
 @Composable
 internal fun ReadyState(onStartRecognition: () -> Unit) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(24.dp),
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .size(200.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            colors =
-                                listOf(
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                    Color.Transparent,
-                                ),
-                        ),
-                    ).clickable { onStartRecognition() }.testTag("recognition-start"),
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(160.dp)
-                        .sounPanel(CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.mic),
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-        }
-
-        Text(
-            text = stringResource(R.string.tap_to_recognize),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+    val label = stringResource(R.string.tap_to_recognize)
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        RecognitionOrb(label = label, onClick = onStartRecognition, modifier = Modifier.testTag("recognition-start"))
+        Text(label, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface)
+        Text(stringResource(R.string.soun_recognition_ready_hint), style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
     }
 }
 
 @Composable
 internal fun ListeningState(onCancel: () -> Unit) {
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.2f,
-        animationSpec =
-            infiniteRepeatable(
-                animation = tween(1800, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse,
-            ),
-        label = "scale",
+    val transition = rememberInfiniteTransition(label = "recognition pulse")
+    val pulse by transition.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "recognition pulse",
     )
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(24.dp),
-    ) {
-        // Container large enough for scaled animation (200dp * 1.2 = 240dp)
-        Box(
-            modifier = Modifier.size(260.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            // Outer pulsing ring
-            Box(
-                modifier =
-                    Modifier
-                        .size(200.dp)
-                        .graphicsLayer { scaleX = scale; scaleY = scale; alpha = 0.5f - (scale - 1f) * 1.5f }
-                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.75f), CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), CircleShape),
-            )
-
-            // Inner pulsing ring
-            Box(
-                modifier =
-                    Modifier
-                        .size(180.dp)
-                        .graphicsLayer { scaleX = 2.1f - scale; scaleY = 2.1f - scale; alpha = 0.2f + (scale - 1f) * 1.5f }
-                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f), CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.06f), CircleShape),
-            )
-
-            // Main button
-            Box(
-                modifier =
-                    Modifier
-                        .size(160.dp)
-                        .sounPanel(CircleShape)
-                        .clickable { onCancel() },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.mic),
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.onSurface,
-                )
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        RecognitionOrb(label = stringResource(R.string.cancel), onClick = onCancel, pulse = pulse)
+        Text(stringResource(R.string.listening), style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+        Text(stringResource(R.string.soun_recognition_listening_hint), style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        Row(Modifier.height(28.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            listOf(0.45f, 0.7f, 1f, 0.6f, 0.85f, 0.6f, 1f, 0.7f, 0.45f).forEachIndexed { index, height ->
+                Box(Modifier.width(4.dp).height(24.dp * height)
+                    .graphicsLayer { scaleY = if (index % 2 == 0) 0.55f + pulse * 0.45f else 1f - pulse * 0.45f }
+                    .clip(RoundedCornerShape(50))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)))
             }
         }
-
-        Text(
-            text = stringResource(R.string.listening),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary,
-        )
-
-        OutlinedButton(onClick = onCancel) {
+        OutlinedButton(onClick = onCancel, modifier = Modifier.sounPanel(RoundedCornerShape(50))) {
             Text(stringResource(R.string.cancel))
+        }
+    }
+}
+
+@Composable
+private fun RecognitionOrb(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, pulse: Float = 0f) {
+    val accent = MaterialTheme.colorScheme.primary
+    Box(modifier = Modifier.size(250.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(246.dp).background(Brush.radialGradient(listOf(
+            accent.copy(alpha = 0.25f), accent.copy(alpha = 0.09f), Color.Transparent)), CircleShape))
+        Box(Modifier.size(228.dp).graphicsLayer {
+            scaleX = 0.92f + 0.08f * pulse; scaleY = 0.92f + 0.08f * pulse
+            alpha = 0.65f - 0.3f * pulse
+        }.border(1.dp, accent.copy(alpha = 0.55f), CircleShape))
+        Box(Modifier.size(204.dp).graphicsLayer {
+            scaleX = 1f - 0.05f * pulse; scaleY = 1f - 0.05f * pulse
+        }.border(1.dp, Color.White.copy(alpha = 0.22f), CircleShape))
+        Box(modifier.size(172.dp).sounPanel(CircleShape)
+            .background(Brush.linearGradient(listOf(
+                Color.White.copy(alpha = 0.20f), accent.copy(alpha = 0.12f), Color.Transparent)), CircleShape)
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = label }, contentAlignment = Alignment.Center) {
+            Icon(painterResource(R.drawable.mic), contentDescription = null,
+                modifier = Modifier.size(62.dp), tint = MaterialTheme.colorScheme.onSurface)
         }
     }
 }
