@@ -308,6 +308,9 @@
     <string name="sleep_timer_stop_after_current_song_description">Waits for the currently playing song to finish before stopping</string>
     <string name="sleep_timer_fade_out_title">Fade out</string>
     <string name="sleep_timer_fade_out_description">Gradually fades out the volume in the final minute</string>
+    <string name="sleep_timer_active">Sleep timer active</string>
+    <string name="sleep_timer_time_remaining">Time remaining</string>
+    <string name="sleep_timer_turn_off">Turn off</string>
 
     <!-- Alarm -->
     <string name="alarm">Alarm</string>

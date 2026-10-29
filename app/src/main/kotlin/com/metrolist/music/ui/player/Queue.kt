@@ -298,9 +298,9 @@ fun Queue(
                                 style = MaterialTheme.typography.labelMedium, color = TextBackgroundColor.copy(alpha = 0.72f),
                                 maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
-                        IconButton(onClick = { if (sleepTimerEnabled) playerConnection.service.sleepTimer?.clear() else showSleepTimerDialog = true }, enabled = !isListenTogetherGuest) {
+                        IconButton(onClick = { showSleepTimerDialog = true }, enabled = !isListenTogetherGuest) {
                             Icon(painterResource(R.drawable.bedtime), stringResource(R.string.sleep_timer),
-                                tint = if (sleepTimerEnabled) MaterialTheme.colorScheme.primary else TextBackgroundColor)
+                                tint = if (sleepTimerEnabled) MaterialTheme.colorScheme.error else TextBackgroundColor)
                         }
                         IconButton(onClick = { state.expandSoft() }) {
                             Icon(painterResource(R.drawable.queue_music), stringResource(R.string.queue), tint = TextBackgroundColor)
@@ -503,15 +503,7 @@ fun Queue(
 
                     TextButton(
                         enabled = !isListenTogetherGuest,
-                        onClick = {
-                            if (!isListenTogetherGuest) {
-                                if (sleepTimerEnabled) {
-                                    playerConnection.service.sleepTimer?.clear()
-                                } else {
-                                    showSleepTimerDialog = true
-                                }
-                            }
-                        },
+                        onClick = { showSleepTimerDialog = true },
                         modifier = Modifier.weight(1.2f),
                     ) {
                         Row(
@@ -523,7 +515,7 @@ fun Queue(
                                 painter = painterResource(id = R.drawable.bedtime),
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp),
-                                tint = TextBackgroundColor,
+                                tint = if (sleepTimerEnabled) MaterialTheme.colorScheme.error else TextBackgroundColor,
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             AnimatedContent(
@@ -592,7 +584,10 @@ fun Queue(
                             horizontalArrangement = Arrangement.Center,
                         ) {
                             Text(
-                                text = stringResource(R.string.sleep_timer),
+                                text =
+                                    stringResource(
+                                        if (sleepTimerEnabled) R.string.sleep_timer_active else R.string.sleep_timer,
+                                    ),
                                 overflow = TextOverflow.Ellipsis,
                                 maxLines = 1,
                                 style = MaterialTheme.typography.headlineSmall,
@@ -602,19 +597,54 @@ fun Queue(
                     onDismiss = { showSleepTimerDialog = false },
                     onConfirm = {
                         showSleepTimerDialog = false
-                        playerConnection.service.sleepTimer?.start(
-                            minute = sleepTimerValue.roundToInt(),
-                            stopAfterCurrentSong = sleepTimerStopAfterCurrentSong,
-                            fadeOut = sleepTimerFadeOut,
-                        )
+                        if (sleepTimerEnabled) {
+                            playerConnection.service.sleepTimer?.clear()
+                        } else {
+                            playerConnection.service.sleepTimer?.start(
+                                minute = sleepTimerValue.roundToInt(),
+                                stopAfterCurrentSong = sleepTimerStopAfterCurrentSong,
+                                fadeOut = sleepTimerFadeOut,
+                            )
+                        }
                     },
                     onCancel = {
                         showSleepTimerDialog = false
                     },
-                    onReset = {
-                        sleepTimerValue = sleepTimerDefault
-                    },
+                    onReset =
+                        if (sleepTimerEnabled) {
+                            null
+                        } else {
+                            { sleepTimerValue = sleepTimerDefault }
+                        },
+                    confirmText = if (sleepTimerEnabled) stringResource(R.string.sleep_timer_turn_off) else null,
                     content = {
+                        if (sleepTimerEnabled) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                if (playerConnection.service.sleepTimer?.pauseWhenSongEnd == true) {
+                                    Text(
+                                        text = stringResource(R.string.end_of_song),
+                                        style = MaterialTheme.typography.headlineMedium,
+                                    )
+                                } else {
+                                    Text(
+                                        text = stringResource(R.string.sleep_timer_time_remaining),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        text = makeTimeString(sleepTimerTimeLeft),
+                                        style = MaterialTheme.typography.headlineMedium,
+                                    )
+                                }
+                                if (playerConnection.service.sleepTimer?.fadeOutEnabled == true) {
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        text = stringResource(R.string.sleep_timer_fade_out_title),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
+                            }
+                        } else {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text =
@@ -685,6 +715,7 @@ fun Queue(
                                     Text(stringResource(R.string.end_of_song))
                                 }
                             }
+                        }
                         }
                     },
                 )

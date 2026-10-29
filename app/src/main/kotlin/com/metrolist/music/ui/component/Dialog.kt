@@ -156,6 +156,7 @@ fun ActionPromptDialog(
     onConfirm: () -> Unit,
     onReset: (() -> Unit)? = null,
     onCancel: (() -> Unit)? = null,
+    confirmText: String? = null,
     content: @Composable ColumnScope.() -> Unit = {},
 ) {
     DefaultDialog(
@@ -197,7 +198,7 @@ fun ActionPromptDialog(
             TextButton(
                 onClick = { onConfirm() },
             ) {
-                Text(stringResource(android.R.string.ok))
+                Text(confirmText ?: stringResource(android.R.string.ok))
             }
         },
     ) {
