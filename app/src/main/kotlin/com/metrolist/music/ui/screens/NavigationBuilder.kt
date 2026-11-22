@@ -20,6 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavGraphBuilder
@@ -290,25 +291,26 @@ fun NavGraphBuilder.navigationBuilder(
     ) { entry ->
         val database = LocalDatabase.current
         val playlistId = requireNotNull(entry.arguments?.getString("playlistId"))
-        var resolved by remember(playlistId) { mutableStateOf(false) }
+        // Saved so returning to this page shows it at once instead of a blank page during the slide.
+        var resolved by rememberSaveable(playlistId) { mutableStateOf(false) }
         LaunchedEffect(entry, playlistId) {
-            entry.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                if (!resolved) {
-                    val localId = try {
-                        resolveEditablePlaylistId(playlistId) { database.playlistByBrowseId(it).first() }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (_: Exception) {
-                        null
-                    }
-                    if (navController.currentBackStackEntry?.id == entry.id) {
-                        if (localId != null) {
-                            navController.navigate("local_playlist/$localId") {
-                                popUpTo(entry.destination.id) { inclusive = true }
-                            }
-                        } else {
-                            resolved = true
-                        }
+            if (resolved) return@LaunchedEffect
+            // Look the playlist up straight away; only the redirect waits for this page to be on top.
+            val localId = try {
+                resolveEditablePlaylistId(playlistId) { database.playlistByBrowseId(it).first() }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
+            if (localId == null) {
+                resolved = true
+                return@LaunchedEffect
+            }
+            entry.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                if (navController.currentBackStackEntry?.id == entry.id) {
+                    navController.navigate("local_playlist/$localId") {
+                        popUpTo(entry.destination.id) { inclusive = true }
                     }
                 }
             }

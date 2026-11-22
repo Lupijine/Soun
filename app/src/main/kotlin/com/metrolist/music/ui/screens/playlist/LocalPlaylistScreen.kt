@@ -428,7 +428,8 @@ fun LocalPlaylistScreen(
         )
     }
 
-    val headerItems = 2
+    // Items above the first song: header + sticky actions + sort row (only the sort row while searching).
+    val headerItems = if (isSearching) 1 else 3
     val lazyListState = rememberLazyListState()
     var dragInfo by remember {
         mutableStateOf<Pair<Int, Int>?>(null)
@@ -438,16 +439,18 @@ fun LocalPlaylistScreen(
             lazyListState = lazyListState,
             scrollThresholdPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
         ) { from, to ->
-            if (to.index >= headerItems && from.index >= headerItems) {
+            val fromSong = from.index - headerItems
+            val toSong = to.index - headerItems
+            if (fromSong in mutableSongs.indices && toSong in mutableSongs.indices) {
                 val currentDragInfo = dragInfo
                 dragInfo =
                     if (currentDragInfo == null) {
-                        (from.index - headerItems) to (to.index - headerItems)
+                        fromSong to toSong
                     } else {
-                        currentDragInfo.first to (to.index - headerItems)
+                        currentDragInfo.first to toSong
                     }
 
-                mutableSongs.move(from.index - headerItems, to.index - headerItems)
+                mutableSongs.move(fromSong, toSong)
             }
         }
 
@@ -758,7 +761,7 @@ fun LocalPlaylistScreen(
                                 .asPaddingValues(),
                         ).align(Alignment.CenterEnd),
                 scrollState = lazyListState,
-                headerItems = 2,
+                headerItems = headerItems,
             )
 
             TopAppBar(

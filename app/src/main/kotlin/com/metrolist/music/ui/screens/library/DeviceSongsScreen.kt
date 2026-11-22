@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -70,8 +71,10 @@ fun DeviceSongsScreen() {
             launcher.launch(permission)
         }
     }
+    val listState = rememberLazyListState()
     LaunchedEffect(allowed, refresh) {
-        loading = allowed
+        // Refresh quietly on resume: keep the list (and its scroll position) on screen.
+        loading = allowed && songs.isEmpty()
         failed = false
         if (allowed) {
             try {
@@ -98,7 +101,7 @@ fun DeviceSongsScreen() {
             }
             loading -> CircularProgressIndicator(Modifier.padding(24.dp))
             songs.isEmpty() -> Text(stringResource(R.string.soun_device_empty), Modifier.padding(24.dp))
-            else -> LazyColumn {
+            else -> LazyColumn(state = listState) {
                 itemsIndexed(songs, key = { _, song -> song.id }) { index, song ->
                     ListItem(
                         headlineContent = { Text(song.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },

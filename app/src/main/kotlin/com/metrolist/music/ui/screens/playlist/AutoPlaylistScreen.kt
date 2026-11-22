@@ -700,7 +700,7 @@ fun AutoPlaylistScreen(
                                 .asPaddingValues(),
                         ).align(Alignment.CenterEnd),
                 scrollState = state,
-                headerItems = 2,
+                headerItems = 3,
             )
 
             if (canRefresh) {

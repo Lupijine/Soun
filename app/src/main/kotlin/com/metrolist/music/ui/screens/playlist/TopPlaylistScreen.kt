@@ -420,7 +420,7 @@ fun TopPlaylistScreen(
                     )
                     .align(Alignment.CenterEnd),
                 scrollState = state,
-                headerItems = 2
+                headerItems = 3
             )
 
             TopAppBar(

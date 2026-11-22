@@ -68,6 +68,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import com.metrolist.music.utils.dataStore
+import kotlinx.coroutines.flow.map
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -225,8 +227,15 @@ fun HistoryScreen(
         }
     }
 
-    LaunchedEffect(isLoggedIn) {
-        if (!isLoggedIn && viewModel.historySource.value == HistorySource.REMOTE) {
+    // rememberPreference starts at "" before DataStore loads, so wait for the stored cookie
+    // instead of resetting a logged-in user's Remote tab on every return to this screen.
+    val historyContext = LocalContext.current
+    val storedCookie by remember(historyContext) {
+        historyContext.dataStore.data.map { it[InnerTubeCookieKey].orEmpty() }
+    }.collectAsStateWithLifecycle(initialValue = null)
+    LaunchedEffect(storedCookie) {
+        val cookie = storedCookie ?: return@LaunchedEffect
+        if ("SAPISID" !in parseCookieString(cookie) && viewModel.historySource.value == HistorySource.REMOTE) {
             onExitSelectionMode()
             viewModel.historySource.value = HistorySource.LOCAL
         }
