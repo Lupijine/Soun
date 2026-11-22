@@ -109,6 +109,11 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.animation.expandVertically
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -210,6 +215,8 @@ import com.metrolist.music.constants.SleepTimerDefaultKey
 import com.metrolist.music.constants.SleepTimerFadeOutKey
 import com.metrolist.music.constants.SleepTimerStopAfterCurrentSongKey
 
+
+private const val LYRICS_CONTROLS_HIDE_DELAY_MS = 4_000L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -802,6 +809,23 @@ fun BottomSheetPlayer(
                             enabled = playerBackground == PlayerBackgroundStyle.DEFAULT && !useBlackBackground,
                         ),
             ) {
+                // Soun: with the lyrics open the glass stays, but takes a deeper tint so the page
+                // behind the player no longer competes with the text. The album glow sits above it.
+                if (playerBackground == PlayerBackgroundStyle.DEFAULT && !useBlackBackground) {
+                    val lyricsTint by animateFloatAsState(
+                        targetValue = if (showInlineLyrics) 1f else 0f,
+                        animationSpec = tween(450),
+                        label = "lyricsGlassTint",
+                    )
+                    if (lyricsTint > 0f) {
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                                .graphicsLayer { alpha = lyricsTint * state.progress.coerceIn(0f, 1f) }
+                                .background(if (useDarkTheme) Color(0xFF0B070C).copy(alpha = 0.58f) else Color.White.copy(alpha = 0.6f)),
+                        )
+                    }
+                }
                 when (playerBackground) {
                     PlayerBackgroundStyle.BLUR -> {
                         AnimatedContent(
@@ -910,8 +934,11 @@ fun BottomSheetPlayer(
                 animationSpec = tween(durationMillis = 90, easing = LinearEasing),
                 label = "playPauseRoundness",
             )
+            // Soun: in portrait the song title sits in the header above the lyrics instead.
+            val titleInLyricsHeader = showInlineLyrics &&
+                LocalConfiguration.current.orientation != Configuration.ORIENTATION_LANDSCAPE
 
-            Row(
+            if (!titleInLyricsHeader) Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
                 modifier =
@@ -1337,7 +1364,7 @@ fun BottomSheetPlayer(
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(if (titleInLyricsHeader) 8.dp else 24.dp))
 
             when (sliderStyle) {
                 SliderStyle.DEFAULT -> {
@@ -1852,6 +1879,22 @@ fun BottomSheetPlayer(
             }
         }
 
+        // Soun: while the lyrics play, the controls step aside after a few quiet seconds and the
+        // lyrics take the whole screen; any touch on the player brings them back.
+        val isLandscapePlayer = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+        var lyricsControlsVisible by remember { mutableStateOf(true) }
+        var lyricsTouches by remember { mutableIntStateOf(0) }
+        LaunchedEffect(showInlineLyrics, effectiveIsPlaying, lyricsTouches, queueSheetState.isCollapsed, menuState.isVisible, state.isExpanded) {
+            lyricsControlsVisible = true
+            if (showInlineLyrics && !isLandscapePlayer && effectiveIsPlaying && queueSheetState.isCollapsed &&
+                !menuState.isVisible && state.isExpanded
+            ) {
+                delay(LYRICS_CONTROLS_HIDE_DELAY_MS)
+                lyricsControlsVisible = false
+            }
+        }
+        val lyricsImmersive = showInlineLyrics && !isLandscapePlayer && !lyricsControlsVisible
+
         when (LocalConfiguration.current.orientation) {
             Configuration.ORIENTATION_LANDSCAPE -> {
                 // Calculate vertical padding like OuterTune
@@ -1930,7 +1973,7 @@ fun BottomSheetPlayer(
 
             else -> {
                 val bottomPadding by animateDpAsState(
-                    targetValue = if (isFullScreen) 0.dp else queueSheetState.collapsedBound,
+                    targetValue = if (isFullScreen || lyricsImmersive) 0.dp else queueSheetState.collapsedBound,
                     label = "bottomPadding",
                 )
                 Column(
@@ -1939,8 +1982,65 @@ fun BottomSheetPlayer(
                         Modifier
                             .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
                             .padding(bottom = bottomPadding)
+                            .pointerInput(Unit) {
+                                // Watch every touch without taking it from the lyrics or controls.
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                                        if (event.type == PointerEventType.Press) lyricsTouches++
+                                    }
+                                }
+                            }
                             .animateContentSize(),
                 ) {
+                    AnimatedVisibility(
+                        visible = showInlineLyrics && mediaMetadata != null,
+                        enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
+                        exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
+                    ) {
+                        val headerMetadata = mediaMetadata ?: return@AnimatedVisibility
+                        val headerLyrics by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
+                        val headerFavorite =
+                            if (currentSong?.song?.isEpisode == true) currentSong?.song?.inLibrary != null
+                            else currentSong?.song?.liked == true
+                        SounLyricsHeader(
+                            mediaMetadata = headerMetadata,
+                            isFavorite = headerFavorite,
+                            showArtwork = !hidePlayerThumbnail,
+                            cropArtwork = cropAlbumArt,
+                            textColor = TextBackgroundColor,
+                            backdrop = playerBackdrop,
+                            onTitleClick = {
+                                val albumId = headerMetadata.album?.id
+                                    ?: currentSong?.album?.id
+                                    ?: currentSong?.song?.albumId
+                                if (albumId != null) {
+                                    navController.navigate("album/$albumId")
+                                    state.collapseSoft()
+                                }
+                            },
+                            onToggleLike = playerConnection::toggleLike,
+                            onMore = {
+                                menuState.show(playerBackdrop) {
+                                    com.metrolist.music.ui.menu.LyricsMenu(
+                                        lyricsProvider = { headerLyrics },
+                                        songProvider = { currentSong?.song },
+                                        mediaMetadataProvider = { headerMetadata },
+                                        onDismiss = menuState::dismiss,
+                                        onShowOffsetDialog = {
+                                            bottomSheetPageState.show {
+                                                ShowOffsetDialog(
+                                                    songProvider = { currentSong?.song },
+                                                )
+                                            }
+                                        },
+                                    )
+                                }
+                            },
+                            modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)),
+                        )
+                    }
+
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier.weight(1f),
@@ -1974,17 +2074,49 @@ fun BottomSheetPlayer(
                         }
                     }
 
-                    mediaMetadata?.let {
-                        controlsContent(it)
+                    AnimatedVisibility(
+                        visible = !lyricsImmersive,
+                        enter = fadeIn(tween(300)) + expandVertically(expandFrom = Alignment.Top),
+                        exit = fadeOut(tween(250)) + shrinkVertically(shrinkTowards = Alignment.Top),
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            mediaMetadata?.let {
+                                controlsContent(it)
+                            }
+
+                            Spacer(Modifier.height(30.dp))
+                        }
                     }
 
-                    Spacer(Modifier.height(30.dp))
+                    AnimatedVisibility(
+                        visible = lyricsImmersive,
+                        enter = fadeIn(tween(300)),
+                        exit = fadeOut(tween(150)),
+                    ) {
+                        // Only a hairline of progress remains while the lyrics have the screen.
+                        val progressColor = TextBackgroundColor
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom))
+                                .padding(start = 28.dp, end = 28.dp, top = 12.dp, bottom = 28.dp)
+                                .height(3.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(progressColor.copy(alpha = 0.18f))
+                                .drawWithContent {
+                                    val fraction = if (duration > 0L && duration != C.TIME_UNSET) {
+                                        (effectivePosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
+                                    } else 0f
+                                    drawRect(progressColor.copy(alpha = 0.85f), size = size.copy(width = size.width * fraction))
+                                },
+                        )
+                    }
                 }
             }
         }
 
         AnimatedVisibility(
-            visible = !isFullScreen,
+            visible = !isFullScreen && !lyricsImmersive,
             enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
             exit = shrinkVertically(shrinkTowards = Alignment.Top) + slideOutVertically(targetOffsetY = { it }) + fadeOut(),
         ) {
@@ -2086,7 +2218,7 @@ fun InlineLyricsView(
     ) {
         Lyrics(
             sliderPositionProvider = positionProvider,
-            modifier = Modifier.padding(horizontal = 24.dp),
+            modifier = Modifier.padding(horizontal = 16.dp),
             showLyrics = showLyrics,
         )
     }

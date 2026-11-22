@@ -15,6 +15,8 @@ import timber.log.Timber
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -183,13 +185,14 @@ internal fun LyricsActionOverlay(
     modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = modifier.padding(bottom = 16.dp),
+        modifier = modifier.fillMaxWidth().padding(bottom = 16.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
         AnimatedVisibility(
             visible = !isAutoScrollEnabled && isSynced && !isSelectionModeActive,
-            enter = slideInVertically { it } + fadeIn(),
-            exit = slideOutVertically { it } + fadeOut()
+            enter = scaleIn(initialScale = 0.6f) + fadeIn(),
+            exit = scaleOut(targetScale = 0.6f) + fadeOut(),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp),
         ) {
             LyricsFollowButton(backdrop, onSyncClick)
         }

@@ -1,6 +1,7 @@
 package com.metrolist.music.ui.component
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -72,17 +73,14 @@ internal fun LyricsLoadPanel(status: LyricsLoadStatus, onRetry: () -> Unit) {
 
 @Composable
 internal fun LyricsFollowButton(backdrop: Backdrop?, onClick: () -> Unit) {
+    // Soun: a small round glass button that sits at the side instead of covering the lyrics.
     CompositionLocalProvider(LocalSounBackdrop provides backdrop) {
-        FilledTonalButton(
+        IconButton(
             onClick = onClick,
-            modifier = Modifier.sounGlass(RoundedCornerShape(50), sounGlassColors()),
-            colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = Color.Transparent, contentColor = MaterialTheme.colorScheme.onSurface,
-            ),
+            modifier = Modifier.size(48.dp).sounGlass(CircleShape, sounGlassColors()),
+            colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.primary),
         ) {
-            Icon(painterResource(R.drawable.sync), null, Modifier.size(20.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.soun_lyrics_follow))
+            Icon(painterResource(R.drawable.soun_locate), stringResource(R.string.soun_lyrics_follow), Modifier.size(22.dp))
         }
     }
 }

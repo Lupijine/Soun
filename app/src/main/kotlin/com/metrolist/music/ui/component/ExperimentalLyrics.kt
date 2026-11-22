@@ -164,7 +164,7 @@ fun ExperimentalLyrics(
     val listenTogetherManager = LocalListenTogetherManager.current
     val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
 
-    val lyricsTextPosition by rememberEnumPreference(LyricsTextPositionKey, LyricsPosition.CENTER)
+    val lyricsTextPosition by rememberEnumPreference(LyricsTextPositionKey, LyricsPosition.LEFT)
     val changeLyrics by rememberPreference(LyricsClickKey, true)
     val romanizeLyricsList = rememberPreference(LyricsRomanizeList, "")
     val romanizeAsMain by rememberPreference(LyricsRomanizeAsMainKey, false)
@@ -707,6 +707,15 @@ fun ExperimentalLyrics(
                     )
                 }
 
+                // Soun: a seek moves the current line by several places at once. With the per-line
+                // stagger every line started at a different moment and they slid over each other, so
+                // jumps (and slider drags) move the whole block together instead.
+                val lastActiveHolder = remember(mergedLyricsList) { intArrayOf(-1) }
+                val jumpedFar = remember(activeListIndex, mergedLyricsList) {
+                    val previous = lastActiveHolder[0]
+                    lastActiveHolder[0] = activeListIndex
+                    previous != -1 && abs(activeListIndex - previous) > 1
+                }
                 mergedLyricsList.forEachIndexed { listIndex, listItem ->
                     key(listItem) {
                         val distance = abs(listIndex - activeListIndex)
@@ -717,7 +726,8 @@ fun ExperimentalLyrics(
                         }
                         val animatedOffset by animateFloatAsState(
                             targetValue = if (isAutoScrollEnabled) targetOffset else frozenOffset.floatValue,
-                            animationSpec = if (isInitialLayout || !isAutoScrollEnabled) snap() 
+                            animationSpec = if (isInitialLayout || !isAutoScrollEnabled || isSeeking) snap()
+                                            else if (jumpedFar) tween(450, 0, FastOutSlowInEasing)
                                             else {
                                                 tween(750, (distance * LYRICS_STAGGER_DELAY_PER_DISTANCE).coerceAtMost(LYRICS_STAGGER_DELAY_MAX_MS), FastOutSlowInEasing)
                                             },
@@ -737,7 +747,11 @@ fun ExperimentalLyrics(
                                             currentEffectivePosition >= listItem.gapStartMs &&
                                             currentEffectivePosition <= listItem.gapEndMs - 650L
                                     IntervalIndicator(listItem.gapStartMs, listItem.gapEndMs - 650L, currentEffectivePosition, visible, expressiveAccent,
-                                        Modifier.fillMaxWidth().onSizeChanged { itemHeights[listIndex] = it.height }.padding(horizontal = 24.dp).wrapContentWidth(Alignment.CenterHorizontally))
+                                        Modifier.fillMaxWidth().onSizeChanged { itemHeights[listIndex] = it.height }.padding(horizontal = 24.dp).wrapContentWidth(when (lyricsTextPosition) {
+                                            LyricsPosition.LEFT -> Alignment.Start
+                                            LyricsPosition.RIGHT -> Alignment.End
+                                            else -> Alignment.CenterHorizontally
+                                        }))
                                 }
                                 is LyricsListItem.Line -> {
                                     val index = listItem.index
@@ -758,7 +772,7 @@ fun ExperimentalLyrics(
                                         bgVisible = bgVisible, isSelected = selectedIndices.contains(index),
                                         isSelectionModeActive = isSelectionModeActive,
                                         lyricsOffset = (currentSong?.song?.lyricsOffset ?: 0).toLong(),
-                                        playerConnection = playerConnection, lyricsTextSize = 36f, lyricsLineSpacing = 1.3f,
+                                        playerConnection = playerConnection, lyricsTextSize = 28f, lyricsLineSpacing = 1.22f,
                                         expressiveAccent = expressiveAccent, lyricsTextPosition = lyricsTextPosition,
                                         respectAgentPositioning = respectAgentPositioning, isAutoScrollEnabled = isAutoScrollEnabled,
                                         displayedCurrentLineIndex = deferredCurrentLineIndex, romanizeAsMain = romanizeAsMain,

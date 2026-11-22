@@ -61,6 +61,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
@@ -199,16 +202,33 @@ internal fun LyricsLine(
     }) {
         @Composable
         fun LyricContent() {
-            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = agentAlignment) {
-                val inactiveAlpha = if (item.isBackground) 0.08f else 0.2f
+            // Soun: nearby lines stay readable over the glass; farther ones fade and soften.
+            val following = isSynced && !item.isBackground && !isActiveLine && isAutoScrollEnabled && displayedCurrentLineIndex >= 0
+            val lineDistance = if (following) abs(index - displayedCurrentLineIndex) else 0
+            val blurRadius by animateDpAsState(
+                targetValue = when {
+                    !following || isSelectionModeActive -> 0.dp
+                    lineDistance >= 4 -> 2.dp
+                    lineDistance >= 3 -> 1.2.dp
+                    else -> 0.dp
+                },
+                animationSpec = tween(400),
+                label = "lyricsLineBlur",
+            )
+            Column(
+                modifier = Modifier.fillMaxWidth()
+                    .then(if (blurRadius > 0.dp) Modifier.blur(blurRadius, BlurredEdgeTreatment.Unbounded) else Modifier),
+                horizontalAlignment = agentAlignment,
+            ) {
+                val inactiveAlpha = if (item.isBackground) 0.3f else 0.55f
                 val activeAlpha = 1f
-                val focusedAlpha = if (item.isBackground) 0.5f else 0.3f
+                val focusedAlpha = if (item.isBackground) 0.5f else 0.5f
                 val targetAlpha = if (!isSynced || item.isBackground || isActiveLine) {
                     activeAlpha
                 } else if (isAutoScrollEnabled && displayedCurrentLineIndex >= 0) {
                     when (abs(index - displayedCurrentLineIndex)) {
                         0 -> focusedAlpha
-                        1 -> 0.2f; 2 -> 0.2f; 3 -> 0.15f; 4 -> 0.1f; else -> 0.08f
+                        1 -> 0.45f; 2 -> 0.38f; 3 -> 0.3f; 4 -> 0.24f; else -> 0.18f
                     }
                 } else inactiveAlpha
                 
@@ -224,7 +244,7 @@ internal fun LyricsLine(
 
                 val lyricStyle = TextStyle(
                     fontSize = if (item.isBackground) (lyricsTextSize * 0.7f).sp else lyricsTextSize.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.ExtraBold,
                     fontStyle = if (item.isBackground) FontStyle.Italic else FontStyle.Normal,
                     lineHeight = if (item.isBackground) (lyricsTextSize * 0.7f * lyricsLineSpacing).sp else (lyricsTextSize * lyricsLineSpacing).sp,
                     letterSpacing = (-0.5).sp,

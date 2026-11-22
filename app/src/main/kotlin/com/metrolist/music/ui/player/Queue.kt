@@ -286,7 +286,13 @@ fun Queue(
                     .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))) {
                     Row(Modifier.fillMaxWidth().height(56.dp).sounGlass(RoundedCornerShape(28.dp), sounGlassColors(), backdrop = backdrop, fullPanel = true, diffusion = 12.dp)
                         .padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onToggleLyrics) {
+                        IconButton(
+                            onClick = onToggleLyrics,
+                            modifier = Modifier.background(
+                                if (showInlineLyrics) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f) else Color.Transparent,
+                                CircleShape,
+                            ),
+                        ) {
                             Icon(painterResource(R.drawable.lyrics), stringResource(R.string.lyrics),
                                 tint = if (showInlineLyrics) MaterialTheme.colorScheme.primary else TextBackgroundColor)
                         }
