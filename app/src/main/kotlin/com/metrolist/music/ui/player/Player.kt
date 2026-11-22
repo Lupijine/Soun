@@ -2030,15 +2030,7 @@ fun BottomSheetPlayer(
                             cropArtwork = cropAlbumArt,
                             textColor = TextBackgroundColor,
                             backdrop = playerBackdrop,
-                            onTitleClick = {
-                                val albumId = headerMetadata.album?.id
-                                    ?: currentSong?.album?.id
-                                    ?: currentSong?.song?.albumId
-                                if (albumId != null) {
-                                    navController.navigate("album/$albumId")
-                                    state.collapseSoft()
-                                }
-                            },
+                            onTitleClick = { showInlineLyrics = false },
                             onToggleLike = playerConnection::toggleLike,
                             onMore = {
                                 menuState.show(playerBackdrop) {

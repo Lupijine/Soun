@@ -65,52 +65,59 @@ internal fun SounLyricsHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        val artworkModifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp))
-        if (showArtwork && mediaMetadata.thumbnailUrl != null) {
-            AsyncImage(
-                model = mediaMetadata.thumbnailUrl,
-                contentDescription = null,
-                contentScale = if (cropArtwork) ContentScale.Crop else ContentScale.Fit,
-                modifier = artworkModifier,
-            )
-        } else {
-            Box(artworkModifier.background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-                Icon(
-                    painter = painterResource(R.drawable.music_note),
-                    contentDescription = null,
-                    tint = textColor.copy(alpha = 0.7f),
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-        }
-
-        Column(
+        // Tapping the song (cover or title) closes the lyrics and returns to the artwork view.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier
                 .weight(1f)
+                .clip(RoundedCornerShape(14.dp))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
+                    onClickLabel = stringResource(R.string.close),
                     onClick = onTitleClick,
                 ),
         ) {
-            Text(
-                text = mediaMetadata.title,
-                color = textColor,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val artists = mediaMetadata.artists.map { it.name }.filter { it.isNotBlank() }
-            if (artists.isNotEmpty()) {
+            val artworkModifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp))
+            if (showArtwork && mediaMetadata.thumbnailUrl != null) {
+                AsyncImage(
+                    model = mediaMetadata.thumbnailUrl,
+                    contentDescription = null,
+                    contentScale = if (cropArtwork) ContentScale.Crop else ContentScale.Fit,
+                    modifier = artworkModifier,
+                )
+            } else {
+                Box(artworkModifier.background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+                    Icon(
+                        painter = painterResource(R.drawable.music_note),
+                        contentDescription = null,
+                        tint = textColor.copy(alpha = 0.7f),
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = artists.joinToString(),
-                    color = textColor.copy(alpha = 0.72f),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
+                    text = mediaMetadata.title,
+                    color = textColor,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                val artists = mediaMetadata.artists.map { it.name }.filter { it.isNotBlank() }
+                if (artists.isNotEmpty()) {
+                    Text(
+                        text = artists.joinToString(),
+                        color = textColor.copy(alpha = 0.72f),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
 

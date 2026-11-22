@@ -78,8 +78,11 @@ fun rememberAdjustedFontSize(
     textMeasurer: androidx.compose.ui.text.TextMeasurer? = null
 ): TextUnit {
     val measurer = textMeasurer ?: rememberTextMeasurer()
+    // Colour doesn't change the layout. Keying on the full style reset the size to its rough
+    // starting guess on every colour change without measuring again, which left the text tiny.
+    val layoutStyle = remember(style) { style.copy(color = Color.Unspecified) }
 
-    var calculatedFontSize by remember(text, maxWidth, maxHeight, style, density) {
+    var calculatedFontSize by remember(text, maxWidth, maxHeight, layoutStyle, density) {
         val initialSize = when {
             text.length < 50 -> initialFontSize
             text.length < 100 -> (initialFontSize.value * 0.8f).sp
@@ -89,7 +92,7 @@ fun rememberAdjustedFontSize(
         mutableStateOf(initialSize)
     }
 
-    LaunchedEffect(key1 = text, key2 = maxWidth, key3 = maxHeight) {
+    LaunchedEffect(text, maxWidth, maxHeight, layoutStyle, density) {
         val targetWidthPx = with(density) { maxWidth.toPx() * 0.92f }
         val targetHeightPx = with(density) { maxHeight.toPx() * 0.92f }
         if (text.isBlank()) {

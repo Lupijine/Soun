@@ -104,27 +104,28 @@ internal fun IntervalIndicator(
 @Composable
 private fun BreathingDots(progress: () -> Float, color: Color, modifier: Modifier = Modifier) {
     val breath = rememberInfiniteTransition(label = "intervalBreath")
+    // Never above full size, and each dot breathes inside its own slot: the indicator clips
+    // its box, so a row that grew past its measured width got cut off at the edge.
     val pulse by breath.animateFloat(
-        initialValue = 0.82f,
-        targetValue = 1.08f,
+        initialValue = 0.72f,
+        targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(900, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "intervalPulse",
     )
     Row(
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.graphicsLayer {
-            scaleX = pulse
-            scaleY = pulse
-        },
+        modifier = modifier.padding(horizontal = 4.dp),
     ) {
         repeat(3) { i ->
             Box(
                 Modifier
-                    .size(12.dp)
+                    .size(14.dp)
                     .graphicsLayer {
                         val lit = (progress() * 3f - i).coerceIn(0f, 1f)
                         alpha = 0.3f + 0.7f * lit
+                        scaleX = pulse
+                        scaleY = pulse
                     }
                     .clip(CircleShape)
                     .background(color),
