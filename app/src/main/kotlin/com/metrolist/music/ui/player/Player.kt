@@ -181,6 +181,7 @@ import com.metrolist.music.extensions.togglePlayPause
 import com.metrolist.music.extensions.toggleRepeatMode
 import com.metrolist.music.listentogether.RoomRole
 import com.metrolist.music.models.MediaMetadata
+import com.metrolist.music.ui.component.SounProgressBar
 import com.metrolist.music.ui.component.BottomSheet
 import com.metrolist.music.ui.component.BottomSheetState
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
@@ -252,6 +253,8 @@ fun BottomSheetPlayer(
     var isFullScreen by rememberSaveable {
         mutableStateOf(false)
     }
+
+    var showRemainingTime by rememberSaveable { mutableStateOf(true) }
 
     val playerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
@@ -793,6 +796,11 @@ fun BottomSheetPlayer(
         }
 
     val playerBackdrop = rememberLayerBackdrop()
+    val sheetGlassBlur by animateDpAsState(
+        targetValue = if (showInlineLyrics) 30.dp else 6.dp,
+        animationSpec = tween(450),
+        label = "sheetGlassBlur",
+    )
 
     BottomSheet(
         state = state,
@@ -807,6 +815,7 @@ fun BottomSheetPlayer(
                         .sounSheetGlass(
                             tint = bottomSheetBackgroundColor,
                             enabled = playerBackground == PlayerBackgroundStyle.DEFAULT && !useBlackBackground,
+                            blurRadius = sheetGlassBlur,
                         ),
             ) {
                 // Soun: with the lyrics open the glass stays, but takes a deeper tint so the page
@@ -822,7 +831,7 @@ fun BottomSheetPlayer(
                             Modifier
                                 .fillMaxSize()
                                 .graphicsLayer { alpha = lyricsTint * state.progress.coerceIn(0f, 1f) }
-                                .background(if (useDarkTheme) Color(0xFF0B070C).copy(alpha = 0.58f) else Color.White.copy(alpha = 0.6f)),
+                                .background(if (useDarkTheme) Color(0xFF0B070C).copy(alpha = 0.45f) else Color.White.copy(alpha = 0.5f)),
                         )
                     }
                 }
@@ -1368,7 +1377,7 @@ fun BottomSheetPlayer(
 
             when (sliderStyle) {
                 SliderStyle.DEFAULT -> {
-                    Slider(
+                    SounProgressBar(
                         value = (sliderPosition ?: effectivePosition).toFloat(),
                         valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
                         onValueChange = {
@@ -1391,11 +1400,7 @@ fun BottomSheetPlayer(
                             }
                         },
                         enabled = !isListenTogetherGuest,
-                        thumb = { Box(Modifier.size(10.dp).background(TextBackgroundColor, CircleShape)) },
-                        track = { slider -> SliderDefaults.Track(slider, modifier = Modifier.height(6.dp),
-                            thumbTrackGapSize = 0.dp, drawStopIndicator = null,
-                            colors = PlayerSliderColors.getSliderColors(textButtonColor, playerBackground, useDarkTheme)) },
-                        colors = PlayerSliderColors.getSliderColors(textButtonColor, playerBackground, useDarkTheme),
+                        color = TextBackgroundColor,
                         modifier = Modifier.padding(horizontal = PlayerHorizontalPadding),
                     )
                 }
@@ -1496,20 +1501,35 @@ fun BottomSheetPlayer(
                         .fillMaxWidth()
                         .padding(horizontal = PlayerHorizontalPadding + 4.dp),
             ) {
+                // Soun: times brighten while scrubbing; tap the right one to switch between the
+                // remaining time and the song length.
+                val timeAlpha = if (sliderPosition != null) 1f else 0.72f
+                val shownPosition = sliderPosition ?: effectivePosition
                 Text(
-                    text = makeTimeString(sliderPosition ?: effectivePosition),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = TextBackgroundColor,
+                    text = makeTimeString(shownPosition),
+                    style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextBackgroundColor.copy(alpha = timeAlpha),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
 
                 Text(
-                    text = if (duration != C.TIME_UNSET) makeTimeString(duration) else "",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = TextBackgroundColor,
+                    text = when {
+                        duration == C.TIME_UNSET -> ""
+                        showRemainingTime -> "-" + makeTimeString((duration - shownPosition).coerceAtLeast(0L))
+                        else -> makeTimeString(duration)
+                    },
+                    style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextBackgroundColor.copy(alpha = timeAlpha),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { showRemainingTime = !showRemainingTime },
+                    ),
                 )
             }
 

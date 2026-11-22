@@ -297,7 +297,8 @@ fun ExperimentalLyrics(
     }
 
     val expressiveAccent = when (playerBackground) {
-        PlayerBackgroundStyle.DEFAULT -> MaterialTheme.colorScheme.primary
+        // Soun: lyrics in the text colour (white in dark mode) read better over the glass than the accent.
+        PlayerBackgroundStyle.DEFAULT -> MaterialTheme.colorScheme.onSurface
         PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT -> Color.White
     }
 

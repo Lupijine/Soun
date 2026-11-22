@@ -6,6 +6,16 @@
 package com.metrolist.music.ui.component
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -13,7 +23,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -85,13 +94,41 @@ internal fun IntervalIndicator(
             },
         contentAlignment = Alignment.Center
     ) {
-        CircularWavyProgressIndicator(
-            progress = { animatedProgress },
-            modifier = Modifier
-                .size(36.dp)
-                .alpha(alpha.value),
-            color = color,
-            trackColor = color.copy(alpha = 0.2f),
-        )
+        // Soun: three breathing dots that light up as the instrumental part runs out.
+        if (alpha.value > 0f) {
+            BreathingDots(progress = { animatedProgress }, color = color, modifier = Modifier.alpha(alpha.value))
+        }
+    }
+}
+
+@Composable
+private fun BreathingDots(progress: () -> Float, color: Color, modifier: Modifier = Modifier) {
+    val breath = rememberInfiniteTransition(label = "intervalBreath")
+    val pulse by breath.animateFloat(
+        initialValue = 0.82f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable(tween(900, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "intervalPulse",
+    )
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.graphicsLayer {
+            scaleX = pulse
+            scaleY = pulse
+        },
+    ) {
+        repeat(3) { i ->
+            Box(
+                Modifier
+                    .size(12.dp)
+                    .graphicsLayer {
+                        val lit = (progress() * 3f - i).coerceIn(0f, 1f)
+                        alpha = 0.3f + 0.7f * lit
+                    }
+                    .clip(CircleShape)
+                    .background(color),
+            )
+        }
     }
 }

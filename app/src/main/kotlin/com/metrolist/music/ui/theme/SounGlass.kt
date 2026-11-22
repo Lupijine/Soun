@@ -213,7 +213,12 @@ fun Modifier.sounGlass(
  * Falls back to a solid [tint] where the live backdrop isn't available.
  */
 @Composable
-fun Modifier.sounSheetGlass(tint: Color, enabled: Boolean = true): Modifier {
+fun Modifier.sounSheetGlass(
+    tint: Color,
+    enabled: Boolean = true,
+    // Raised while the lyrics are open so the page behind dissolves into colour; the lens stays.
+    blurRadius: androidx.compose.ui.unit.Dp = 6.dp,
+): Modifier {
     val backdrop = LocalSounBackdrop.current
     if (!enabled || backdrop == null || !isRenderEffectSupported()) return this.background(tint)
     val shape = androidx.compose.foundation.shape.RoundedCornerShape(36.dp)
@@ -222,7 +227,7 @@ fun Modifier.sounSheetGlass(tint: Color, enabled: Boolean = true): Modifier {
         shape = { shape },
         effects = {
             vibrancy()
-            blur(6.dp.toPx())
+            blur(blurRadius.toPx())
             // A tall refraction band makes the whole slab act as a lens, not just its rim.
             lens(140.dp.toPx(), 96.dp.toPx(), depthEffect = true, chromaticAberration = true)
         },

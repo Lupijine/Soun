@@ -339,76 +339,108 @@ internal fun LyricsColorPickerDialog(
         }
     }
 
-    BasicAlertDialog(onDismissRequest = onDismiss) {
-        Card(shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth().padding(20.dp)) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.verticalScroll(rememberScrollState()).padding(20.dp)
-            ) {
-                Text(stringResource(R.string.customize_colors), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(12.dp))
-                
-                Text(stringResource(R.string.player_background_style), style = MaterialTheme.typography.titleMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 8.dp)) {
-                    LyricsBackgroundStyle.entries.forEach { style ->
-                        val label = when(style) {
-                            LyricsBackgroundStyle.SOLID -> stringResource(R.string.player_background_solid)
-                            LyricsBackgroundStyle.BLUR -> stringResource(R.string.player_background_blur)
-                            else -> stringResource(R.string.gradient)
-                        }
-                        FilterChip(selected = bgStyle == style, onClick = { bgStyle = style }, label = { Text(label) })
-                    }
-                }
-                
-                Box(Modifier.fillMaxWidth().aspectRatio(1f).padding(8.dp).clip(RoundedCornerShape(12.dp))) {
-                    LyricsImageCard(
-                        lyricText = txt,
-                        mediaMetadata = MediaMetadata(
-                            id = "",
-                            title = title,
-                            artists = listOf(MediaMetadata.Artist(name = arts, id = null)),
-                            thumbnailUrl = thumbnailUrl,
-                            duration = 0
-                        ),
-                        darkBackground = true,
-                        backgroundColor = previewBackgroundColor,
-                        backgroundStyle = bgStyle,
-                        textColor = previewTextColor,
-                        secondaryTextColor = previewSecondaryTextColor,
-                        textAlign = align
+    // Soun: a glass panel with a segmented style picker and round swatches. The secondary
+    // text colour follows the text colour, which keeps the image readable with one choice less.
+    val backgroundChoices = (pal + listOf(Color(0xFF242424), Color(0xFF121212), Color.Black, Color(0xFFF5F5F5), Color.White))
+        .distinct().take(10)
+    val textChoices = (listOf(Color.White, Color.Black) + pal + listOf(Color(0xFFA99BFF), Color(0xFFF4A7B9)))
+        .distinct().take(10)
+    com.metrolist.music.ui.theme.SounGlassDialog(onDismiss = onDismiss) {
+        Column(
+            modifier = Modifier.verticalScroll(rememberScrollState()).padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.share_as_image),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        stringResource(R.string.customize_colors),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.66f),
                     )
                 }
-                
-                Spacer(Modifier.height(18.dp))
-                
-                Text(stringResource(R.string.background_color), style = MaterialTheme.typography.titleMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 8.dp)) {
-                    (pal + listOf(Color(0xFF242424), Color(0xFF121212), Color.White, Color.Black, Color(0xFFF5F5F5))).distinct().take(8).forEach { color ->
-                        Box(Modifier.size(32.dp).background(color, RoundedCornerShape(8.dp)).clickable { previewBackgroundColor = color }.border(2.dp, if (previewBackgroundColor == color) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(8.dp)))
+                androidx.compose.material3.IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
+                ) {
+                    Icon(painterResource(R.drawable.close), stringResource(R.string.close), Modifier.size(20.dp))
+                }
+            }
+
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(24.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f), RoundedCornerShape(24.dp)),
+            ) {
+                LyricsImageCard(
+                    lyricText = txt,
+                    mediaMetadata = MediaMetadata(
+                        id = "",
+                        title = title,
+                        artists = listOf(MediaMetadata.Artist(name = arts, id = null)),
+                        thumbnailUrl = thumbnailUrl,
+                        duration = 0
+                    ),
+                    darkBackground = true,
+                    backgroundColor = previewBackgroundColor,
+                    backgroundStyle = bgStyle,
+                    textColor = previewTextColor,
+                    secondaryTextColor = previewSecondaryTextColor,
+                    textAlign = align
+                )
+            }
+
+            SounSegmentedControl(
+                options = LyricsBackgroundStyle.entries.toList(),
+                selected = bgStyle,
+                label = { style ->
+                    when (style) {
+                        LyricsBackgroundStyle.SOLID -> stringResource(R.string.player_background_solid)
+                        LyricsBackgroundStyle.BLUR -> stringResource(R.string.player_background_blur)
+                        else -> stringResource(R.string.gradient)
                     }
-                }
-                
-                Text(stringResource(R.string.text_color), style = MaterialTheme.typography.titleMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 8.dp)) {
-                    (pal + listOf(Color.White, Color.Black, Color(0xFF1DB954))).distinct().take(8).forEach { color ->
-                        Box(Modifier.size(32.dp).background(color, RoundedCornerShape(8.dp)).clickable { previewTextColor = color }.border(2.dp, if (previewTextColor == color) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(8.dp)))
-                    }
-                }
-                
-                Text(stringResource(R.string.secondary_text_color), style = MaterialTheme.typography.titleMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 8.dp)) {
-                    (pal.map { it.copy(alpha = 0.7f) } + listOf(Color.White.copy(alpha = 0.7f), Color.Black.copy(alpha = 0.7f), Color(0xFF1DB954))).distinct().take(8).forEach { color ->
-                        Box(Modifier.size(32.dp).background(color, RoundedCornerShape(8.dp)).clickable { previewSecondaryTextColor = color }.border(2.dp, if (previewSecondaryTextColor == color) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(8.dp)))
-                    }
-                }
-                
-                Spacer(Modifier.height(12.dp))
-                
-                Button(onClick = {
-                    onShare(previewBackgroundColor, previewTextColor, previewSecondaryTextColor, bgStyle)
-                }, Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.share))
-                }
+                },
+                onSelect = { bgStyle = it },
+            )
+
+            // Blur and gradient take their colours from the artwork, so only Solid needs a background.
+            AnimatedVisibility(visible = bgStyle == LyricsBackgroundStyle.SOLID) {
+                SounSwatchRow(
+                    title = stringResource(R.string.background_color),
+                    colors = backgroundChoices,
+                    selected = previewBackgroundColor,
+                    onSelect = { previewBackgroundColor = it },
+                )
+            }
+
+            SounSwatchRow(
+                title = stringResource(R.string.text_color),
+                colors = textChoices,
+                selected = previewTextColor,
+                onSelect = { color ->
+                    previewTextColor = color
+                    previewSecondaryTextColor = color.copy(alpha = 0.7f)
+                },
+            )
+
+            Button(
+                onClick = { onShare(previewBackgroundColor, previewTextColor, previewSecondaryTextColor, bgStyle) },
+                shape = RoundedCornerShape(50),
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+            ) {
+                Icon(painterResource(R.drawable.share), null, Modifier.size(20.dp))
+                Spacer(Modifier.width(10.dp))
+                Text(stringResource(R.string.share), fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
         }
     }
