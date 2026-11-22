@@ -286,7 +286,6 @@ class MainActivity : FragmentActivity() {
     private var playerConnectionSnapshot by mutableStateOf<PlayerConnection?>(null)
 
     private var isServiceBound = false
-    private var launchVideoVisible by mutableStateOf(false)
 
     private val serviceConnection =
         object : ServiceConnection {
@@ -336,7 +335,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onStart() {
         super.onStart()
-        if (!launchVideoVisible) requestNotificationPermission()
+        requestNotificationPermission()
 
         // Browsing binds the player; Media3 starts the foreground service when playback begins.
         // Bind to service - if already bound, this is a no-op but ensures we stay connected
@@ -397,8 +396,6 @@ class MainActivity : FragmentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        launchVideoVisible = savedInstanceState == null && !MusicService.isRunning &&
-            (intent.action == Intent.ACTION_MAIN || intent.action == null)
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
@@ -484,23 +481,6 @@ class MainActivity : FragmentActivity() {
                     downloadUtil = downloadUtil,
                     syncUtils = syncUtils,
                 )
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = launchVideoVisible,
-                    enter = androidx.compose.animation.EnterTransition.None,
-                    exit = fadeOut(tween(250)),
-                ) {
-                    val home: HomeViewModel = hiltViewModel()
-                    val loading by home.isLoading.collectAsStateWithLifecycle()
-                    com.metrolist.music.ui.component.SounLaunchScreen(
-                        ready = playerConnectionSnapshot != null && !loading,
-                        onFinished = {
-                            if (launchVideoVisible) {
-                                launchVideoVisible = false
-                                requestNotificationPermission()
-                            }
-                        },
-                    )
-                }
             }
         }
     }
