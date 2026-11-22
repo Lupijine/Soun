@@ -32,11 +32,14 @@ class LyricsRepository @Inject constructor(private val database: MusicDatabase, 
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
-            return LyricsLoadStatus.ERROR
+            // A failed recheck says nothing about the stored lyrics: keep showing them.
+            return if (recheck) LyricsLoadStatus.FOUND else LyricsLoadStatus.ERROR
         }
         if (!usableLyrics(result.lyrics)) {
-            // Keep downloaded lyrics available offline; an online mismatch must not be displayed.
-            return if (recheck && result.status == LyricsLoadStatus.OFFLINE) LyricsLoadStatus.FOUND else result.status
+            // Keep stored lyrics when the recheck could not reach the providers (offline, timeout,
+            // network error); only a clean online miss means they may belong to another song.
+            val unreachable = result.status == LyricsLoadStatus.OFFLINE || result.status == LyricsLoadStatus.ERROR
+            return if (recheck && unreachable) LyricsLoadStatus.FOUND else result.status
         }
         if (recheck) {
             database.withTransaction {

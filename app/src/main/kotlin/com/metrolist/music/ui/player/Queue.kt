@@ -725,7 +725,8 @@ fun Queue(
         val queueTitle by playerConnection.queueTitle.collectAsStateWithLifecycle()
         val queueWindows by playerConnection.queueWindows.collectAsStateWithLifecycle()
         val database = LocalDatabase.current
-        var showSaveQueue by rememberSaveable { mutableStateOf(false) }
+        // Plain remember: the queue snapshot below does not survive recreation, so neither should the dialog.
+        var showSaveQueue by remember { mutableStateOf(false) }
         var queueToSave by remember { mutableStateOf(emptyList<MediaMetadata>()) }
         AddToPlaylistDialog(
             isVisible = showSaveQueue,
@@ -934,7 +935,7 @@ fun Queue(
                                             if (!isListenTogetherGuest) {
                                                 IconButton(
                                                     onClick = {
-                                                        menuState.show {
+                                                        menuState.show(backdrop) {
                                                             QueueMenu(
                                                                 mediaMetadata = window.mediaItem.metadata!!,
                                                                 playerBottomSheetState = playerBottomSheetState,
@@ -1091,7 +1092,7 @@ fun Queue(
                                         .combinedClickable(
                                             onClick = {},
                                             onLongClick = {
-                                                menuState.show {
+                                                menuState.show(backdrop) {
                                                     QueueMenu(
                                                         mediaMetadata = item.metadata!!,
                                                         playerBottomSheetState = playerBottomSheetState,
@@ -1233,7 +1234,7 @@ fun Queue(
                     IconButton(
                         enabled = count > 0,
                         onClick = {
-                            menuState.show {
+                            menuState.show(backdrop) {
                                 SelectionMediaMetadataMenu(
                                     songSelection = selectedSongs,
                                     onDismiss = menuState::dismiss,

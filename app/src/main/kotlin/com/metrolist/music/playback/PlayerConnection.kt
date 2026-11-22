@@ -43,6 +43,7 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -170,7 +171,9 @@ class PlayerConnection(
             database.song(it?.id)
         }.stateIn(scope, SharingStarted.Lazily, null)
     val currentLyrics =
-        mediaMetadata.flatMapLatest { mediaMetadata ->
+        // Keyed on the song id: swapping in device artwork changes the metadata of the same song
+        // and must not blank the lyrics for a moment.
+        mediaMetadata.distinctUntilChangedBy { it?.id }.flatMapLatest { mediaMetadata ->
             database.lyrics(mediaMetadata?.id).onStart { emit(null) }
         }.stateIn(scope, SharingStarted.Lazily, null)
     val currentFormat =

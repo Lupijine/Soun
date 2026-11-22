@@ -1171,7 +1171,7 @@ fun BottomSheetPlayer(
                                 val currentLyrics by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
                                 FilledIconButton(
                                     onClick = {
-                                        menuState.show {
+                                        menuState.show(playerBackdrop) {
                                             com.metrolist.music.ui.menu.LyricsMenu(
                                                 lyricsProvider = { currentLyrics },
                                                 songProvider = { currentSong?.song },
@@ -1297,7 +1297,7 @@ fun BottomSheetPlayer(
                                         .clip(RoundedCornerShape(24.dp))
                                         .background(textButtonColor)
                                         .clickable {
-                                            menuState.show {
+                                            menuState.show(playerBackdrop) {
                                                 com.metrolist.music.ui.menu.LyricsMenu(
                                                     lyricsProvider = { currentLyrics },
                                                     songProvider = { currentSong?.song },

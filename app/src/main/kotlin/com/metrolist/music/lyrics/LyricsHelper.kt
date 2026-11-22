@@ -50,8 +50,10 @@ constructor(
     private val verification by lazy { context.getSharedPreferences("lyrics_identity_v2", Context.MODE_PRIVATE) }
 
     private fun fingerprint(metadata: MediaMetadata, entry: LyricsEntity): String {
+        // Album and duration differ between database and player metadata for the same song,
+        // so they would force a recheck on every play; title and artists are what lyrics match on.
         val identity = listOf(metadata.id, metadata.title, metadata.artists.joinToString { it.name },
-            metadata.duration.toString(), metadata.album?.title.orEmpty(), entry.provider, entry.lyrics).joinToString("\u0000")
+            entry.provider, entry.lyrics).joinToString("\u0000")
         return Base64.encodeToString(MessageDigest.getInstance("SHA-256").digest(identity.toByteArray()), Base64.NO_WRAP)
     }
 

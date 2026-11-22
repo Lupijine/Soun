@@ -165,7 +165,7 @@ class InnerTube {
                     writeTimeout(60, TimeUnit.SECONDS)
                     protocols(listOf(okhttp3.Protocol.HTTP_2, okhttp3.Protocol.HTTP_1_1))
                     retryOnConnectionFailure(true)
-                    cache(okhttp3.Cache(File(System.getProperty("java.io.tmpdir"), "http_cache"), 50L * 1024L * 1024L))
+                    cache(SHARED_HTTP_CACHE)
                     configuredProxy?.let(::proxy)
                     configuredProxyAuth?.let { auth ->
                         proxyAuthenticator { _, response ->
@@ -448,4 +448,12 @@ class InnerTube {
                 dislike = returnYouTubeDislikeResponse.dislikes,
             )
         }
+
+    private companion object {
+        // One disk cache for every client and instance: the transport is rebuilt on each network
+        // change, and two okhttp3.Cache objects on the same directory would corrupt its journal.
+        val SHARED_HTTP_CACHE: okhttp3.Cache by lazy {
+            okhttp3.Cache(File(System.getProperty("java.io.tmpdir"), "http_cache"), 50L * 1024L * 1024L)
+        }
+    }
 }

@@ -52,7 +52,16 @@ fun Lyrics(
         }
     }
 
-    if (showLyrics && (status != LyricsLoadStatus.FOUND || !usableLyrics(saved?.takeIf { it.id == metadata?.id }?.lyrics))) {
+    // Lyrics written while the panel shows "not found" or an error (search, edit, refetch from the
+    // lyrics menu) are the user's choice: show them right away instead of waiting for Retry.
+    val savedText = saved?.takeIf { it.id == metadata?.id }?.lyrics
+    LaunchedEffect(savedText) {
+        if (usableLyrics(savedText) && status != LyricsLoadStatus.LOADING && status != LyricsLoadStatus.FOUND) {
+            status = LyricsLoadStatus.FOUND
+        }
+    }
+
+    if (showLyrics && (status != LyricsLoadStatus.FOUND || !usableLyrics(savedText))) {
         val displayedStatus = if (status == LyricsLoadStatus.FOUND) LyricsLoadStatus.NOT_FOUND else status
         Box(modifier) { LyricsLoadPanel(displayedStatus) { retry += 1 } }
         return

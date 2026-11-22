@@ -1671,6 +1671,8 @@ class MusicService :
      * No-op if already marked downloaded, or if the file's content length is unknown.
      */
     private suspend fun markCachedIfFullyDownloaded(mediaId: String) {
+        // Songs on the phone are never cached copies of a stream.
+        if (isDeviceAudioId(mediaId)) return
         val song = database.song(mediaId).first() ?: return
         if (song.song.dateDownload != null || song.song.isDownloaded) return
         val contentLength =
@@ -2462,9 +2464,12 @@ class MusicService :
 
         val newMetadata = mediaItem?.metadata
         deviceArtworkJob?.cancel()
-        if (newMetadata != null && isDeviceAudioId(newMetadata.id) &&
-            newMetadata.thumbnailUrl?.contains("/device_album_art/") != true
-        ) {
+        // Extracted art lives in the cache folder and can be pruned or cleared; re-extract when
+        // the saved file is gone instead of keeping a broken cover forever.
+        val savedDeviceArtwork = newMetadata?.thumbnailUrl?.takeIf { it.contains("/device_album_art/") }
+        val deviceArtworkMissing = savedDeviceArtwork == null ||
+            runCatching { !java.io.File(android.net.Uri.parse(savedDeviceArtwork).path.orEmpty()).exists() }.getOrDefault(true)
+        if (newMetadata != null && isDeviceAudioId(newMetadata.id) && deviceArtworkMissing) {
             deviceArtworkJob = scope.launch {
                 val artwork = withContext(Dispatchers.IO) { extractDeviceArtwork(this@MusicService, newMetadata.id) }
                 if (artwork != null && player.currentMediaItem?.mediaId == newMetadata.id) {
@@ -3733,7 +3738,9 @@ class MusicService :
         normalizationProcessor: VolumeNormalizationAudioProcessor,
         playerProvider: () -> ExoPlayer?,
     ): DataSource.Factory {
-        return ResolvingDataSource.Factory(createCacheDataSource()) { dataSpec ->
+        return ResolvingDataSource.Factory(
+            LocalFirstDataSource.Factory(DefaultDataSource.Factory(this), createCacheDataSource()),
+        ) { dataSpec ->
             val mediaId = dataSpec.key ?: error("No media id")
             if (dataSpec.uri.scheme == "content" && dataSpec.uri.authority == "media") {
                 applyAudioNormalizationBeforePlayback(normalizationProcessor, playerProvider, mediaId, null, null)
@@ -4302,6 +4309,7 @@ class MusicService :
             if (!ensureForegroundWithLatestNotificationOrStop()) {
                 return START_NOT_STICKY
             }
+            notificationGate.open()
         }
 
         initializePlayer()

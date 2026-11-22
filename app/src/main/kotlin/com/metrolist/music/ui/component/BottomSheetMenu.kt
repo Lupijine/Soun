@@ -130,7 +130,13 @@ fun AnimatedBottomSheet(
     }
 
     LaunchedEffect(isVisible) {
-        if (!isVisible) sheetState.hide()
+        if (isVisible) {
+            // Re-opened while the close animation was running: bring it back up. The first open
+            // is left to ModalBottomSheet itself.
+            if (sheetState.isVisible) sheetState.show()
+        } else {
+            sheetState.hide()
+        }
     }
 
     if (!sheetState.isVisible && !isVisible) {

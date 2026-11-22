@@ -14,7 +14,9 @@ import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.view.View
 import android.view.WindowManager
 import android.widget.Toast
@@ -260,6 +262,7 @@ class MainActivity : FragmentActivity() {
         const val EXTRA_AUTO_START_RECOGNITION = "auto_start_recognition"
         const val EXTRA_WIDGET_TARGET_TYPE = "widget_target_type"
         const val EXTRA_WIDGET_TARGET_ID = "widget_target_id"
+        private const val CONFIG_CHANGE_UNBIND_DELAY_MS = 5_000L
     }
 
     @Inject
@@ -312,7 +315,23 @@ class MainActivity : FragmentActivity() {
     private fun safeUnbindService(source: String) {
         if (!isServiceBound) return
         try {
-            unbindService(serviceConnection)
+            if (isChangingConfigurations) {
+                // Rotation, dark mode, language: the new Activity binds again in onStart. Unbinding
+                // now would leave a paused (not yet started) service with no clients, so Android
+                // would destroy it and drop the player, cast session and sleep timer. Hold this
+                // binding a little longer so the service lives through the recreation.
+                val app = applicationContext
+                val connection = serviceConnection
+                Handler(Looper.getMainLooper()).postDelayed({
+                    try {
+                        app.unbindService(connection)
+                    } catch (e: IllegalArgumentException) {
+                        Timber.tag("MainActivity").w(e, "Deferred unbind after configuration change")
+                    }
+                }, CONFIG_CHANGE_UNBIND_DELAY_MS)
+            } else {
+                applicationContext.unbindService(serviceConnection)
+            }
         } catch (e: IllegalArgumentException) {
             Timber.tag("MainActivity").w(e, "Service was not bound when attempting to unbind in $source")
         } finally {
@@ -340,7 +359,9 @@ class MainActivity : FragmentActivity() {
         // Browsing binds the player; Media3 starts the foreground service when playback begins.
         // Bind to service - if already bound, this is a no-op but ensures we stay connected
         if (!isServiceBound) {
-            bindService(
+            // Bound through the application context so the binding can outlive a configuration
+            // change (see safeUnbindService).
+            applicationContext.bindService(
                 Intent(this, MusicService::class.java),
                 serviceConnection,
                 BIND_AUTO_CREATE,
