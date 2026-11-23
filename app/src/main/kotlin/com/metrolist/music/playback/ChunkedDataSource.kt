@@ -14,27 +14,33 @@ import androidx.media3.datasource.TransferListener
 import java.io.IOException
 
 /**
- * Asks the next [ChunkedDataSource] in the chain to read a stream in ranges of [chunkSizeBytes].
- * Carried in [DataSpec.customData], which the cache layers copy onto the requests they send on.
+ * How the [ChunkedDataSource] further down the chain should read a resolved stream. Carried in
+ * [DataSpec.customData], which the cache layers copy onto the requests they send on.
+ *
+ * [maxChunkBytes] is the largest range the server answers for this stream (null: the source's
+ * own size), and [contentLength] the size of the whole stream when the resolver knows it.
  */
-data class RangeChunkHint(val chunkSizeBytes: Long)
+data class RangeChunkHint(
+    val maxChunkBytes: Long? = null,
+    val contentLength: Long? = null,
+)
 
 /**
  * Reads a stream as a series of small ranged requests instead of one long one.
  *
- * YouTube slows down or drops a single open-ended request for a large file, and some of its
- * clients only answer bounded ranges at all, so a long track (an hour or more) would get stuck
- * partway. This source asks for one chunk at a time (`Range: bytes=a-b`) and joins the pieces
- * into one continuous stream for the caller, so the player, the cache and the downloader see
- * no difference.
+ * YouTube slows down, cuts short or drops a single open-ended request for a large file, and
+ * some of its clients only answer bounded ranges at all, so a long track (an hour or more)
+ * would get stuck partway. This source asks for one range at a time (`Range: bytes=a-b`) and
+ * joins the pieces into one continuous stream for the caller, so the player, the cache and the
+ * downloader see no difference.
  *
- * The chunk size comes from a [RangeChunkHint] on the request when there is one, otherwise
- * [chunkSizeBytes]. With [onlyWhenHinted] set, requests without a hint (anything that is not a
- * resolved YouTube stream) pass straight through to [upstream].
+ * Requests carrying a [RangeChunkHint] are always chunked; with [onlyWhenHinted] set, anything
+ * else (not a resolved YouTube stream) passes straight through to [upstream].
  *
- * The total size is taken from the first chunk's `Content-Range`, so the caller learns the
- * real length up front. Without it, the end of the file is detected by a chunk coming back
- * shorter than asked, or by the server answering 416 (range not satisfiable) for the next one.
+ * The total size comes from the first range's `Content-Range`, or else from the hint, so the
+ * caller learns the real length up front. A range that comes back shorter than asked is not
+ * taken as the end: reading carries on from where it stopped, and only an empty range or a
+ * 416 (range not satisfiable) past the last byte ends a stream of unknown size.
  */
 class ChunkedDataSource(
     private val upstream: DataSource,
@@ -44,6 +50,9 @@ class ChunkedDataSource(
     private var spec: DataSpec? = null
     private var passThrough = false
     private var currentChunkSize = chunkSizeBytes
+
+    /** True once the remaining size is known from the caller or the server, not only guessed. */
+    private var lengthConfirmed = false
 
     /** Bytes still wanted by the caller, or [C.LENGTH_UNSET] if open-ended and still unknown. */
     private var bytesRemaining: Long = C.LENGTH_UNSET.toLong()
@@ -61,15 +70,17 @@ class ChunkedDataSource(
 
     override fun open(dataSpec: DataSpec): Long {
         spec = dataSpec
-        val size = chunkSizeFor(dataSpec)
-        if (size == null) {
+        val hint = dataSpec.customData as? RangeChunkHint
+        if (hint == null && onlyWhenHinted) {
             passThrough = true
             upstreamOpen = true
             return upstream.open(dataSpec)
         }
         passThrough = false
-        currentChunkSize = size
+        currentChunkSize =
+            hint?.maxChunkBytes?.takeIf { it > 0L }?.let { minOf(it, chunkSizeBytes) } ?: chunkSizeBytes
         bytesRemaining = dataSpec.length
+        lengthConfirmed = dataSpec.length != C.LENGTH_UNSET.toLong()
         chunkStart = 0L
         ended = false
         if (!openChunk()) {
@@ -77,20 +88,15 @@ class ChunkedDataSource(
             return 0L
         }
         if (bytesRemaining == C.LENGTH_UNSET.toLong()) {
-            totalLength(upstream.responseHeaders)?.let { total ->
-                bytesRemaining = (total - dataSpec.position).coerceAtLeast(0L)
+            val serverTotal = totalLength(upstream.responseHeaders)
+            if (serverTotal != null) {
+                bytesRemaining = (serverTotal - dataSpec.position).coerceAtLeast(0L)
+                lengthConfirmed = true
+            } else {
+                hint?.contentLength?.takeIf { it > dataSpec.position }?.let { bytesRemaining = it - dataSpec.position }
             }
         }
         return bytesRemaining
-    }
-
-    private fun chunkSizeFor(dataSpec: DataSpec): Long? {
-        val hinted = (dataSpec.customData as? RangeChunkHint)?.chunkSizeBytes?.takeIf { it > 0L }
-        return when {
-            hinted != null -> hinted
-            onlyWhenHinted -> null
-            else -> chunkSizeBytes
-        }
     }
 
     /** Opens the next chunk; returns false if there is nothing left to read. */
@@ -108,8 +114,8 @@ class ChunkedDataSource(
             upstream.open(chunkSpec)
         } catch (e: HttpDataSource.InvalidResponseCodeException) {
             runCatching { upstream.close() }
-            // 416 past the last byte of an open-ended read means we're done.
-            if (e.responseCode == 416 && chunkStart > 0L && bytesRemaining == C.LENGTH_UNSET.toLong()) {
+            // 416 past the last byte of a stream of unknown size means we're done.
+            if (e.responseCode == 416 && chunkStart > 0L && !lengthConfirmed) {
                 return false
             }
             throw e
@@ -143,22 +149,22 @@ class ChunkedDataSource(
             // This chunk is finished.
             upstream.close()
             upstreamOpen = false
-            val shortChunk = chunkRead < chunkLength
-            chunkStart += chunkRead
+            val got = chunkRead
+            chunkStart += got
             when {
                 bytesRemaining == 0L -> {
                     ended = true
                     return C.RESULT_END_OF_INPUT
                 }
-                // Size unknown: a short chunk is the end of the file.
-                bytesRemaining == C.LENGTH_UNSET.toLong() && shortChunk -> {
+                got == 0L -> {
+                    // The server has nothing more. That is only wrong if it told us otherwise:
+                    // then fail, and the player retries from here.
+                    if (lengthConfirmed) throw IOException("Range request ended $bytesRemaining bytes early")
                     ended = true
                     return C.RESULT_END_OF_INPUT
                 }
-                // Size known but the server sent nothing: let the player retry from here.
-                shortChunk && chunkRead == 0L ->
-                    throw IOException("Range request ended $bytesRemaining bytes early")
-                // Otherwise carry on with the next chunk (also after a short one with bytes left).
+                // Otherwise carry on with the next range, also after a short one: some servers
+                // cap how much one response carries.
             }
         }
     }
@@ -187,6 +193,9 @@ class ChunkedDataSource(
     companion object {
         /** 4 MB: small enough that YouTube serves each piece at full speed. */
         const val DEFAULT_CHUNK_SIZE_BYTES = 4L * 1024 * 1024
+
+        /** 1 MB for playback: about a minute of audio per request, like the official clients. */
+        const val PLAYBACK_CHUNK_SIZE_BYTES = 1L * 1024 * 1024
 
         /** The total from a `Content-Range: bytes a-b/total` header, if the server sent one. */
         internal fun totalLength(headers: Map<String, List<String>>): Long? {

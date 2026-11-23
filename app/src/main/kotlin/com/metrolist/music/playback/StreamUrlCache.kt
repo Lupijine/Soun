@@ -15,25 +15,24 @@ internal data class CachedStreamUrl(
     val requireBoundedRange: Boolean = false,
     val rangeChunkSizeBytes: Long = 0L,
     val useRangeChunks: Boolean = false,
+    val contentLength: Long? = null,
 )
 
 /**
- * Points [this] request at the resolved stream. The request keeps its full length: streams
- * that must be fetched in bounded ranges get a [RangeChunkHint] instead, which the
- * [ChunkedDataSource] in the chain turns into a series of ranged requests. (Cutting the
- * request itself down to one range made playback stop or stall after the first megabyte.)
+ * Points [this] request at the resolved stream. The request keeps its full length and carries a
+ * [RangeChunkHint] instead: the [ChunkedDataSource] in the chain reads it in ranges no larger
+ * than the client allows, and knows the stream's size up front. (Cutting the request itself
+ * down to one range made playback stop or stall after the first megabyte.)
  */
 internal fun DataSpec.withResolvedStream(stream: CachedStreamUrl): DataSpec {
-    val chunkSize =
-        if ((stream.requireBoundedRange || stream.useRangeChunks) && stream.rangeChunkSizeBytes > 0L) {
-            stream.rangeChunkSizeBytes
-        } else {
-            ChunkedDataSource.DEFAULT_CHUNK_SIZE_BYTES
+    val maxChunk =
+        stream.rangeChunkSizeBytes.takeIf {
+            it > 0L && (stream.requireBoundedRange || stream.useRangeChunks)
         }
     return buildUpon()
         .setUri(stream.url.toUri())
         .setHttpRequestHeaders(httpRequestHeaders + stream.requestHeaders)
-        .setCustomData(RangeChunkHint(chunkSize))
+        .setCustomData(RangeChunkHint(maxChunkBytes = maxChunk, contentLength = stream.contentLength?.takeIf { it > 0L }))
         .build()
 }
 
@@ -84,6 +83,7 @@ internal class StreamUrlCache(
         requireBoundedRange: Boolean = false,
         rangeChunkSizeBytes: Long = 0L,
         useRangeChunks: Boolean = false,
+        contentLength: Long? = null,
         expectedGeneration: Long = generation(mediaId),
     ): Boolean {
         val now = currentTimeMillis()
@@ -104,6 +104,7 @@ internal class StreamUrlCache(
                             requireBoundedRange = requireBoundedRange,
                             rangeChunkSizeBytes = rangeChunkSizeBytes,
                             useRangeChunks = useRangeChunks,
+                            contentLength = contentLength,
                         ),
                     expiresAtMillis = expiresAtMillis,
                 )

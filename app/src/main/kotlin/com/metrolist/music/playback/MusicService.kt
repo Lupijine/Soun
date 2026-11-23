@@ -3599,6 +3599,7 @@ class MusicService :
                                             } ?: response.request
                                         }.build(),
                                 ),
+                                chunkSizeBytes = ChunkedDataSource.PLAYBACK_CHUNK_SIZE_BYTES,
                                 onlyWhenHinted = true,
                             ),
                         ),
@@ -3909,6 +3910,7 @@ class MusicService :
             )
 
             val shouldBypassCache = bypassCacheForQualityChange.contains(mediaId)
+            dropStaleCachedAudio(mediaId, storedFormat?.contentLength)
 
             if (!shouldBypassCache) {
                 val usePlayerCache = dataStore.get(EnableSongCacheKey, true)
@@ -4033,6 +4035,7 @@ class MusicService :
                     }
                 } ?: Timber.tag(TAG).w("Skipping format persistence without content length for $mediaId")
                 recoverSongDeduped(mediaId, nonNullPlayback)
+                dropStaleCachedAudio(mediaId, format.contentLength)
 
                 if (bypassCacheForQualityChange.remove(mediaId)) {
                     Timber.tag(TAG).d("Cleared bypass cache flag for $mediaId after fresh fetch")
@@ -4050,6 +4053,7 @@ class MusicService :
                     requireBoundedRange = nonNullPlayback.requireBoundedRange,
                     rangeChunkSizeBytes = nonNullPlayback.rangeChunkSizeBytes,
                     useRangeChunks = nonNullPlayback.useRangeChunks,
+                    contentLength = nonNullPlayback.format.contentLength,
                     expectedGeneration = cacheGeneration,
                 )
 
@@ -4065,10 +4069,26 @@ class MusicService :
                         requireBoundedRange = nonNullPlayback.requireBoundedRange,
                         rangeChunkSizeBytes = nonNullPlayback.rangeChunkSizeBytes,
                         useRangeChunks = nonNullPlayback.useRangeChunks,
+                        contentLength = nonNullPlayback.format.contentLength,
                     ),
                 )
             }
         }
+    }
+
+    /**
+     * Soun: forgets cached audio whose recorded size is not the stream's, before any of it is
+     * read. Such bytes are a cut-off copy (an older build stored the size where a long download
+     * of the stream broke off) or another format of the song; stitched together with the fresh
+     * stream they made long tracks stop with an EOF error partway in.
+     */
+    private fun dropStaleCachedAudio(mediaId: String, expectedLength: Long?) {
+        if (expectedLength == null || expectedLength <= 0L) return
+        val cachedLength = ContentMetadata.getContentLength(playerCache.getContentMetadata(mediaId))
+        if (cachedLength == C.LENGTH_UNSET.toLong() || cachedLength == expectedLength) return
+        Timber.tag(TAG).w("Dropping cached audio for $mediaId: $cachedLength bytes recorded, stream has $expectedLength")
+        runCatching { playerCache.removeResource(mediaId) }
+            .onFailure { Timber.tag(TAG).w(it, "Could not drop cached audio for $mediaId") }
     }
 
     private fun createMediaSourceFactory(

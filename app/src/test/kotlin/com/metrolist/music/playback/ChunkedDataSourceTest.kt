@@ -22,6 +22,8 @@ class ChunkedDataSourceTest {
     private class RangeServer(
         private val content: ByteArray,
         private val sendContentRange: Boolean = true,
+        /** Most bytes one response carries, like a server that cuts long responses short. */
+        private val maxResponseBytes: Long = Long.MAX_VALUE,
     ) : DataSource {
         val requests = mutableListOf<DataSpec>()
         private var current: DataSpec? = null
@@ -43,6 +45,7 @@ class ChunkedDataSourceTest {
                 } else {
                     minOf(content.size.toLong(), dataSpec.position + dataSpec.length)
                 }
+            end = minOf(end, pos + maxResponseBytes)
             return end - pos
         }
 
@@ -69,11 +72,11 @@ class ChunkedDataSourceTest {
 
     private val content = ByteArray(2_500) { (it % 251).toByte() }
 
-    private fun spec(position: Long = 0L, hint: Long? = 1_000L) =
+    private fun spec(position: Long = 0L, hint: RangeChunkHint? = RangeChunkHint(maxChunkBytes = 1_000L)) =
         DataSpec.Builder()
             .setUri(Uri.parse("https://rr1.googlevideo.com/videoplayback"))
             .setPosition(position)
-            .setCustomData(hint?.let(::RangeChunkHint))
+            .setCustomData(hint)
             .build()
 
     private fun DataSource.readAll(): ByteArray {
@@ -111,13 +114,42 @@ class ChunkedDataSourceTest {
     }
 
     @Test
-    fun `without a content range it stops at the first short range`() {
+    fun `without a content range it reads on until the server has nothing more`() {
         val server = RangeServer(content, sendContentRange = false)
         val source = ChunkedDataSource(server, onlyWhenHinted = true)
 
         assertEquals(C.LENGTH_UNSET.toLong(), source.open(spec()))
         assertArrayEquals(content, source.readAll())
-        assertEquals(3, server.requests.size)
+        // Three ranges with data, then one past the end that the server refuses.
+        assertEquals(listOf(0L, 1_000L, 2_000L, 2_500L), server.requests.map { it.position })
+    }
+
+    @Test
+    fun `a server that cuts responses short is read to the end`() {
+        val server = RangeServer(content, sendContentRange = false, maxResponseBytes = 300L)
+        val source = ChunkedDataSource(server, onlyWhenHinted = true)
+
+        source.open(spec())
+        assertArrayEquals(content, source.readAll())
+    }
+
+    @Test
+    fun `the resolver's size is used when the server sends none`() {
+        val server = RangeServer(content, sendContentRange = false, maxResponseBytes = 300L)
+        val source = ChunkedDataSource(server, onlyWhenHinted = true)
+
+        assertEquals(2_100L, source.open(spec(position = 400L, hint = RangeChunkHint(1_000L, contentLength = 2_500L))))
+        assertArrayEquals(content.copyOfRange(400, 2_500), source.readAll())
+    }
+
+    @Test
+    fun `the source's own range size applies when the client sets no limit`() {
+        val server = RangeServer(content)
+        val source = ChunkedDataSource(server, chunkSizeBytes = 800L, onlyWhenHinted = true)
+
+        source.open(spec(hint = RangeChunkHint()))
+        assertArrayEquals(content, source.readAll())
+        assertEquals(listOf(800L, 800L, 800L, 100L), server.requests.map { it.length })
     }
 
     @Test
@@ -143,6 +175,7 @@ class ChunkedDataSourceTest {
                     requireBoundedRange = true,
                     rangeChunkSizeBytes = 512L * 1024,
                     useRangeChunks = true,
+                    contentLength = 99_000_000L,
                 ),
             )
         assertEquals(C.LENGTH_UNSET.toLong(), bounded.length)
@@ -150,10 +183,13 @@ class ChunkedDataSourceTest {
         assertEquals("id", bounded.key)
         assertEquals("https://rr1.googlevideo.com/videoplayback?id=1", bounded.uri.toString())
         assertEquals("vr", bounded.httpRequestHeaders["User-Agent"])
-        assertEquals(RangeChunkHint(512L * 1024), bounded.customData)
+        assertEquals(RangeChunkHint(512L * 1024, 99_000_000L), bounded.customData)
 
-        val open = request.withResolvedStream(CachedStreamUrl("https://example.com/a", emptyMap(), "WEB_REMIX"))
-        assertEquals(RangeChunkHint(ChunkedDataSource.DEFAULT_CHUNK_SIZE_BYTES), open.customData)
+        val open =
+            request.withResolvedStream(
+                CachedStreamUrl("https://example.com/a", emptyMap(), "VISIONOS", rangeChunkSizeBytes = 1_048_576L),
+            )
+        assertEquals(RangeChunkHint(maxChunkBytes = null, contentLength = null), open.customData)
         assertNull(request.customData)
     }
 }

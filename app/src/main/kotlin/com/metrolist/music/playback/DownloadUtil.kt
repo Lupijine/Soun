@@ -212,6 +212,7 @@ constructor(
                 requireBoundedRange = playbackData.requireBoundedRange,
                 rangeChunkSizeBytes = playbackData.rangeChunkSizeBytes,
                 useRangeChunks = playbackData.useRangeChunks,
+                contentLength = actualContentLength,
                 expectedGeneration = cacheGeneration,
             )
             dataSpec.withResolvedStream(
@@ -222,6 +223,7 @@ constructor(
                     requireBoundedRange = playbackData.requireBoundedRange,
                     rangeChunkSizeBytes = playbackData.rangeChunkSizeBytes,
                     useRangeChunks = playbackData.useRangeChunks,
+                    contentLength = actualContentLength,
                 ),
             )
         }
