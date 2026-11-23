@@ -6,7 +6,6 @@
 package com.metrolist.music.playback
 
 import androidx.core.net.toUri
-import androidx.media3.common.C
 import androidx.media3.datasource.DataSpec
 
 internal data class CachedStreamUrl(
@@ -18,20 +17,24 @@ internal data class CachedStreamUrl(
     val useRangeChunks: Boolean = false,
 )
 
+/**
+ * Points [this] request at the resolved stream. The request keeps its full length: streams
+ * that must be fetched in bounded ranges get a [RangeChunkHint] instead, which the
+ * [ChunkedDataSource] in the chain turns into a series of ranged requests. (Cutting the
+ * request itself down to one range made playback stop or stall after the first megabyte.)
+ */
 internal fun DataSpec.withResolvedStream(stream: CachedStreamUrl): DataSpec {
-    val resolved =
-        withUri(stream.url.toUri())
-            .withRequestHeaders(httpRequestHeaders + stream.requestHeaders)
-    if ((!stream.requireBoundedRange && !stream.useRangeChunks) || stream.rangeChunkSizeBytes <= 0L) {
-        return resolved
-    }
-    val boundedLength =
-        if (length == C.LENGTH_UNSET.toLong()) {
+    val chunkSize =
+        if ((stream.requireBoundedRange || stream.useRangeChunks) && stream.rangeChunkSizeBytes > 0L) {
             stream.rangeChunkSizeBytes
         } else {
-            minOf(length, stream.rangeChunkSizeBytes)
+            ChunkedDataSource.DEFAULT_CHUNK_SIZE_BYTES
         }
-    return resolved.subrange(0, boundedLength)
+    return buildUpon()
+        .setUri(stream.url.toUri())
+        .setHttpRequestHeaders(httpRequestHeaders + stream.requestHeaders)
+        .setCustomData(RangeChunkHint(chunkSize))
+        .build()
 }
 
 internal class StreamUrlCache(

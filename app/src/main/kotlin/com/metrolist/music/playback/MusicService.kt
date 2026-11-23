@@ -3583,18 +3583,23 @@ class MusicService :
                     .setUpstreamDataSourceFactory(
                         DefaultDataSource.Factory(
                             this,
-                            OkHttpDataSource.Factory(
-                                OkHttpClient
-                                    .Builder()
-                                    .proxy(YouTube.proxy)
-                                    .proxyAuthenticator { _, response ->
-                                        YouTube.proxyAuth?.let { auth ->
-                                            response.request
-                                                .newBuilder()
-                                                .header("Proxy-Authorization", auth)
-                                                .build()
-                                        } ?: response.request
-                                    }.build(),
+                            // Soun: resolved YouTube streams are read in ranged pieces, so long
+                            // tracks keep loading instead of stalling on one open-ended request.
+                            ChunkedDataSource.Factory(
+                                OkHttpDataSource.Factory(
+                                    OkHttpClient
+                                        .Builder()
+                                        .proxy(YouTube.proxy)
+                                        .proxyAuthenticator { _, response ->
+                                            YouTube.proxyAuth?.let { auth ->
+                                                response.request
+                                                    .newBuilder()
+                                                    .header("Proxy-Authorization", auth)
+                                                    .build()
+                                            } ?: response.request
+                                        }.build(),
+                                ),
+                                onlyWhenHinted = true,
                             ),
                         ),
                     ),
