@@ -49,7 +49,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -147,6 +146,10 @@ fun CarModeScreen(
                         window.attributes.apply {
                             layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
                         }
+                }
+                // Reach under the status and navigation bars; the content pads itself with the safe insets.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    window.attributes = window.attributes.apply { fitInsetsTypes = 0 }
                 }
                 WindowCompat.getInsetsController(window, window.decorView).apply {
                     isAppearanceLightStatusBars = false

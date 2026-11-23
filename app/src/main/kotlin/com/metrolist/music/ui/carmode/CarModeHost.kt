@@ -11,6 +11,7 @@ import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
+import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -49,6 +50,11 @@ object CarMode {
 /** Shows car mode over the whole app when it is open, and opens it on its own in the car if allowed. */
 @Composable
 fun CarModeHost() {
+    val activity = LocalActivity.current
+    DisposableEffect(activity) {
+        // Keep car mode across a rotation, but not into the next launch once the app is closed.
+        onDispose { if (activity?.isChangingConfigurations != true) CarMode.close() }
+    }
     CarModeAutoOpen()
     val playerConnection = LocalPlayerConnection.current ?: return
     val playerReady by playerConnection.service.isPlayerReady.collectAsStateWithLifecycle()
