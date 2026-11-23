@@ -42,6 +42,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -170,8 +171,11 @@ private fun WeekBars(summary: WeekSummary, modifier: Modifier = Modifier) {
             val radius = CornerRadius(barWidth / 2f)
             val peak = (daily.maxOrNull() ?: 0L).coerceAtLeast(1L).toFloat()
             val minBar = 4.dp.toPx()
+            val rtl = layoutDirection == LayoutDirection.Rtl
             daily.forEachIndexed { index, playTime ->
-                val left = slot * index + (slot - barWidth) / 2f
+                // Mirror with the day labels below, which the Row lays out right-to-left in RTL.
+                val position = if (rtl) daily.lastIndex - index else index
+                val left = slot * position + (slot - barWidth) / 2f
                 drawRoundRect(track, topLeft = Offset(left, 0f), size = Size(barWidth, size.height), cornerRadius = radius)
                 if (playTime > 0L) {
                     val height = max(minBar, size.height * (playTime / peak))
