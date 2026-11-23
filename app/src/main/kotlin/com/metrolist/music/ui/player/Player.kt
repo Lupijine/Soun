@@ -117,6 +117,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -182,6 +183,7 @@ import com.metrolist.music.extensions.toggleRepeatMode
 import com.metrolist.music.listentogether.RoomRole
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.SounProgressBar
+import com.metrolist.music.ui.utils.SounHaptics
 import com.metrolist.music.ui.component.BottomSheet
 import com.metrolist.music.ui.component.BottomSheetState
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
@@ -796,6 +798,7 @@ fun BottomSheetPlayer(
         }
 
     val playerBackdrop = rememberLayerBackdrop()
+    val hapticView = LocalView.current
     val sheetGlassBlur by animateDpAsState(
         targetValue = if (showInlineLyrics) 30.dp else 6.dp,
         animationSpec = tween(450),
@@ -1125,7 +1128,7 @@ fun BottomSheetPlayer(
 
                 if (useNewPlayerDesign) { // Soun: same glass layout with lyrics open
                     val isFavorite = if (currentSong?.song?.isEpisode == true) currentSong?.song?.inLibrary != null else currentSong?.song?.liked == true
-                    IconButton(onClick = playerConnection::toggleLike,
+                    IconButton(onClick = { SounHaptics.confirm(hapticView); playerConnection.toggleLike() },
                         modifier = Modifier.size(48.dp).sounGlass(CircleShape, sounGlassColors(), backdrop = playerBackdrop)) {
                         Icon(painterResource(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border),
                             stringResource(R.string.like), tint = if (isFavorite) MaterialTheme.colorScheme.primary else TextBackgroundColor)
@@ -2032,6 +2035,8 @@ fun BottomSheetPlayer(
                             backdrop = playerBackdrop,
                             onTitleClick = { showInlineLyrics = false },
                             onToggleLike = playerConnection::toggleLike,
+                            onSwipeNext = if (canSkipNext && !isListenTogetherGuest) playerConnection::seekToNext else null,
+                            onSwipePrevious = if (!isListenTogetherGuest) playerConnection::seekToPrevious else null,
                             onMore = {
                                 menuState.show(playerBackdrop) {
                                     com.metrolist.music.ui.menu.LyricsMenu(

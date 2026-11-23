@@ -30,6 +30,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalView
+import com.metrolist.music.ui.utils.SounHaptics
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.progressBarRangeInfo
@@ -52,6 +54,7 @@ fun SounProgressBar(
     enabled: Boolean = true,
 ) {
     var dragging by remember { mutableStateOf(false) }
+    val view = LocalView.current
     val thickness by animateDpAsState(
         targetValue = if (dragging) 12.dp else 6.dp,
         animationSpec = spring(dampingRatio = 0.65f, stiffness = 700f),
@@ -96,6 +99,7 @@ fun SounProgressBar(
                     awaitEachGesture {
                         val down = awaitFirstDown()
                         dragging = true
+                        SounHaptics.touch(view)
                         down.consume()
                         latestChange(valueAt(down.position.x))
                         try {
@@ -105,6 +109,7 @@ fun SounProgressBar(
                             }
                         } finally {
                             dragging = false
+                            SounHaptics.tick(view)
                             latestFinished()
                         }
                     }

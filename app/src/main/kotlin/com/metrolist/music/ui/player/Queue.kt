@@ -21,6 +21,9 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
+import com.metrolist.music.lyrics.LyricsTranslationHelper
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
@@ -295,6 +298,42 @@ fun Queue(
                         ) {
                             Icon(painterResource(R.drawable.lyrics), stringResource(R.string.lyrics),
                                 tint = if (showInlineLyrics) MaterialTheme.colorScheme.primary else TextBackgroundColor)
+                        }
+                        // Soun: with the lyrics open, one tap shows (or hides) a translation under each line.
+                        AnimatedVisibility(
+                            visible = showInlineLyrics,
+                            enter = fadeIn() + expandHorizontally(),
+                            exit = fadeOut() + shrinkHorizontally(),
+                        ) {
+                            val hasTranslations by LyricsTranslationHelper.hasActiveTranslations.collectAsStateWithLifecycle()
+                            val translationStatus by LyricsTranslationHelper.status.collectAsStateWithLifecycle()
+                            val translating = translationStatus is LyricsTranslationHelper.TranslationStatus.Translating
+                            val barLyrics by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
+                            val barDatabase = LocalDatabase.current
+                            val translateActive = hasTranslations || translating
+                            IconButton(
+                                onClick = {
+                                    if (hasTranslations) {
+                                        barLyrics?.let { lyrics ->
+                                            val cleared = LyricsTranslationHelper.clearTranslations(lyrics)
+                                            barDatabase.query { upsert(cleared) }
+                                        }
+                                        LyricsTranslationHelper.triggerClearTranslations()
+                                    } else if (!translating) {
+                                        LyricsTranslationHelper.triggerManualTranslation()
+                                    }
+                                },
+                                modifier = Modifier.background(
+                                    if (translateActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f) else Color.Transparent,
+                                    CircleShape,
+                                ),
+                            ) {
+                                Icon(
+                                    painterResource(R.drawable.translate),
+                                    stringResource(R.string.ai_lyrics_translation),
+                                    tint = if (translateActive) MaterialTheme.colorScheme.primary else TextBackgroundColor,
+                                )
+                            }
                         }
                         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                             Icon(painterResource(if (isCasting) R.drawable.cast_connected else R.drawable.volume_up), null,
