@@ -72,7 +72,7 @@ internal object CarAudioDevices {
     private fun hasCarAudioClass(context: Context, device: AudioDeviceInfo): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P || !canReadDeviceClass(context)) return false
         // Without the permission the address can come back anonymised, which this check rejects.
-        val address = device.address?.takeIf { BluetoothAdapter.checkBluetoothAddress(it) } ?: return false
+        val address = device.address.takeIf { BluetoothAdapter.checkBluetoothAddress(it) } ?: return false
         return try {
             val adapter = context.getSystemService(BluetoothManager::class.java)?.adapter ?: return false
             adapter.getRemoteDevice(address).bluetoothClass?.deviceClass ==
