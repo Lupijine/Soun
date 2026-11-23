@@ -929,7 +929,7 @@ class MusicService :
                     .distinctUntilChanged()
                     .collectLatestFlow { entries ->
                         lyricLinePlayer?.line = null
-                        if (entries.isEmpty()) return@collectLatest
+                        if (entries.isEmpty()) return@collectLatestFlow
                         while (true) {
                             val position = player.currentPosition
                             val index = entries.indexOfLast { it.time <= position }
