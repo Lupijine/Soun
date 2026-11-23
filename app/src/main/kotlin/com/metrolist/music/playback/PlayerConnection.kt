@@ -187,6 +187,16 @@ class PlayerConnection(
     val currentWindowIndex = MutableStateFlow(-1)
 
     val shuffleModeEnabled = MutableStateFlow(false)
+    val smartShuffleEnabled get() = service.smartShuffleEnabled
+
+    /** Soun: the shuffle button cycles off → shuffle → smart shuffle → off. */
+    fun cycleShuffle() {
+        when {
+            service.smartShuffleEnabled.value -> service.setSmartShuffle(false).also { player.shuffleModeEnabled = false }
+            player.shuffleModeEnabled -> service.setSmartShuffle(true)
+            else -> player.shuffleModeEnabled = true
+        }
+    }
     val repeatMode = MutableStateFlow(REPEAT_MODE_OFF)
 
     val canSkipPrevious = MutableStateFlow(true)

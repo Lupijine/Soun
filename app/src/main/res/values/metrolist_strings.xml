@@ -1115,4 +1115,6 @@
     <string name="soun_share_card_description">A Now listening image for stories</string>
     <string name="soun_lock_screen_lyrics">Lyrics on the lock screen</string>
     <string name="soun_lock_screen_lyrics_desc">Show the current line in place of the artist on the lock screen and in the notification</string>
+    <string name="soun_smart_shuffle">Smart shuffle</string>
+    <string name="soun_smart_shuffle_on">Smart shuffle: similar songs are mixed into your queue</string>
 </resources>

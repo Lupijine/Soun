@@ -60,6 +60,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
@@ -1548,9 +1549,28 @@ fun BottomSheetPlayer(
                         val shuffle by playerConnection.shuffleModeEnabled.collectAsStateWithLifecycle()
                         Row(Modifier.fillMaxWidth().padding(horizontal = PlayerHorizontalPadding),
                             horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = { playerConnection.player.shuffleModeEnabled = !shuffle }, enabled = !isListenTogetherGuest) {
-                                Icon(painterResource(R.drawable.shuffle), stringResource(R.string.shuffle),
-                                    tint = if (shuffle) MaterialTheme.colorScheme.primary else TextBackgroundColor.copy(alpha = 0.6f))
+                            // Soun: tap cycles off → shuffle → smart shuffle (similar songs mixed in).
+                            val smartShuffle by playerConnection.smartShuffleEnabled.collectAsStateWithLifecycle()
+                            val smartShuffleNotice = stringResource(R.string.soun_smart_shuffle_on)
+                            val showShuffleNotice = com.metrolist.music.ui.component.LocalSounNotice.current
+                            IconButton(
+                                onClick = {
+                                    val becomingSmart = shuffle && !smartShuffle
+                                    playerConnection.cycleShuffle()
+                                    if (becomingSmart) showShuffleNotice(smartShuffleNotice)
+                                },
+                                enabled = !isListenTogetherGuest,
+                            ) {
+                                Box {
+                                    Icon(painterResource(R.drawable.shuffle),
+                                        stringResource(if (smartShuffle) R.string.soun_smart_shuffle else R.string.shuffle),
+                                        tint = if (shuffle) MaterialTheme.colorScheme.primary else TextBackgroundColor.copy(alpha = 0.6f))
+                                    if (smartShuffle) {
+                                        Icon(painterResource(R.drawable.discover_tune), null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(11.dp).align(Alignment.TopEnd).offset(x = 5.dp, y = (-5).dp))
+                                    }
+                                }
                             }
                             IconButton(onClick = playerConnection::seekToPrevious, enabled = canSkipPrevious && !isListenTogetherGuest) {
                                 Icon(painterResource(R.drawable.skip_previous), stringResource(R.string.previous), Modifier.size(32.dp), tint = TextBackgroundColor)

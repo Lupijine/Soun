@@ -1815,6 +1815,99 @@ class MusicService :
         originalQueueSize = initialQueueSize
     }
 
+    // ---- Soun: smart shuffle -------------------------------------------------------------
+    // While on, songs similar to the queue are mixed in (about one after every three of yours),
+    // marked "Smart shuffle" in the queue, and topped up as they get played.
+    val smartShuffleEnabled = MutableStateFlow(false)
+    private var smartShuffleJob: Job? = null
+    private val playedSmartSuggestions = HashSet<String>()
+
+    private val smartShuffleLabel: String
+        get() = getString(R.string.soun_smart_shuffle)
+
+    private fun isSmartSuggestion(item: MediaItem): Boolean =
+        item.metadata?.suggestedBy == smartShuffleLabel
+
+    fun setSmartShuffle(enabled: Boolean) {
+        if (!playerInitialized.value) return
+        smartShuffleEnabled.value = enabled
+        if (enabled) {
+            playedSmartSuggestions.clear()
+            if (!player.shuffleModeEnabled) player.shuffleModeEnabled = true
+            topUpSmartShuffle(initial = true)
+        } else {
+            smartShuffleJob?.cancel()
+            removeSmartSuggestions()
+        }
+    }
+
+    private fun removeSmartSuggestions() {
+        val current = player.currentMediaItemIndex
+        for (index in player.mediaItemCount - 1 downTo 0) {
+            if (index != current && isSmartSuggestion(player.getMediaItemAt(index))) {
+                player.removeMediaItem(index)
+            }
+        }
+    }
+
+    private fun topUpSmartShuffle(initial: Boolean = false) {
+        if (!smartShuffleEnabled.value || smartShuffleJob?.isActive == true) return
+        val count = player.mediaItemCount
+        if (count == 0) return
+        val items = (0 until count).map { player.getMediaItemAt(it) }
+        val ownSongs = items.filterNot(::isSmartSuggestion)
+        if (ownSongs.isEmpty()) return
+        val waiting = items.count { isSmartSuggestion(it) && it.mediaId !in playedSmartSuggestions }
+        if (!initial && waiting >= 3) return
+        val target = (ownSongs.size / 3).coerceIn(3, 25)
+        val needed = (target - waiting).coerceIn(0, 10)
+        if (needed == 0) return
+        val seeds = ownSongs.shuffled().take(3).map { it.mediaId }
+        val existing = items.map { it.mediaId }.toHashSet()
+        val hideExplicit = dataStore.get(HideExplicitKey, false)
+        smartShuffleJob = scope.launch(SilentHandler) {
+            val found = withContext(Dispatchers.IO) {
+                seeds.flatMap { seed ->
+                    YouTube.next(WatchEndpoint(videoId = seed, playlistId = "RDAMVM$seed")).getOrNull()?.items.orEmpty()
+                }
+            }
+                .filter { it.id !in existing && !(hideExplicit && it.explicit) }
+                .distinctBy { it.id }
+                .shuffled()
+                .take(needed)
+            if (!smartShuffleEnabled.value || found.isEmpty()) return@launch
+            val label = smartShuffleLabel
+            player.addMediaItems(found.map { it.toMediaMetadata().copy(suggestedBy = label).toMediaItem() })
+            interleaveSmartSuggestions()
+        }
+    }
+
+    /** Places the waiting suggestions after every third upcoming song in the shuffled order. */
+    private fun interleaveSmartSuggestions() {
+        val timeline = player.currentTimeline
+        if (timeline.isEmpty || !player.shuffleModeEnabled) return
+        val order = mutableListOf<Int>()
+        var index = timeline.getFirstWindowIndex(true)
+        while (index != C.INDEX_UNSET && order.size <= player.mediaItemCount) {
+            order += index
+            index = timeline.getNextWindowIndex(index, Player.REPEAT_MODE_OFF, true)
+        }
+        if (order.size != player.mediaItemCount) return
+        val currentPosition = order.indexOf(player.currentMediaItemIndex).coerceAtLeast(0)
+        val played = order.subList(0, currentPosition + 1)
+        val upcoming = order.subList(currentPosition + 1, order.size)
+        val suggestions = upcoming.filter { isSmartSuggestion(player.getMediaItemAt(it)) }.toMutableList()
+        val merged = mutableListOf<Int>()
+        upcoming.filterNot { isSmartSuggestion(player.getMediaItemAt(it)) }.forEachIndexed { n, songIndex ->
+            merged += songIndex
+            if ((n + 1) % 3 == 0 && suggestions.isNotEmpty()) merged += suggestions.removeAt(0)
+        }
+        merged += suggestions
+        player.setShuffleOrder(
+            androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder((played + merged).toIntArray(), System.nanoTime()),
+        )
+    }
+
     fun startRadioSeamlessly() {
         if (!playerInitialized.value) {
             Timber.tag(TAG).w("startRadioSeamlessly called before player initialization")
@@ -2480,6 +2573,10 @@ class MusicService :
         mediaItem: MediaItem?,
         reason: Int,
     ) {
+        if (smartShuffleEnabled.value) {
+            mediaItem?.takeIf(::isSmartSuggestion)?.let { playedSmartSuggestions += it.mediaId }
+            topUpSmartShuffle()
+        }
         // Only natural completion transitions mark the previous track as fully cached,
         // never a manual skip or seek. Read lastTransitionedMediaId before replacing it.
         if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
@@ -2799,6 +2896,11 @@ class MusicService :
 
     override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
         updateNotification()
+        if (!shuffleModeEnabled && smartShuffleEnabled.value) {
+            smartShuffleEnabled.value = false
+            smartShuffleJob?.cancel()
+            removeSmartSuggestions()
+        }
         if (shuffleModeEnabled) {
             if (player.mediaItemCount == 0) return
 
