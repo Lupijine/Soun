@@ -24,6 +24,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
@@ -50,6 +55,8 @@ fun SettingsScreen(
 ) {
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
+    var checkingForUpdate by remember { mutableStateOf(false) }
+    val updateScope = rememberCoroutineScope()
     val isAndroid12OrLater = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val hasAndroidAuto = remember {
         try {
@@ -226,6 +233,42 @@ fun SettingsScreen(
                         )
                     )
                 }
+                // Soun: check the GitHub releases now instead of waiting for the automatic check.
+                add(
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.update),
+                        title = { Text(stringResource(R.string.soun_update_check)) },
+                        description = {
+                            Text(
+                                text = if (checkingForUpdate) stringResource(R.string.soun_update_checking)
+                                else "Soun ${BuildConfig.VERSION_NAME.substringBefore('+')}" +
+                                    (com.metrolist.music.utils.SounUpdater.installedCommit?.let { " · ${it.take(7)}" } ?: ""),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        onClick = {
+                            if (!checkingForUpdate) {
+                                checkingForUpdate = true
+                                updateScope.launch {
+                                    val found = if (com.metrolist.music.utils.SounUpdater.installedCommit == null) null
+                                    else com.metrolist.music.utils.SounUpdater.check(context, ignoreSkipped = true)
+                                    checkingForUpdate = false
+                                    if (found != null) {
+                                        com.metrolist.music.utils.SounUpdater.pending.value = found
+                                    } else {
+                                        Toast.makeText(
+                                            context,
+                                            if (com.metrolist.music.utils.SounUpdater.installedCommit == null) R.string.soun_update_debug_build
+                                            else R.string.soun_update_latest,
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
+                                    }
+                                }
+                            }
+                        },
+                    )
+                )
                 val showChangelog = com.metrolist.music.LocalChangelogState.current
                 add(
                     Material3SettingsItem(

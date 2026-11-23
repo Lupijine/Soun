@@ -1107,4 +1107,8 @@
     <string name="soun_update_install">Update</string>
     <string name="soun_update_downloading">Downloading…</string>
     <string name="soun_update_failed">The download didn\'t finish. Check your connection and try again.</string>
+    <string name="soun_update_check">Check for updates</string>
+    <string name="soun_update_checking">Checking…</string>
+    <string name="soun_update_latest">You have the latest version of Soun</string>
+    <string name="soun_update_debug_build">Updates are only offered to release builds</string>
 </resources>

@@ -11,6 +11,7 @@ import androidx.core.content.FileProvider
 import com.metrolist.music.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -39,6 +40,9 @@ object SounUpdater {
         val apkUrl: String,
         val sizeBytes: Long,
     )
+
+    /** The update waiting to be shown; set by the automatic check or by "Check for updates". */
+    val pending = MutableStateFlow<Update?>(null)
 
     private val client by lazy {
         OkHttpClient.Builder()

@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,18 +53,21 @@ import timber.log.Timber
 fun SounUpdatePrompt() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var update by remember { mutableStateOf<SounUpdater.Update?>(null) }
+    val update by SounUpdater.pending.collectAsState()
     var progress by remember { mutableStateOf<Float?>(null) }
     var failed by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        if (SounUpdater.isCheckDue(context)) update = SounUpdater.check(context)
+        if (SounUpdater.isCheckDue(context)) {
+            SounUpdater.check(context)?.let { SounUpdater.pending.value = it }
+        }
     }
 
     val current = update ?: return
     val later = {
         SounUpdater.skip(context, current)
-        update = null
+        SounUpdater.pending.value = null
+        failed = false
     }
 
     SounGlassDialog(onDismiss = { if (progress == null) later() }) {
@@ -162,7 +166,7 @@ fun SounUpdatePrompt() {
                             try {
                                 val apk = SounUpdater.download(context, current) { progress = it }
                                 SounUpdater.install(context, apk)
-                                update = null
+                                SounUpdater.pending.value = null
                             } catch (e: CancellationException) {
                                 throw e
                             } catch (e: Exception) {
