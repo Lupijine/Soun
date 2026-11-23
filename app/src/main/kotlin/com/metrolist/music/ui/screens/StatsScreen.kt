@@ -47,6 +47,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextAlign
@@ -580,6 +584,26 @@ fun StatsScreen(
         }
     }
 
+    // A soft fade behind the transparent top bar so its glass buttons stay readable over the list.
+    val scrimColor = MaterialTheme.colorScheme.surface
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.statusBars.only(WindowInsetsSides.Top))
+            .height(64.dp)
+            .drawBehind {
+                drawRect(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        listOf(scrimColor.copy(alpha = 0.85f), scrimColor.copy(alpha = 0f)),
+                        startY = -size.height,
+                        endY = size.height,
+                    ),
+                    topLeft = androidx.compose.ui.geometry.Offset(0f, -size.height),
+                    size = androidx.compose.ui.geometry.Size(size.width, size.height * 2),
+                )
+            },
+    )
+
     TopAppBar(
         title = {
             if (inSelectMode) {
@@ -651,6 +675,7 @@ fun StatsScreen(
                             navController.backToMain()
                         }
                     },
+                    modifier = Modifier.sounGlass(CircleShape, sounGlassColors(), backdrop = LocalSounSurfaceBackdrop.current),
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.arrow_back),
@@ -679,15 +704,18 @@ fun StatsScreen(
             } else if (!isSearching) {
                 androidx.compose.material3.IconButton(
                     onClick = { isSearching = true },
+                    modifier = Modifier.sounGlass(CircleShape, sounGlassColors(), backdrop = LocalSounSurfaceBackdrop.current),
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.search),
                         contentDescription = "Search Button",
                     )
                 }
+                Spacer(Modifier.width(8.dp))
                 IconButton(
                     onClick = { showTimeTransfer = true },
                     onLongClick = { showTimeTransfer = true },
+                    modifier = Modifier.sounGlass(CircleShape, sounGlassColors(), backdrop = LocalSounSurfaceBackdrop.current),
                 ) {
                     Icon(
                         painterResource(R.drawable.sync),
