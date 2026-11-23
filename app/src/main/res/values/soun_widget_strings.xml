@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="soun_widget_nothing_playing">Nothing playing</string>
+    <string name="soun_widget_pick_up">Pick up where you left off</string>
+    <string name="soun_widget_resume">Resume</string>
+    <string name="soun_widget_shuffle_liked">Shuffle liked</string>
+    <string name="soun_widget_your_library">Your library</string>
+    <string name="soun_widget_recognizer_found">Found: %1$s</string>
+    <string name="soun_widget_preview_title">Glass Garden</string>
+    <string name="soun_widget_preview_artist">Soun</string>
+    <string name="soun_widget_preview_elapsed" translatable="false">1:24</string>
+    <string name="soun_widget_preview_duration" translatable="false">3:32</string>
+    <string name="soun_widget_time_placeholder" translatable="false">0:00</string>
+</resources>

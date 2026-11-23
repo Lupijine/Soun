@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Glass circle for the main play/pause button -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <gradient
+        android:angle="315"
+        android:type="linear"
+        android:startColor="@color/soun_widget_button_fill_start"
+        android:endColor="@color/soun_widget_button_fill_end" />
+    <stroke
+        android:width="1dp"
+        android:color="@color/soun_widget_button_rim" />
+</shape>

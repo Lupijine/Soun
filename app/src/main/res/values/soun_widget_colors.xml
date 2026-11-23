@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Soun Liquid Glass widgets: light glass. The night variant lives in values-night. -->
+<resources>
+    <color name="soun_widget_text_primary">#1B1220</color>
+    <color name="soun_widget_text_secondary">#B31B1220</color>
+    <color name="soun_widget_text_tertiary">#8C1B1220</color>
+    <color name="soun_widget_icon">#1B1220</color>
+
+    <color name="soun_widget_glass_base">#14FFFFFF</color>
+    <color name="soun_widget_glass_fill_start">#9EFFFFFF</color>
+    <color name="soun_widget_glass_fill_end">#61FFFFFF</color>
+    <color name="soun_widget_glass_rim">#D9FFFFFF</color>
+    <color name="soun_widget_glass_highlight">#FFFFFFFF</color>
+    <color name="soun_widget_glass_highlight_clear">#00FFFFFF</color>
+
+    <color name="soun_widget_album_scrim_start">#B3FFFFFF</color>
+    <color name="soun_widget_album_sheen_start">#00FFFFFF</color>
+    <color name="soun_widget_album_sheen_end">#00FFFFFF</color>
+    <color name="soun_widget_album_scrim_end">#8CFFFFFF</color>
+
+    <color name="soun_widget_button_fill_start">#E6FFFFFF</color>
+    <color name="soun_widget_button_fill_end">#99FFFFFF</color>
+    <color name="soun_widget_button_rim">#261B1220</color>
+
+    <color name="soun_widget_solid_button">#1B1220</color>
+    <color name="soun_widget_solid_button_content">#FFFFFF</color>
+
+    <color name="soun_widget_progress_track">#331B1220</color>
+    <color name="soun_widget_progress_fill">#1B1220</color>
+
+    <color name="soun_widget_liked">#E2738F</color>
+
+    <color name="soun_widget_lavender_glow">#8CA99BFF</color>
+    <color name="soun_widget_lavender_tint">#1FA99BFF</color>
+    <color name="soun_widget_lavender_active_start">#D9A99BFF</color>
+    <color name="soun_widget_lavender_active_end">#73A99BFF</color>
+    <color name="soun_widget_pulse_1">#E68B7BEA</color>
+    <color name="soun_widget_pulse_2">#998B7BEA</color>
+    <color name="soun_widget_pulse_3">#598B7BEA</color>
+    <color name="soun_widget_pulse_4">#268B7BEA</color>
+</resources>

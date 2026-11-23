@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Stand-in for the blurred album art in the widget picker preview -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="315"
+        android:type="linear"
+        android:startColor="#B8578F"
+        android:centerColor="#6B3170"
+        android:endColor="#2A1236" />
+    <corners android:radius="@dimen/soun_widget_radius" />
+</shape>

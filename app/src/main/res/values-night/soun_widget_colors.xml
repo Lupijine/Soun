@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Soun Liquid Glass widgets: dark glass over a plum base so text reads on any wallpaper. -->
+<resources>
+    <color name="soun_widget_text_primary">#FFFFFF</color>
+    <color name="soun_widget_text_secondary">#BFFFFFFF</color>
+    <color name="soun_widget_text_tertiary">#99FFFFFF</color>
+    <color name="soun_widget_icon">#FFFFFF</color>
+
+    <color name="soun_widget_glass_base">#A6140912</color>
+    <color name="soun_widget_glass_fill_start">#24FFFFFF</color>
+    <color name="soun_widget_glass_fill_end">#0AFFFFFF</color>
+    <color name="soun_widget_glass_rim">#33FFFFFF</color>
+    <color name="soun_widget_glass_highlight">#8CFFFFFF</color>
+    <color name="soun_widget_glass_highlight_clear">#00FFFFFF</color>
+
+    <color name="soun_widget_album_scrim_start">#66140912</color>
+    <color name="soun_widget_album_sheen_start">#24FFFFFF</color>
+    <color name="soun_widget_album_sheen_end">#0AFFFFFF</color>
+    <color name="soun_widget_album_scrim_end">#C7140912</color>
+
+    <color name="soun_widget_button_fill_start">#47FFFFFF</color>
+    <color name="soun_widget_button_fill_end">#14FFFFFF</color>
+    <color name="soun_widget_button_rim">#4DFFFFFF</color>
+
+    <color name="soun_widget_solid_button">#FFFFFF</color>
+    <color name="soun_widget_solid_button_content">#1B1220</color>
+
+    <color name="soun_widget_progress_track">#40FFFFFF</color>
+    <color name="soun_widget_progress_fill">#FFFFFF</color>
+
+    <color name="soun_widget_liked">#F4A7B9</color>
+
+    <color name="soun_widget_lavender_glow">#8CA99BFF</color>
+    <color name="soun_widget_lavender_tint">#1FA99BFF</color>
+    <color name="soun_widget_lavender_active_start">#D9A99BFF</color>
+    <color name="soun_widget_lavender_active_end">#73A99BFF</color>
+    <color name="soun_widget_pulse_1">#E6A99BFF</color>
+    <color name="soun_widget_pulse_2">#99A99BFF</color>
+    <color name="soun_widget_pulse_3">#59A99BFF</color>
+    <color name="soun_widget_pulse_4">#26A99BFF</color>
+</resources>

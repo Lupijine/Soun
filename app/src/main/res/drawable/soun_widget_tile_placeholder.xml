@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Soun artwork placeholder: plum-to-pink glass tile with the lotus mark -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="315"
+                android:type="linear"
+                android:startColor="#3B1B45"
+                android:centerColor="#8E4A86"
+                android:endColor="#E59AB4" />
+            <corners android:radius="18dp" />
+            <size
+                android:width="64dp"
+                android:height="64dp" />
+        </shape>
+    </item>
+    <item
+        android:width="28dp"
+        android:height="28dp"
+        android:gravity="center"
+        android:drawable="@drawable/small_icon" />
+</layer-list>

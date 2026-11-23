@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Listening pulse ring, frame 4; sized relative to the view so it fits every widget size -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="ring"
+    android:useLevel="false"
+    android:innerRadiusRatio="2.1"
+    android:thicknessRatio="48">
+    <solid android:color="@color/soun_widget_pulse_4" />
+</shape>
