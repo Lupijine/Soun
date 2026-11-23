@@ -1,37 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Music Recognizer Widget – Tiny (1×1) -->
-<!-- Only animated mic circle, no text -->
+<!-- Music Recognizer Widget – Tiny (1x1): a round lavender glass button -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_recognizer_tiny_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_background"
     android:theme="@style/Theme.Widget.Metrolist">
 
     <!-- Pulse ring (behind the button) -->
     <ImageView
         android:id="@+id/widget_recognizer_tiny_pulse"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
         android:layout_gravity="center"
-        android:src="@drawable/widget_mic_pulse_idle"
+        android:src="@drawable/soun_widget_pulse_idle"
+        android:importantForAccessibility="no"
         android:contentDescription="@null" />
 
-    <!-- Mic circle button (centred, 56dp to leave room for pulse) -->
     <FrameLayout
         android:id="@+id/widget_recognizer_tiny_mic_container"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
         android:layout_gravity="center"
-        android:background="@drawable/widget_mic_button_bg">
+        android:background="@drawable/soun_widget_lavender_round">
 
         <ImageView
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:layout_gravity="center"
-            android:src="@drawable/ic_widget_mic"
+            android:src="@drawable/soun_widget_ic_audio_lines"
             android:contentDescription="@string/widget_recognizer_mic_desc" />
-
     </FrameLayout>
-
 </FrameLayout>

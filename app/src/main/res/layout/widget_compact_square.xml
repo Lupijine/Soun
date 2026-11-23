@@ -1,44 +1,75 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Compact 2x2 Widget - Album art with play button overlay -->
+<!-- 2x2 Now Playing: the cover fills the widget, with a glass strip holding the info and play button -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@android:id/background"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_background"
-    android:padding="12dp"
-    android:theme="@style/Theme.Widget.Metrolist">
+    android:background="@drawable/soun_widget_glass_panel"
+    android:clipToOutline="true"
+    android:theme="@style/Theme.Widget.Metrolist"
+    tools:targetApi="31">
 
-    <!-- Album Art Container -->
-    <FrameLayout
+    <ImageView
+        android:id="@+id/widget_compact_album_art"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:src="@drawable/soun_widget_preview_glow"
+        android:contentDescription="@string/album_art" />
 
-        <ImageView
-            android:id="@+id/widget_compact_album_art"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:scaleType="centerCrop"
-            android:src="@mipmap/ic_launcher"
-            android:contentDescription="@string/album_art" />
+    <LinearLayout
+        android:id="@+id/widget_compact_strip"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_gravity="bottom"
+        android:layout_margin="8dp"
+        android:background="@drawable/soun_widget_glass_pill"
+        android:orientation="horizontal"
+        android:baselineAligned="false"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="8dp">
 
-        <!-- Play Button Overlay - Bottom Center -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/widget_compact_song_title"
+                style="@style/SounWidgetTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/soun_widget_nothing_playing"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/widget_compact_artist_name"
+                style="@style/SounWidgetSubtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="@string/tap_to_play"
+                android:textSize="11sp" />
+        </LinearLayout>
+
         <FrameLayout
             android:id="@+id/widget_compact_play_container"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:layout_gravity="bottom|center_horizontal"
-            android:layout_marginBottom="8dp"
-            android:background="@drawable/widget_play_button_circular">
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/soun_widget_solid_button">
 
             <ImageView
                 android:id="@+id/widget_compact_play_pause"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
                 android:layout_gravity="center"
-                android:src="@drawable/ic_widget_play_low"
+                android:src="@drawable/soun_widget_ic_play"
+                android:tint="@color/soun_widget_solid_button_content"
                 android:contentDescription="@string/play_pause" />
         </FrameLayout>
-
-    </FrameLayout>
-
+    </LinearLayout>
 </FrameLayout>

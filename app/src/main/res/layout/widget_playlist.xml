@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Playlists widget: glass panel with a mini player and "Your library" tiles -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@android:id/background"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:gravity="top"
-    android:background="@drawable/widget_background"
+    android:background="@drawable/soun_widget_glass_panel"
     android:paddingStart="14dp"
     android:paddingEnd="14dp"
-    android:paddingTop="12dp"
-    android:paddingBottom="12dp"
+    android:paddingTop="14dp"
+    android:paddingBottom="14dp"
     android:theme="@style/Theme.Widget.Metrolist">
 
     <LinearLayout
@@ -17,6 +18,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
+        android:baselineAligned="false"
         android:gravity="center_vertical">
 
         <ImageView
@@ -24,7 +26,7 @@
             android:layout_width="64dp"
             android:layout_height="64dp"
             android:scaleType="centerCrop"
-            android:src="@mipmap/ic_launcher"
+            android:src="@drawable/soun_widget_tile_placeholder"
             android:contentDescription="@string/album_art" />
 
         <LinearLayout
@@ -36,104 +38,103 @@
 
             <TextView
                 android:id="@+id/widget_playlist_song_title"
+                style="@style/SounWidgetTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/not_playing"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                android:textColor="@color/widget_text_primary"
-                android:maxLines="1"
-                android:ellipsize="end" />
+                android:textSize="15sp" />
 
             <TextView
                 android:id="@+id/widget_playlist_artist_name"
+                style="@style/SounWidgetSubtitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="3dp"
                 android:text="@string/choose_something_below"
-                android:textSize="12sp"
-                android:textColor="@color/widget_text_secondary"
-                android:maxLines="1"
-                android:ellipsize="end" />
+                android:textSize="12sp" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="36dp"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="6dp"
                 android:orientation="horizontal"
+                android:baselineAligned="false"
                 android:gravity="center_vertical">
 
                 <FrameLayout
                     android:id="@+id/widget_playlist_prev_container"
-                    android:layout_width="36dp"
+                    android:layout_width="34dp"
                     android:layout_height="36dp">
                     <ImageView
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
                         android:layout_gravity="center"
-                        android:src="@drawable/ic_widget_skip_previous"
+                        android:src="@drawable/soun_widget_ic_previous"
                         android:contentDescription="@string/previous" />
                 </FrameLayout>
 
                 <FrameLayout
                     android:id="@+id/widget_playlist_play_pause_container"
-                    android:layout_width="48dp"
+                    android:layout_width="36dp"
                     android:layout_height="36dp"
                     android:layout_marginStart="4dp"
                     android:layout_marginEnd="4dp"
-                    android:background="@drawable/widget_play_pill_bg">
+                    android:background="@drawable/soun_widget_glass_button">
                     <ImageView
                         android:id="@+id/widget_playlist_play_pause"
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
                         android:layout_gravity="center"
-                        android:src="@drawable/ic_widget_play"
+                        android:src="@drawable/soun_widget_ic_play"
                         android:contentDescription="@string/play_pause" />
                 </FrameLayout>
 
                 <FrameLayout
                     android:id="@+id/widget_playlist_next_container"
-                    android:layout_width="36dp"
+                    android:layout_width="34dp"
                     android:layout_height="36dp">
                     <ImageView
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
                         android:layout_gravity="center"
-                        android:src="@drawable/ic_widget_skip_next"
+                        android:src="@drawable/soun_widget_ic_next"
                         android:contentDescription="@string/next" />
                 </FrameLayout>
 
                 <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1" />
+
+                <FrameLayout
+                    android:id="@+id/widget_playlist_like_container"
                     android:layout_width="36dp"
-                    android:layout_height="36dp"
-                    android:layout_marginStart="6dp">
-                    <ImageButton
+                    android:layout_height="36dp">
+                    <ImageView
                         android:id="@+id/widget_playlist_like_button"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:padding="8dp"
-                        android:scaleType="fitCenter"
-                        android:background="@android:color/transparent"
-                        android:src="@drawable/ic_widget_heart_outline_nav"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/soun_widget_ic_heart"
                         android:contentDescription="@string/like" />
                 </FrameLayout>
             </LinearLayout>
 
             <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="5dp"
-                android:layout_marginTop="8dp">
+                android:layout_height="4dp"
+                android:layout_marginTop="6dp">
                 <ImageView
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:src="@drawable/widget_progress_track"
+                    android:src="@drawable/soun_widget_progress_track"
                     android:scaleType="fitXY"
                     android:contentDescription="@null" />
                 <ImageView
                     android:id="@+id/widget_playlist_progress_fill"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:src="@drawable/widget_progress_clip"
+                    android:src="@drawable/soun_widget_progress_clip"
                     android:scaleType="fitXY"
                     android:contentDescription="@null" />
             </FrameLayout>
@@ -144,9 +145,34 @@
         android:id="@+id/widget_playlist_quick_picks_section"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="14dp"
         android:orientation="vertical"
         android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <ImageView
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:src="@drawable/small_icon"
+                android:tint="@color/soun_widget_icon"
+                android:importantForAccessibility="no"
+                android:contentDescription="@null" />
+
+            <TextView
+                style="@style/SounWidgetTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="@string/soun_widget_your_library"
+                android:textColor="@color/soun_widget_text_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
 
         <LinearLayout
             android:id="@+id/widget_playlist_row_1"
@@ -157,82 +183,82 @@
 
             <LinearLayout
                 android:id="@+id/widget_playlist_card_1"
-                style="@style/MetrolistPlaylistWidgetCard">
-                <FrameLayout style="@style/MetrolistPlaylistWidgetArtworkFrame">
+                style="@style/SounWidgetTile">
+                <FrameLayout style="@style/SounWidgetTileArtworkFrame">
                     <ImageView
                         android:id="@+id/widget_playlist_card_1_art"
-                        style="@style/MetrolistPlaylistWidgetArtwork"
+                        style="@style/SounWidgetTileArtwork"
                         android:contentDescription="@null" />
                     <FrameLayout
                         android:id="@+id/widget_playlist_card_1_play_container"
-                        style="@style/MetrolistPlaylistWidgetCardPlayButton">
+                        style="@style/SounWidgetTilePlayButton">
                         <ImageView
                             android:id="@+id/widget_playlist_card_1_play"
-                            style="@style/MetrolistPlaylistWidgetCardPlayIcon"
+                            style="@style/SounWidgetTilePlayIcon"
                             android:contentDescription="@null" />
                     </FrameLayout>
                 </FrameLayout>
-                <TextView android:id="@+id/widget_playlist_card_1_title" style="@style/MetrolistPlaylistWidgetCardTitle" />
+                <TextView android:id="@+id/widget_playlist_card_1_title" style="@style/SounWidgetTileTitle" />
             </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/widget_playlist_card_2"
-                style="@style/MetrolistPlaylistWidgetCard">
-                <FrameLayout style="@style/MetrolistPlaylistWidgetArtworkFrame">
+                style="@style/SounWidgetTile">
+                <FrameLayout style="@style/SounWidgetTileArtworkFrame">
                     <ImageView
                         android:id="@+id/widget_playlist_card_2_art"
-                        style="@style/MetrolistPlaylistWidgetArtwork"
+                        style="@style/SounWidgetTileArtwork"
                         android:contentDescription="@null" />
                     <FrameLayout
                         android:id="@+id/widget_playlist_card_2_play_container"
-                        style="@style/MetrolistPlaylistWidgetCardPlayButton">
+                        style="@style/SounWidgetTilePlayButton">
                         <ImageView
                             android:id="@+id/widget_playlist_card_2_play"
-                            style="@style/MetrolistPlaylistWidgetCardPlayIcon"
+                            style="@style/SounWidgetTilePlayIcon"
                             android:contentDescription="@null" />
                     </FrameLayout>
                 </FrameLayout>
-                <TextView android:id="@+id/widget_playlist_card_2_title" style="@style/MetrolistPlaylistWidgetCardTitle" />
+                <TextView android:id="@+id/widget_playlist_card_2_title" style="@style/SounWidgetTileTitle" />
             </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/widget_playlist_card_3"
-                style="@style/MetrolistPlaylistWidgetCard">
-                <FrameLayout style="@style/MetrolistPlaylistWidgetArtworkFrame">
+                style="@style/SounWidgetTile">
+                <FrameLayout style="@style/SounWidgetTileArtworkFrame">
                     <ImageView
                         android:id="@+id/widget_playlist_card_3_art"
-                        style="@style/MetrolistPlaylistWidgetArtwork"
+                        style="@style/SounWidgetTileArtwork"
                         android:contentDescription="@null" />
                     <FrameLayout
                         android:id="@+id/widget_playlist_card_3_play_container"
-                        style="@style/MetrolistPlaylistWidgetCardPlayButton">
+                        style="@style/SounWidgetTilePlayButton">
                         <ImageView
                             android:id="@+id/widget_playlist_card_3_play"
-                            style="@style/MetrolistPlaylistWidgetCardPlayIcon"
+                            style="@style/SounWidgetTilePlayIcon"
                             android:contentDescription="@null" />
                     </FrameLayout>
                 </FrameLayout>
-                <TextView android:id="@+id/widget_playlist_card_3_title" style="@style/MetrolistPlaylistWidgetCardTitle" />
+                <TextView android:id="@+id/widget_playlist_card_3_title" style="@style/SounWidgetTileTitle" />
             </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/widget_playlist_card_4"
-                style="@style/MetrolistPlaylistWidgetCard">
-                <FrameLayout style="@style/MetrolistPlaylistWidgetArtworkFrame">
+                style="@style/SounWidgetTile">
+                <FrameLayout style="@style/SounWidgetTileArtworkFrame">
                     <ImageView
                         android:id="@+id/widget_playlist_card_4_art"
-                        style="@style/MetrolistPlaylistWidgetArtwork"
+                        style="@style/SounWidgetTileArtwork"
                         android:contentDescription="@null" />
                     <FrameLayout
                         android:id="@+id/widget_playlist_card_4_play_container"
-                        style="@style/MetrolistPlaylistWidgetCardPlayButton">
+                        style="@style/SounWidgetTilePlayButton">
                         <ImageView
                             android:id="@+id/widget_playlist_card_4_play"
-                            style="@style/MetrolistPlaylistWidgetCardPlayIcon"
+                            style="@style/SounWidgetTilePlayIcon"
                             android:contentDescription="@null" />
                     </FrameLayout>
                 </FrameLayout>
-                <TextView android:id="@+id/widget_playlist_card_4_title" style="@style/MetrolistPlaylistWidgetCardTitle" />
+                <TextView android:id="@+id/widget_playlist_card_4_title" style="@style/SounWidgetTileTitle" />
             </LinearLayout>
         </LinearLayout>
 
@@ -247,82 +273,82 @@
 
             <LinearLayout
                 android:id="@+id/widget_playlist_card_5"
-                style="@style/MetrolistPlaylistWidgetCard">
-                <FrameLayout style="@style/MetrolistPlaylistWidgetArtworkFrame">
+                style="@style/SounWidgetTile">
+                <FrameLayout style="@style/SounWidgetTileArtworkFrame">
                     <ImageView
                         android:id="@+id/widget_playlist_card_5_art"
-                        style="@style/MetrolistPlaylistWidgetArtwork"
+                        style="@style/SounWidgetTileArtwork"
                         android:contentDescription="@null" />
                     <FrameLayout
                         android:id="@+id/widget_playlist_card_5_play_container"
-                        style="@style/MetrolistPlaylistWidgetCardPlayButton">
+                        style="@style/SounWidgetTilePlayButton">
                         <ImageView
                             android:id="@+id/widget_playlist_card_5_play"
-                            style="@style/MetrolistPlaylistWidgetCardPlayIcon"
+                            style="@style/SounWidgetTilePlayIcon"
                             android:contentDescription="@null" />
                     </FrameLayout>
                 </FrameLayout>
-                <TextView android:id="@+id/widget_playlist_card_5_title" style="@style/MetrolistPlaylistWidgetCardTitle" />
+                <TextView android:id="@+id/widget_playlist_card_5_title" style="@style/SounWidgetTileTitle" />
             </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/widget_playlist_card_6"
-                style="@style/MetrolistPlaylistWidgetCard">
-                <FrameLayout style="@style/MetrolistPlaylistWidgetArtworkFrame">
+                style="@style/SounWidgetTile">
+                <FrameLayout style="@style/SounWidgetTileArtworkFrame">
                     <ImageView
                         android:id="@+id/widget_playlist_card_6_art"
-                        style="@style/MetrolistPlaylistWidgetArtwork"
+                        style="@style/SounWidgetTileArtwork"
                         android:contentDescription="@null" />
                     <FrameLayout
                         android:id="@+id/widget_playlist_card_6_play_container"
-                        style="@style/MetrolistPlaylistWidgetCardPlayButton">
+                        style="@style/SounWidgetTilePlayButton">
                         <ImageView
                             android:id="@+id/widget_playlist_card_6_play"
-                            style="@style/MetrolistPlaylistWidgetCardPlayIcon"
+                            style="@style/SounWidgetTilePlayIcon"
                             android:contentDescription="@null" />
                     </FrameLayout>
                 </FrameLayout>
-                <TextView android:id="@+id/widget_playlist_card_6_title" style="@style/MetrolistPlaylistWidgetCardTitle" />
+                <TextView android:id="@+id/widget_playlist_card_6_title" style="@style/SounWidgetTileTitle" />
             </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/widget_playlist_card_7"
-                style="@style/MetrolistPlaylistWidgetCard">
-                <FrameLayout style="@style/MetrolistPlaylistWidgetArtworkFrame">
+                style="@style/SounWidgetTile">
+                <FrameLayout style="@style/SounWidgetTileArtworkFrame">
                     <ImageView
                         android:id="@+id/widget_playlist_card_7_art"
-                        style="@style/MetrolistPlaylistWidgetArtwork"
+                        style="@style/SounWidgetTileArtwork"
                         android:contentDescription="@null" />
                     <FrameLayout
                         android:id="@+id/widget_playlist_card_7_play_container"
-                        style="@style/MetrolistPlaylistWidgetCardPlayButton">
+                        style="@style/SounWidgetTilePlayButton">
                         <ImageView
                             android:id="@+id/widget_playlist_card_7_play"
-                            style="@style/MetrolistPlaylistWidgetCardPlayIcon"
+                            style="@style/SounWidgetTilePlayIcon"
                             android:contentDescription="@null" />
                     </FrameLayout>
                 </FrameLayout>
-                <TextView android:id="@+id/widget_playlist_card_7_title" style="@style/MetrolistPlaylistWidgetCardTitle" />
+                <TextView android:id="@+id/widget_playlist_card_7_title" style="@style/SounWidgetTileTitle" />
             </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/widget_playlist_card_8"
-                style="@style/MetrolistPlaylistWidgetCard">
-                <FrameLayout style="@style/MetrolistPlaylistWidgetArtworkFrame">
+                style="@style/SounWidgetTile">
+                <FrameLayout style="@style/SounWidgetTileArtworkFrame">
                     <ImageView
                         android:id="@+id/widget_playlist_card_8_art"
-                        style="@style/MetrolistPlaylistWidgetArtwork"
+                        style="@style/SounWidgetTileArtwork"
                         android:contentDescription="@null" />
                     <FrameLayout
                         android:id="@+id/widget_playlist_card_8_play_container"
-                        style="@style/MetrolistPlaylistWidgetCardPlayButton">
+                        style="@style/SounWidgetTilePlayButton">
                         <ImageView
                             android:id="@+id/widget_playlist_card_8_play"
-                            style="@style/MetrolistPlaylistWidgetCardPlayIcon"
+                            style="@style/SounWidgetTilePlayIcon"
                             android:contentDescription="@null" />
                     </FrameLayout>
                 </FrameLayout>
-                <TextView android:id="@+id/widget_playlist_card_8_title" style="@style/MetrolistPlaylistWidgetCardTitle" />
+                <TextView android:id="@+id/widget_playlist_card_8_title" style="@style/SounWidgetTileTitle" />
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>

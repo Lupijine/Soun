@@ -180,7 +180,7 @@ class MusicRecognizerWidgetReceiver : AppWidgetProvider() {
         val views = RemoteViews(context.packageName, R.layout.widget_recognizer_wide)
         applyAlbumArt(views, state, albumArt)
         applyTextState(context, views, state, songTitle, artistName, errorMessage)
-        applyMicState(views, state, pulseFrame, R.id.widget_recognizer_mic_container, R.id.widget_recognizer_pulse)
+        applyMicState(views, state, pulseFrame, R.id.widget_recognizer_mic_container, R.id.widget_recognizer_pulse, R.drawable.soun_widget_glass_button)
         views.setOnClickPendingIntent(R.id.widget_recognizer_mic_container, getMicIntent(context))
         val infoIntent = getInfoAreaIntent(context)
         views.setOnClickPendingIntent(R.id.widget_recognizer_text_area, infoIntent)
@@ -200,7 +200,7 @@ class MusicRecognizerWidgetReceiver : AppWidgetProvider() {
         val views = RemoteViews(context.packageName, R.layout.widget_recognizer_compact)
         applyAlbumArt(views, state, albumArt)
         applyTextState(context, views, state, songTitle, artistName, errorMessage)
-        applyMicState(views, state, pulseFrame, R.id.widget_recognizer_mic_container, R.id.widget_recognizer_pulse)
+        applyMicState(views, state, pulseFrame, R.id.widget_recognizer_mic_container, R.id.widget_recognizer_pulse, R.drawable.soun_widget_glass_button)
         views.setOnClickPendingIntent(R.id.widget_recognizer_mic_container, getMicIntent(context))
         val infoIntent = getInfoAreaIntent(context)
         views.setOnClickPendingIntent(R.id.widget_recognizer_text_area, infoIntent)
@@ -214,7 +214,7 @@ class MusicRecognizerWidgetReceiver : AppWidgetProvider() {
         pulseFrame: Int
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_recognizer_tiny)
-        applyMicState(views, state, pulseFrame, R.id.widget_recognizer_tiny_mic_container, R.id.widget_recognizer_tiny_pulse)
+        applyMicState(views, state, pulseFrame, R.id.widget_recognizer_tiny_mic_container, R.id.widget_recognizer_tiny_pulse, R.drawable.soun_widget_lavender_round)
         views.setOnClickPendingIntent(R.id.widget_recognizer_tiny_root, getMicIntent(context))
         return views
     }
@@ -227,7 +227,7 @@ class MusicRecognizerWidgetReceiver : AppWidgetProvider() {
         albumArt: android.graphics.Bitmap?
     ) {
         if (state == STATE_SUCCESS && albumArt != null) {
-            views.setImageViewBitmap(R.id.widget_recognizer_album_art, albumArt)
+            views.setImageViewBitmap(R.id.widget_recognizer_album_art, SounWidgetArt.rounded(albumArt, 0.5f))
             views.setViewVisibility(R.id.widget_recognizer_album_art, View.VISIBLE)
         } else {
             views.setViewVisibility(R.id.widget_recognizer_album_art, View.GONE)
@@ -260,7 +260,10 @@ class MusicRecognizerWidgetReceiver : AppWidgetProvider() {
             }
             STATE_SUCCESS -> {
                 views.setTextViewText(R.id.widget_recognizer_song_title,
-                    songTitle.ifEmpty { context.getString(R.string.widget_recognizer_unknown_song) })
+                    context.getString(
+                        R.string.soun_widget_recognizer_found,
+                        songTitle.ifEmpty { context.getString(R.string.widget_recognizer_unknown_song) },
+                    ))
                 views.setTextViewText(R.id.widget_recognizer_artist_name,
                     artistName.ifEmpty { context.getString(R.string.widget_recognizer_unknown_artist) })
                 views.setViewVisibility(R.id.widget_recognizer_artist_name, View.VISIBLE)
@@ -285,23 +288,24 @@ class MusicRecognizerWidgetReceiver : AppWidgetProvider() {
         state: Int,
         pulseFrame: Int,
         micContainerId: Int,
-        pulseViewId: Int
+        pulseViewId: Int,
+        idleBackground: Int
     ) {
         val isActive = state == STATE_LISTENING || state == STATE_PROCESSING
 
         views.setInt(
             micContainerId, "setBackgroundResource",
-            if (isActive) R.drawable.widget_mic_button_bg_active else R.drawable.widget_mic_button_bg
+            if (isActive) R.drawable.soun_widget_lavender_active else idleBackground
         )
 
         val pulseDrawable = if (isActive) {
             when (pulseFrame % 4) {
-                0 -> R.drawable.widget_mic_pulse_1
-                1 -> R.drawable.widget_mic_pulse_2
-                2 -> R.drawable.widget_mic_pulse_3
-                else -> R.drawable.widget_mic_pulse_4
+                0 -> R.drawable.soun_widget_pulse_1
+                1 -> R.drawable.soun_widget_pulse_2
+                2 -> R.drawable.soun_widget_pulse_3
+                else -> R.drawable.soun_widget_pulse_4
             }
-        } else R.drawable.widget_mic_pulse_idle
+        } else R.drawable.soun_widget_pulse_idle
 
         views.setImageViewResource(pulseViewId, pulseDrawable)
     }
