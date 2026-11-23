@@ -37,6 +37,7 @@ import androidx.compose.foundation.background
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.utils.safeDataStoreEdit
+import com.metrolist.music.utils.rememberPlaylistFolderRepository
 import com.metrolist.music.ui.component.sounCollectionRow
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
@@ -59,7 +60,11 @@ fun LibraryScreen(viewModel: LibraryMixViewModel = hiltViewModel()) {
     val songs by viewModel.songs.collectAsStateWithLifecycle()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val pinnedPlaylists by rememberPreference(PinnedLibraryPlaylistsKey, emptySet<String>())
-    val orderedPlaylists = remember(playlists, pinnedPlaylists) { orderPinnedPlaylists(playlists, pinnedPlaylists) }
+    val folders by rememberPlaylistFolderRepository().folders.collectAsStateWithLifecycle(initialValue = emptyList())
+    val playlistIds = remember(playlists) { playlists.mapTo(HashSet()) { it.id } }
+    val orderedPlaylists = remember(playlists, pinnedPlaylists, folders) {
+        orderPinnedPlaylists(topLevelPlaylists(playlists, folders), pinnedPlaylists)
+    }
     val albums by viewModel.albums.collectAsStateWithLifecycle()
     val artists by viewModel.artists.collectAsStateWithLifecycle()
     val liked by database.likedSongsCount().collectAsStateWithLifecycle(0)
@@ -103,7 +108,10 @@ fun LibraryScreen(viewModel: LibraryMixViewModel = hiltViewModel()) {
                 }
             }
         }
-        if (content.isEmpty()) item {
+        if (selected == LibraryFilter.PLAYLISTS) {
+            libraryFolderItems(folders, playlistIds) { nav.navigate("library/folder/${it.id}") }
+        }
+        if (content.isEmpty() && (selected != LibraryFilter.PLAYLISTS || folders.isEmpty())) item {
             Text(stringResource(R.string.soun_library_empty), color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(24.dp))
         }

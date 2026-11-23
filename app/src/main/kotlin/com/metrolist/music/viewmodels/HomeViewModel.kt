@@ -62,6 +62,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.metrolist.music.utils.WeekSummary
+import com.metrolist.music.utils.hasEnoughListeningForWeek
+import com.metrolist.music.utils.weekDailyPlayTime
+import com.metrolist.music.utils.weekStart
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -133,6 +142,45 @@ class HomeViewModel @Inject constructor(
     val pinnedSpeedDialItems: StateFlow<List<SpeedDialItem>> =
         database.speedDialDao.getAll()
             .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    private val weekToday = MutableStateFlow(LocalDate.now())
+
+    /**
+     * The "Your week" card, or null to hide it. The per-day query watches only the event table, so
+     * the summary is rebuilt once per recorded play (or when the day rolls over), never per frame.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val weekSummary: StateFlow<WeekSummary?> =
+        weekToday
+            .flatMapLatest { today ->
+                val from = weekStart(today).atStartOfDay()
+                database.dailyPlayTime(from)
+                    .map { rows -> weekDailyPlayTime(today, rows) }
+                    .distinctUntilChanged()
+                    .mapLatest { daily ->
+                        if (!hasEnoughListeningForWeek(daily)) {
+                            null
+                        } else {
+                            val now = LocalDateTime.now()
+                            WeekSummary(
+                                today = today,
+                                dailyPlayTimeMs = daily,
+                                topArtist = database.mostPlayedArtists(from, limit = 1, toTimeStamp = now).first().firstOrNull(),
+                                topSong = database.mostPlayedSongs(from, limit = 1, toTimeStamp = now).first().firstOrNull(),
+                            )
+                        }
+                    }
+            }
+            .flowOn(Dispatchers.IO)
+            .catch { error ->
+                reportException(error)
+                emit(null)
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun refreshWeekSummary() {
+        weekToday.value = LocalDate.now()
+    }
 
     val speedDialItems: StateFlow<List<YTItem>> =
         combine(
@@ -699,6 +747,7 @@ class HomeViewModel @Inject constructor(
         (this as List<T?>).filterNotNull()
 
     fun refresh() {
+        refreshWeekSummary()
         if (isLoading.value || !isRefreshing.compareAndSet(false, true)) return
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -816,6 +865,7 @@ class HomeViewModel @Inject constructor(
     private var isHomeDataLoaded = false
 
     fun loadHomeData() {
+        refreshWeekSummary()
         if (isHomeDataLoaded || !isLoading.compareAndSet(false, true)) return
         isHomeDataLoaded = true
         viewModelScope.launch(Dispatchers.IO) {

@@ -98,6 +98,13 @@ fun NavGraphBuilder.navigationBuilder(
         com.metrolist.music.ui.screens.library.LibraryBrowserScreen()
     }
 
+    composable(
+        route = "library/folder/{folderId}",
+        arguments = listOf(navArgument("folderId") { type = NavType.StringType }),
+    ) { entry ->
+        com.metrolist.music.ui.screens.library.PlaylistFolderScreen(entry.arguments?.getString("folderId").orEmpty())
+    }
+
     composable("library/podcasts") {
         com.metrolist.music.ui.screens.library.LibraryPodcastsScreen(navController, { navController.navigateUp() })
     }

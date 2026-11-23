@@ -83,6 +83,10 @@ import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.PlaylistListItem
 import com.metrolist.music.ui.component.SortHeader
+import com.metrolist.music.ui.component.NewPlaylistFolderButton
+import com.metrolist.music.ui.component.PlaylistFolderGridTile
+import com.metrolist.music.ui.component.PlaylistFolderMenu
+import com.metrolist.music.utils.rememberPlaylistFolderRepository
 import com.metrolist.music.extensions.matchesNormalizedQuery
 import com.metrolist.music.extensions.normalizeForSearch
 import com.metrolist.music.utils.rememberEnumPreference
@@ -131,9 +135,13 @@ fun LibraryPlaylistsScreen(
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val normalizedQuery = remember(searchQuery) { searchQuery.normalizeForSearch() }
-    val filteredPlaylists = remember(playlists, normalizedQuery) {
+    val folders by rememberPlaylistFolderRepository().folders.collectAsStateWithLifecycle(initialValue = emptyList())
+    // Folders lead the unfiltered list; a search looks through every playlist, filed or not.
+    val visibleFolders = if (normalizedQuery.isBlank()) folders else emptyList()
+    val playlistIds = remember(playlists) { playlists.mapTo(HashSet()) { it.id } }
+    val filteredPlaylists = remember(playlists, normalizedQuery, folders) {
         if (normalizedQuery.isBlank()) {
-            playlists
+            topLevelPlaylists(playlists, folders)
         } else {
             playlists.filter { playlist ->
                 matchesNormalizedQuery(normalizedQuery, playlist.playlist.name)
@@ -425,6 +433,10 @@ fun LibraryPlaylistsScreen(
                         headerContent()
                     }
 
+                    if (normalizedQuery.isBlank()) {
+                        libraryFolderItems(visibleFolders, playlistIds) { navController.navigate("library/folder/${it.id}") }
+                    }
+
                     if (visibleResults.isEmpty()) {
                         item(key = "empty_placeholder") {
                             if (searchQuery.isNotBlank()) {
@@ -491,6 +503,36 @@ fun LibraryPlaylistsScreen(
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
                         headerContent()
+                    }
+
+                    if (normalizedQuery.isBlank()) {
+                        item(
+                            key = "soun_new_folder",
+                            span = { GridItemSpan(maxLineSpan) },
+                            contentType = CONTENT_TYPE_HEADER,
+                        ) {
+                            Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), contentAlignment = Alignment.CenterEnd) {
+                                NewPlaylistFolderButton()
+                            }
+                        }
+                    }
+
+                    items(
+                        items = visibleFolders,
+                        key = { "soun_folder_${it.id}" },
+                    ) { folder ->
+                        val count = folder.liveCount(playlistIds)
+                        PlaylistFolderGridTile(
+                            folder = folder,
+                            playlistCount = count,
+                            onClick = { navController.navigate("library/folder/${folder.id}") },
+                            onMenu = {
+                                menuState.show {
+                                    PlaylistFolderMenu(folder = folder, playlistCount = count, onDismiss = menuState::dismiss)
+                                }
+                            },
+                            modifier = Modifier.animateItem(),
+                        )
                     }
 
                     if (visibleResults.isEmpty()) {

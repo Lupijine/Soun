@@ -149,6 +149,7 @@ import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.SpeedDialGridItem
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.YouTubeListItem
+import com.metrolist.music.ui.component.YourWeekCard
 import com.metrolist.music.ui.component.shimmer.GridItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.component.shimmer.TextPlaceholder
@@ -680,6 +681,7 @@ fun HomeScreen(
     val explorePage by viewModel.explorePage.collectAsStateWithLifecycle()
     val dailyDiscover by viewModel.dailyDiscover.collectAsStateWithLifecycle()
     val communityPlaylists by viewModel.communityPlaylists.collectAsStateWithLifecycle()
+    val weekSummary by viewModel.weekSummary.collectAsStateWithLifecycle()
 
     val allLocalItems by viewModel.allLocalItems.collectAsStateWithLifecycle()
     val allYtItems by viewModel.allYtItems.collectAsStateWithLifecycle()
@@ -1228,6 +1230,18 @@ fun HomeScreen(
                                     )
                                 }
                             }
+                        }
+                    }
+                }
+
+                if (selectedChip == null) {
+                    weekSummary?.let { summary ->
+                        item(key = "your_week_card") {
+                            YourWeekCard(
+                                summary = summary,
+                                onClick = { navController.navigate("stats") },
+                                modifier = Modifier.animateItem(),
+                            )
                         }
                     }
                 }
