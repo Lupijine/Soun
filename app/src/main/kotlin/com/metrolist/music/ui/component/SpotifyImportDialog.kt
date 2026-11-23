@@ -100,7 +100,7 @@ fun SpotifyImportDialog(
                     onCancel = close,
                 )
                 SpotifyImportState.Loading -> {
-                    LinearProgressIndicator(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)))
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)))
                     StatusText(stringResource(R.string.soun_spotify_loading))
                     CancelRow(viewModel::cancel)
                 }
@@ -117,7 +117,7 @@ fun SpotifyImportDialog(
                 }
                 is SpotifyImportState.Saving -> {
                     PlaylistSummary(current.name ?: fallbackName, current.coverUrl, null)
-                    LinearProgressIndicator(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)))
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)))
                     StatusText(stringResource(R.string.soun_spotify_saving))
                 }
                 is SpotifyImportState.Done -> ImportSummary(
@@ -247,7 +247,7 @@ private fun ImportSummary(
                 .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)),
         ) {
             itemsIndexed(done.missing) { index, track ->
-                if (index > 0) HorizontalDivider(Modifier.padding(horizontal = 14.dp), 0.5.dp, divider)
+                if (index > 0) HorizontalDivider(modifier = Modifier.padding(horizontal = 14.dp), thickness = 0.5.dp, color = divider)
                 Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
                     Text(track.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
