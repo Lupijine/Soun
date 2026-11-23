@@ -55,6 +55,7 @@ fun LibraryScreen(viewModel: LibraryMixViewModel = hiltViewModel()) {
     val scope = rememberCoroutineScope()
     var filter by rememberEnumPreference(ChipSortTypeKey, LibraryFilter.PLAYLISTS)
     var createPlaylist by rememberSaveable { mutableStateOf(false) }
+    var importSpotify by rememberSaveable { mutableStateOf(false) }
     val likedColorSource by viewModel.likedColorSource.collectAsStateWithLifecycle()
     val downloadedColorSource by viewModel.downloadedColorSource.collectAsStateWithLifecycle()
     val songs by viewModel.songs.collectAsStateWithLifecycle()
@@ -82,12 +83,20 @@ fun LibraryScreen(viewModel: LibraryMixViewModel = hiltViewModel()) {
         onDismiss = { createPlaylist = false },
         onPlaylistCreated = { id -> createPlaylist = false; nav.navigate("local_playlist/$id") },
     )
+    if (importSpotify) SpotifyImportDialog(
+        onDismiss = { importSpotify = false },
+        onOpenPlaylist = { id -> importSpotify = false; nav.navigate("local_playlist/$id") },
+    )
     LazyColumn(
         contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
         modifier = Modifier.fillMaxSize(),
     ) {
         item {
             SounPageTitle(stringResource(R.string.filter_library)) {
+                IconButton(onClick = { importSpotify = true }, modifier = Modifier.sounPanel(CircleShape)) {
+                    Icon(painterResource(R.drawable.soun_import), stringResource(R.string.soun_spotify_import))
+                }
+                Spacer(Modifier.width(10.dp))
                 IconButton(onClick = { createPlaylist = true }, modifier = Modifier.sounPanel(CircleShape)) {
                     Icon(painterResource(R.drawable.add), stringResource(R.string.create_playlist))
                 }

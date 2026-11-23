@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="soun_spotify_import">Import from Spotify</string>
+    <string name="soun_spotify_import_hint">Paste a link to a public Spotify playlist. Soun finds each song on YouTube Music and saves them as a new playlist.</string>
+    <string name="soun_spotify_link_placeholder">open.spotify.com/playlist/…</string>
+    <string name="soun_spotify_paste">Paste</string>
+    <string name="soun_spotify_clear">Clear</string>
+    <string name="soun_spotify_import_action">Import</string>
+    <string name="soun_spotify_loading">Reading the playlist from Spotify…</string>
+    <string name="soun_spotify_matching">Matching %1$d / %2$d</string>
+    <string name="soun_spotify_saving">Saving the playlist…</string>
+    <plurals name="soun_spotify_added">
+        <item quantity="one">Added %1$d of %2$d song</item>
+        <item quantity="other">Added %1$d of %2$d songs</item>
+    </plurals>
+    <string name="soun_spotify_not_found">Not found on YouTube Music (%1$d)</string>
+    <string name="soun_spotify_open_playlist">Open playlist</string>
+    <string name="soun_spotify_done">Done</string>
+    <string name="soun_spotify_try_again">Try again</string>
+    <string name="soun_spotify_default_name">Spotify playlist</string>
+    <string name="soun_spotify_truncated_known">Spotify only shared %1$d of this playlist\'s %2$d tracks, so the rest can\'t be imported.</string>
+    <string name="soun_spotify_truncated_limit">Spotify only shares the first %1$d tracks of a playlist, so anything after that isn\'t included.</string>
+    <string name="soun_spotify_error_invalid_link">That isn\'t a Spotify playlist link. In Spotify, open the playlist, tap Share, then Copy link, and paste it here.</string>
+    <string name="soun_spotify_error_network">Couldn\'t reach Spotify. Check your connection and try again.</string>
+    <string name="soun_spotify_error_not_found">Spotify couldn\'t find this playlist. Check the link and make sure the playlist is public.</string>
+    <string name="soun_spotify_error_empty">This playlist is empty or private. Only public playlists can be imported.</string>
+    <string name="soun_spotify_error_unreadable">Couldn\'t read this playlist from Spotify. Try again later.</string>
+    <string name="soun_spotify_error_search">Couldn\'t reach YouTube Music. Check your connection and try again.</string>
+    <string name="soun_spotify_error_no_matches">None of the songs in this playlist were found on YouTube Music.</string>
+</resources>
