@@ -118,6 +118,7 @@ fun PlayerMenu(
     onShowDetailsDialog: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val cardScope = rememberCoroutineScope()
     mediaMetadata ?: return
     if (com.metrolist.music.extensions.isDeviceAudioId(mediaMetadata.id)) {
         DeviceAudioMenu(mediaMetadata, onDismiss, showVolume = isQueueTrigger != true, showCloseButton = showCloseButton)
@@ -512,6 +513,39 @@ fun PlayerMenu(
                                 onClick = {
                                     playerConnection.toggleLibrary()
                                     onDismiss()
+                                },
+                            ),
+                        )
+                        // Soun: a story-sized "Now listening" card to share.
+                        add(
+                            Material3MenuItemData(
+                                title = { Text(text = stringResource(R.string.soun_share_card)) },
+                                description = { Text(text = stringResource(R.string.soun_share_card_description)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.share),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                },
+                                onClick = {
+                                    val player = playerConnection.player
+                                    val position = player.currentPosition
+                                    val duration = player.duration.takeIf { it > 0 } ?: 0L
+                                    cardScope.launch {
+                                        runCatching {
+                                            val card = com.metrolist.music.utils.SounNowPlayingCard.create(
+                                                context = context,
+                                                coverUrl = mediaMetadata.thumbnailUrl,
+                                                title = mediaMetadata.title,
+                                                artist = mediaMetadata.artists.joinToString { it.name },
+                                                positionMs = position,
+                                                durationMs = duration,
+                                            )
+                                            com.metrolist.music.utils.SounNowPlayingCard.share(context, card)
+                                        }
+                                        onDismiss()
+                                    }
                                 },
                             ),
                         )

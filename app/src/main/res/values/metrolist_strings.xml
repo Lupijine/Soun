@@ -1111,4 +1111,6 @@
     <string name="soun_update_checking">Checking…</string>
     <string name="soun_update_latest">You have the latest version of Soun</string>
     <string name="soun_update_debug_build">Updates are only offered to release builds</string>
+    <string name="soun_share_card">Share as card</string>
+    <string name="soun_share_card_description">A Now listening image for stories</string>
 </resources>
