@@ -45,7 +45,7 @@ class ChunkedDataSourceTest {
                 } else {
                     minOf(content.size.toLong(), dataSpec.position + dataSpec.length)
                 }
-            end = minOf(end, pos + maxResponseBytes)
+            if (end - pos > maxResponseBytes) end = pos + maxResponseBytes
             return end - pos
         }
 
