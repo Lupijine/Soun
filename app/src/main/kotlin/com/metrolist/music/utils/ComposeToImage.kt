@@ -58,6 +58,9 @@ object ComposeToImage {
         textColor: Int? = null,
         secondaryTextColor: Int? = null,
         lyricsAlignment: Layout.Alignment = Layout.Alignment.ALIGN_CENTER,
+        showBranding: Boolean = true,
+        // 1 = as large as fits; smaller values cap the lyrics at a fraction of that.
+        textSizeFactor: Float = 1f,
     ): Bitmap =
         withContext(Dispatchers.Default) {
             // Use fixed high resolution as requested (2160x2160)
@@ -268,56 +271,58 @@ object ComposeToImage {
             val logoIconSize = 16f * scale
             val footerY = imageHeight - padding - logoBoxSize
 
-            // Draw Logo Background Box
-            val logoBgPaint =
-                Paint().apply {
-                    color = secondaryTxtColor
-                    isAntiAlias = true
-                }
-            val logoBoxRect = RectF(padding, footerY, padding + logoBoxSize, footerY + logoBoxSize)
-            // Since it's a circle in preview: .clip(RoundedCornerShape(50)) which is usually circle for square box
-            canvas.drawOval(logoBoxRect, logoBgPaint)
-
-            // Draw Logo Icon
-            val rawLogo = ContextCompat.getDrawable(context, R.drawable.small_icon)?.toBitmap()
-            rawLogo?.let {
-                val logoPaint =
+            if (showBranding) {
+                // Draw Logo Background Box
+                val logoBgPaint =
                     Paint().apply {
-                        colorFilter = PorterDuffColorFilter(bgColor, PorterDuff.Mode.SRC_IN)
+                        color = secondaryTxtColor
+                        isAntiAlias = true
+                    }
+                val logoBoxRect = RectF(padding, footerY, padding + logoBoxSize, footerY + logoBoxSize)
+                // Since it's a circle in preview: .clip(RoundedCornerShape(50)) which is usually circle for square box
+                canvas.drawOval(logoBoxRect, logoBgPaint)
+
+                // Draw Logo Icon
+                val rawLogo = ContextCompat.getDrawable(context, R.drawable.small_icon)?.toBitmap()
+                rawLogo?.let {
+                    val logoPaint =
+                        Paint().apply {
+                            colorFilter = PorterDuffColorFilter(bgColor, PorterDuff.Mode.SRC_IN)
+                            isAntiAlias = true
+                        }
+
+                    // Center logo in box
+                    val logoOffset = (logoBoxSize - logoIconSize) / 2f
+                    val logoRect =
+                        RectF(
+                            padding + logoOffset,
+                            footerY + logoOffset,
+                            padding + logoBoxSize - logoOffset,
+                            footerY + logoBoxSize - logoOffset,
+                        )
+                    canvas.drawBitmap(it, null, logoRect, logoPaint)
+                }
+
+                // Draw App Name
+                val appName = context.getString(R.string.app_name)
+                val appNamePaint =
+                    TextPaint().apply {
+                        color = secondaryTxtColor
+                        textSize = 14f * scale
+                        typeface = Typeface.DEFAULT_BOLD
                         isAntiAlias = true
                     }
 
-                // Center logo in box
-                val logoOffset = (logoBoxSize - logoIconSize) / 2f
-                val logoRect =
-                    RectF(
-                        padding + logoOffset,
-                        footerY + logoOffset,
-                        padding + logoBoxSize - logoOffset,
-                        footerY + logoBoxSize - logoOffset,
-                    )
-                canvas.drawBitmap(it, null, logoRect, logoPaint)
+                val appNameX = padding + logoBoxSize + (8f * scale)
+                // Center text vertically relative to logo box
+                val appNameY = footerY + logoBoxSize / 2f - (appNamePaint.descent() + appNamePaint.ascent()) / 2f
+                canvas.drawText(appName, appNameX, appNameY, appNamePaint)
             }
-
-            // Draw App Name
-            val appName = context.getString(R.string.app_name)
-            val appNamePaint =
-                TextPaint().apply {
-                    color = secondaryTxtColor
-                    textSize = 14f * scale
-                    typeface = Typeface.DEFAULT_BOLD
-                    isAntiAlias = true
-                }
-
-            val appNameX = padding + logoBoxSize + (8f * scale)
-            // Center text vertically relative to logo box
-            val appNameY = footerY + logoBoxSize / 2f - (appNamePaint.descent() + appNamePaint.ascent()) / 2f
-            canvas.drawText(appName, appNameX, appNameY, appNamePaint)
 
             // --- Lyrics Section ---
             // Calculate available space
             val lyricsTop = padding + coverArtSize + headerBottomPadding
-            val lyricsBottom = footerY - (12f * scale) // Add some padding above footer
+            val lyricsBottom = if (showBranding) footerY - (12f * scale) else imageHeight - padding
             val lyricsHeight = lyricsBottom - lyricsTop
             val lyricsWidth = imageWidth - (padding * 2)
 
@@ -331,7 +336,7 @@ object ComposeToImage {
 
             // Adaptive font size calculation
             // Start with a large size (e.g. 50sp equivalent) and scale down until it fits
-            var lyricsTextSize = 50f * scale
+            var lyricsTextSize = 50f * textSizeFactor.coerceIn(0.3f, 1f) * scale
             val minLyricsSize = 13f * scale
             var lyricsLayout: StaticLayout
 

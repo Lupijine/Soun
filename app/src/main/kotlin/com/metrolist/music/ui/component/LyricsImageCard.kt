@@ -161,7 +161,9 @@ fun LyricsImageCard(
     backgroundStyle: LyricsBackgroundStyle = LyricsBackgroundStyle.SOLID,
     textColor: Color? = null,
     secondaryTextColor: Color? = null,
-    textAlign: TextAlign = TextAlign.Center
+    textAlign: TextAlign = TextAlign.Center,
+    showBranding: Boolean = true,
+    textSizeFactor: Float = 1f,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -376,8 +378,8 @@ fun LyricsImageCard(
                         maxWidth = availableWidth - 8.dp,
                         maxHeight = availableHeight - 8.dp,
                         density = density,
-                        initialFontSize = initialSize,
-                        minFontSize = 18.sp,
+                        initialFontSize = (initialSize.value * textSizeFactor.coerceIn(0.3f, 1f)).sp,
+                        minFontSize = (18f * textSizeFactor.coerceIn(0.5f, 1f)).sp,
                         style = textStyle,
                         textMeasurer = textMeasurer
                     )
@@ -393,35 +395,37 @@ fun LyricsImageCard(
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
-                // Footer
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(secondaryColor),
-                        contentAlignment = Alignment.Center
+                if (showBranding) {
+                    // Footer
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.small_icon),
-                            contentDescription = null,
+                        Box(
                             modifier = Modifier
-                                .size(38.dp),
-                            colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(backgroundSolidColor)
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(secondaryColor),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.small_icon),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(38.dp),
+                                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(backgroundSolidColor)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Text(
+                            text = stringResource(R.string.app_name),
+                            color = secondaryColor,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Text(
-                        text = stringResource(R.string.app_name),
-                        color = secondaryColor,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
                 }
             }
         }

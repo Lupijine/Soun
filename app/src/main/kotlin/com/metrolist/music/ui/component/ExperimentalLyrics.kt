@@ -858,7 +858,7 @@ fun ExperimentalLyrics(
             txt = txt, title = title, arts = arts, thumbnailUrl = mediaMetadata?.thumbnailUrl,
             lyricsTextPosition = lyricsTextPosition,
             onDismiss = { showColorPickerDialog = false },
-            onShare = { bgColor, textColor, secTextColor, style ->
+            onShare = { bgColor, textColor, secTextColor, style, showBranding, textSizeFactor ->
                 showColorPickerDialog = false
                 showProgressDialog = true
                 scope.launch {
@@ -878,7 +878,9 @@ fun ExperimentalLyrics(
                                 LyricsPosition.LEFT -> Layout.Alignment.ALIGN_NORMAL
                                 LyricsPosition.CENTER -> Layout.Alignment.ALIGN_CENTER
                                 else -> Layout.Alignment.ALIGN_OPPOSITE
-                            }
+                            },
+                            showBranding = showBranding,
+                            textSizeFactor = textSizeFactor,
                         )
                         val uri = ComposeToImage.saveBitmapAsFile(context, image, "lyrics_${System.currentTimeMillis()}")
                         context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {

@@ -57,6 +57,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.Switch
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -298,7 +303,14 @@ internal fun LyricsColorPickerDialog(
     thumbnailUrl: String?,
     lyricsTextPosition: LyricsPosition,
     onDismiss: () -> Unit,
-    onShare: (backgroundColor: Color, textColor: Color, secondaryTextColor: Color, style: LyricsBackgroundStyle) -> Unit
+    onShare: (
+        backgroundColor: Color,
+        textColor: Color,
+        secondaryTextColor: Color,
+        style: LyricsBackgroundStyle,
+        showBranding: Boolean,
+        textSizeFactor: Float,
+    ) -> Unit
 ) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
@@ -345,6 +357,8 @@ internal fun LyricsColorPickerDialog(
         .distinct().take(10)
     val textChoices = (listOf(Color.White, Color.Black) + pal + listOf(Color(0xFFA99BFF), Color(0xFFF4A7B9)))
         .distinct().take(10)
+    var showBranding by rememberSaveable { mutableStateOf(true) }
+    var textSizeFactor by rememberSaveable { mutableFloatStateOf(1f) }
     com.metrolist.music.ui.theme.SounGlassDialog(onDismiss = onDismiss) {
         Column(
             modifier = Modifier.verticalScroll(rememberScrollState()).padding(20.dp),
@@ -396,7 +410,9 @@ internal fun LyricsColorPickerDialog(
                     backgroundStyle = bgStyle,
                     textColor = previewTextColor,
                     secondaryTextColor = previewSecondaryTextColor,
-                    textAlign = align
+                    textAlign = align,
+                    showBranding = showBranding,
+                    textSizeFactor = textSizeFactor,
                 )
             }
 
@@ -433,8 +449,48 @@ internal fun LyricsColorPickerDialog(
                 },
             )
 
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = stringResource(R.string.soun_share_text_size),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                )
+                SounSegmentedControl(
+                    options = listOf(1f, 0.75f, 0.55f),
+                    selected = textSizeFactor,
+                    label = { factor ->
+                        when (factor) {
+                            1f -> stringResource(R.string.soun_share_size_large)
+                            0.75f -> stringResource(R.string.soun_share_size_medium)
+                            else -> stringResource(R.string.soun_share_size_small)
+                        }
+                    },
+                    onSelect = { textSizeFactor = it },
+                )
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .toggleable(value = showBranding, role = Role.Switch, onValueChange = { showBranding = it })
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.soun_share_show_logo),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+                Switch(checked = showBranding, onCheckedChange = null)
+            }
+
             Button(
-                onClick = { onShare(previewBackgroundColor, previewTextColor, previewSecondaryTextColor, bgStyle) },
+                onClick = {
+                    onShare(previewBackgroundColor, previewTextColor, previewSecondaryTextColor, bgStyle, showBranding, textSizeFactor)
+                },
                 shape = RoundedCornerShape(50),
                 modifier = Modifier.fillMaxWidth().height(52.dp),
             ) {

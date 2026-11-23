@@ -1096,4 +1096,9 @@
     <string name="soun_pin_library">Pin to top of library</string>
     <string name="soun_unpin_library">Unpin from top of library</string>
     <string name="soun_playlist_pinned">Pinned to top</string>
+    <string name="soun_share_text_size">Text size</string>
+    <string name="soun_share_size_large">Large</string>
+    <string name="soun_share_size_medium">Medium</string>
+    <string name="soun_share_size_small">Small</string>
+    <string name="soun_share_show_logo">Show the Soun logo</string>
 </resources>
