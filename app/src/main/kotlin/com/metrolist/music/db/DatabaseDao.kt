@@ -57,6 +57,7 @@ import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.ArtistNameAliases
+import com.metrolist.music.utils.DailyPlayTime
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -613,6 +614,17 @@ interface DatabaseDao {
 
     @Query("SELECT SUM(playTime) FROM event WHERE timestamp >= :fromTimeStamp AND timestamp <= :toTimeStamp")
     fun getTotalPlayTimeInRange(fromTimeStamp: LocalDateTime, toTimeStamp: LocalDateTime): Flow<Long?>
+
+    // Event timestamps store local wall-clock time as UTC epoch millis, so whole days divide out as local dates.
+    @Query(
+        """
+        SELECT timestamp / 86400000 AS day, SUM(playTime) AS playTime
+        FROM event
+        WHERE timestamp >= :fromTimeStamp
+        GROUP BY day
+        """,
+    )
+    fun dailyPlayTime(fromTimeStamp: LocalDateTime): Flow<List<DailyPlayTime>>
 
     @Query("SELECT SUM(playTime) FROM event WHERE songId = :songId")
     fun getTotalPlayTimeForSong(songId: String): Long?

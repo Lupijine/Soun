@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Playlist folders -->
+    <string name="soun_folders">Folders</string>
+    <string name="soun_new_folder">New folder</string>
+    <string name="soun_new_folder_ellipsis">New folder…</string>
+    <string name="soun_folder_name">Folder name</string>
+    <string name="soun_rename_folder">Rename folder</string>
+    <string name="soun_delete_folder">Delete folder</string>
+    <string name="soun_delete_folder_confirm">Delete the folder “%1$s”? Its playlists go back to your library; none are deleted.</string>
+    <string name="soun_move_to_folder">Move to folder</string>
+    <string name="soun_move_to_folder_desc">Group this playlist in a library folder</string>
+    <string name="soun_remove_from_folder">Remove from folder</string>
+    <string name="soun_folder_empty">This folder is empty. Use “Move to folder” in a playlist’s menu to add one.</string>
+    <string name="soun_folder_current">Current folder</string>
+    <plurals name="soun_n_folder_playlists">
+        <item quantity="one">%d playlist</item>
+        <item quantity="other">%d playlists</item>
+    </plurals>
+
+    <!-- Your week card on Home -->
+    <string name="soun_week_title">Your week</string>
+    <string name="soun_week_range">Last 7 days</string>
+    <string name="soun_week_minutes_unit">min</string>
+    <string name="soun_week_top_artist">Top artist</string>
+    <string name="soun_week_top_song">Top song</string>
+    <string name="soun_week_open_stats">Open your listening stats</string>
+    <string name="soun_week_chart_description">Minutes listened per day over the last 7 days</string>
+</resources>

@@ -60,6 +60,7 @@ import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.Material3MenuGroup
 import com.metrolist.music.ui.component.Material3MenuItemData
+import com.metrolist.music.ui.component.MoveToFolderDialog
 import com.metrolist.music.ui.component.NewAction
 import com.metrolist.music.ui.component.NewActionGrid
 import com.metrolist.music.ui.component.PlaylistListItem
@@ -117,6 +118,18 @@ fun PlaylistMenu(
     val isPinned by database.speedDialDao.isPinned(playlist.id).collectAsStateWithLifecycle(initialValue = false)
 
     var showExportDialog by remember { mutableStateOf(false) }
+
+    var showMoveToFolderDialog by remember { mutableStateOf(false) }
+
+    if (showMoveToFolderDialog) {
+        MoveToFolderDialog(
+            playlistId = playlist.id,
+            onDismiss = {
+                showMoveToFolderDialog = false
+                onDismiss()
+            },
+        )
+    }
 
     LaunchedEffect(songs) {
         if (songs.isEmpty()) return@LaunchedEffect
@@ -505,6 +518,14 @@ fun PlaylistMenu(
                                 title = { Text(stringResource(if (isLibraryPinned) R.string.soun_unpin_library else R.string.soun_pin_library)) },
                                 icon = { Icon(painterResource(R.drawable.soun_pin), contentDescription = null) },
                                 onClick = { onToggleLibraryPin(); onDismiss() },
+                            ),
+                        )
+                        if (autoPlaylist != true) add(
+                            Material3MenuItemData(
+                                title = { Text(stringResource(R.string.soun_move_to_folder)) },
+                                description = { Text(stringResource(R.string.soun_move_to_folder_desc)) },
+                                icon = { Icon(painterResource(R.drawable.soun_folder_input), contentDescription = null) },
+                                onClick = { showMoveToFolderDialog = true },
                             ),
                         )
                         add(
