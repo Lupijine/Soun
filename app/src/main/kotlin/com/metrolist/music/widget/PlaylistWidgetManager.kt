@@ -11,12 +11,10 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapShader
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
-import android.graphics.Shader
 import android.os.Bundle
 import android.view.View
 import android.widget.RemoteViews
@@ -66,7 +64,8 @@ class PlaylistWidgetManager @Inject constructor(
     @Volatile
     private var cachedRoundedSource: Bitmap? = null
     private val fallbackArtworkCache = ConcurrentHashMap<FallbackArtworkKey, Bitmap>()
-    private val roundedAppIconCache = ConcurrentHashMap<Int, Bitmap>()
+    @Volatile
+    private var placeholderArt: Bitmap? = null
 
     @Volatile
     private var lastWidgetState = WidgetState(
@@ -253,17 +252,16 @@ class PlaylistWidgetManager @Inject constructor(
         views.setTextViewText(R.id.widget_playlist_song_title, title)
         views.setTextViewText(R.id.widget_playlist_artist_name, artist)
 
-        if (albumArt != null) {
-            views.setImageViewBitmap(R.id.widget_playlist_album_art, getRoundedAlbumArt(albumArt))
-        } else {
-            views.setImageViewBitmap(R.id.widget_playlist_album_art, getRoundedAppIcon(36f))
-        }
+        views.setImageViewBitmap(
+            R.id.widget_playlist_album_art,
+            albumArt?.let { getRoundedAlbumArt(it) } ?: getPlaceholderArt(),
+        )
 
-        val playPauseIcon = if (isPlaying) R.drawable.ic_widget_pause else R.drawable.ic_widget_play
+        val playPauseIcon = if (isPlaying) R.drawable.soun_widget_ic_pause else R.drawable.soun_widget_ic_play
         views.setImageViewResource(R.id.widget_playlist_play_pause, playPauseIcon)
         views.setImageViewResource(
             R.id.widget_playlist_like_button,
-            if (isLiked) R.drawable.ic_widget_heart_nav else R.drawable.ic_widget_heart_outline_nav,
+            if (isLiked) R.drawable.soun_widget_ic_heart_filled else R.drawable.soun_widget_ic_heart,
         )
 
         val progressLevel = if (duration > 0) {
@@ -287,7 +285,7 @@ class PlaylistWidgetManager @Inject constructor(
             getMusicWidgetIntent(MusicWidgetReceiver.ACTION_NEXT, 503),
         )
         views.setOnClickPendingIntent(
-            R.id.widget_playlist_like_button,
+            R.id.widget_playlist_like_container,
             getMusicWidgetIntent(MusicWidgetReceiver.ACTION_LIKE, 504),
         )
 
@@ -327,13 +325,13 @@ class PlaylistWidgetManager @Inject constructor(
         visiblePicks.forEachIndexed { index, item ->
             val slot = cardSlots[index]
             views.setTextViewText(slot.titleId, item.title)
-            views.setImageViewResource(slot.playIconId, R.drawable.ic_widget_play_low)
+            views.setImageViewResource(slot.playIconId, R.drawable.soun_widget_ic_play)
             views.setImageViewBitmap(
                 slot.artworkId,
                 item.thumbnailUrl
                     ?.let { loadBitmap(it, 180) }
-                    ?.let { getRoundedCornerBitmap(it, 30f) }
-                    ?: getFallbackArtwork(item, 30f),
+                    ?.let { SounWidgetArt.rounded(it, TILE_RADIUS_FRACTION) }
+                    ?: getFallbackArtwork(item),
             )
             views.setOnClickPendingIntent(slot.containerId, getOpenTargetIntent(item))
             views.setOnClickPendingIntent(slot.playContainerId, getPlayTargetIntent(item))
@@ -515,7 +513,7 @@ class PlaylistWidgetManager @Inject constructor(
         val cached = cachedRoundedAlbumArt
         if (cached != null && cachedRoundedSource === albumArt) return cached
 
-        return getRoundedCornerBitmap(albumArt, 36f).also {
+        return SounWidgetArt.rounded(albumArt, PLAYER_COVER_RADIUS_FRACTION).also {
             cachedRoundedSource = albumArt
             cachedRoundedAlbumArt = it
         }
@@ -537,29 +535,10 @@ class PlaylistWidgetManager @Inject constructor(
         }
     }
 
-    private fun getRoundedCornerBitmap(bitmap: Bitmap, cornerRadius: Float): Bitmap {
-        val size = minOf(bitmap.width, bitmap.height)
-        val xOffset = (bitmap.width - size) / 2
-        val yOffset = (bitmap.height - size) / 2
-        val squareBitmap = Bitmap.createBitmap(bitmap, xOffset, yOffset, size, size)
-        val output = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(output)
-        val paint = Paint().apply {
-            isAntiAlias = true
-            isFilterBitmap = true
-            shader = BitmapShader(squareBitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
-        }
-        val rect = RectF(0f, 0f, size.toFloat(), size.toFloat())
-        canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
-        if (squareBitmap != bitmap) squareBitmap.recycle()
-        return output
-    }
-
-    private fun getFallbackArtwork(item: QuickPick, cornerRadius: Float): Bitmap {
+    private fun getFallbackArtwork(item: QuickPick): Bitmap {
         val cacheKey = FallbackArtworkKey(
             targetType = item.targetType,
             fallbackIconRes = item.fallbackIconRes,
-            cornerRadius = cornerRadius.toInt(),
         )
 
         fallbackArtworkCache[cacheKey]?.let { return it }
@@ -577,6 +556,7 @@ class PlaylistWidgetManager @Inject constructor(
             }
         }
         val rect = RectF(0f, 0f, size.toFloat(), size.toFloat())
+        val cornerRadius = size * TILE_RADIUS_FRACTION
         canvas.drawRoundRect(rect, cornerRadius, cornerRadius, background)
 
         val icon = context.getDrawable(item.fallbackIconRes)?.mutate()
@@ -590,21 +570,11 @@ class PlaylistWidgetManager @Inject constructor(
         return bitmap
     }
 
-    private fun getRoundedAppIcon(cornerRadius: Float): Bitmap {
-        val cacheKey = cornerRadius.toInt()
-        roundedAppIconCache[cacheKey]?.let { return it }
-
-        val drawable = context.packageManager.getApplicationIcon(context.packageName)
-        val size = 300
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        drawable.setBounds(0, 0, size, size)
-        drawable.draw(canvas)
-
-        return getRoundedCornerBitmap(bitmap, cornerRadius).also {
-            roundedAppIconCache[cacheKey] = it
-        }
-    }
+    private fun getPlaceholderArt(): Bitmap =
+        placeholderArt ?: SounWidgetArt.rounded(
+            SounWidgetArt.placeholderCovers(context).fill,
+            PLAYER_COVER_RADIUS_FRACTION,
+        ).also { placeholderArt = it }
 
     private fun getOpenAppIntent(): PendingIntent {
         val intent = Intent(context, MainActivity::class.java)
@@ -718,8 +688,12 @@ class PlaylistWidgetManager @Inject constructor(
     private data class FallbackArtworkKey(
         val targetType: String,
         val fallbackIconRes: Int,
-        val cornerRadius: Int,
     )
+
+    private companion object {
+        const val TILE_RADIUS_FRACTION = 18f / 64f
+        const val PLAYER_COVER_RADIUS_FRACTION = 14f / 64f
+    }
 
     private val cardSlots = listOf(
         CardSlot(R.id.widget_playlist_card_1, R.id.widget_playlist_card_1_art, R.id.widget_playlist_card_1_play_container, R.id.widget_playlist_card_1_play, R.id.widget_playlist_card_1_title),

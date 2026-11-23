@@ -12,6 +12,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import com.metrolist.music.playback.MusicService
+import timber.log.Timber
 
 class MusicWidgetReceiver : AppWidgetProvider() {
 
@@ -31,8 +32,12 @@ class MusicWidgetReceiver : AppWidgetProvider() {
             } catch (e: Exception) {
                 // Service might be restricted in background
             }
+        } else {
+            // Nothing is playing: show the empty state, whose buttons can start playback
+            appWidgetIds.forEach { appWidgetId ->
+                showIdle(context, appWidgetManager, appWidgetId, appWidgetManager.getAppWidgetOptions(appWidgetId))
+            }
         }
-        // If service is not running, widget shows default layout until user opens app
     }
 
     override fun onAppWidgetOptionsChanged(
@@ -52,6 +57,21 @@ class MusicWidgetReceiver : AppWidgetProvider() {
             } catch (e: Exception) {
                 // Service might be restricted in background
             }
+        } else {
+            showIdle(context, appWidgetManager, appWidgetId, newOptions)
+        }
+    }
+
+    private fun showIdle(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int,
+        options: Bundle,
+    ) {
+        try {
+            appWidgetManager.updateAppWidget(appWidgetId, SounWidgetViews.idle(context, options))
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "Failed to show idle widget")
         }
     }
 
@@ -80,6 +100,7 @@ class MusicWidgetReceiver : AppWidgetProvider() {
     }
 
     companion object {
+        private const val TAG = "MusicWidgetReceiver"
         const val ACTION_PLAY_PAUSE = "com.metrolist.music.widget.PLAY_PAUSE"
         const val ACTION_LIKE = "com.metrolist.music.widget.LIKE"
         const val ACTION_NEXT = "com.metrolist.music.widget.NEXT"
