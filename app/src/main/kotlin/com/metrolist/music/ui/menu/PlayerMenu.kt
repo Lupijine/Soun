@@ -801,6 +801,22 @@ fun PlayerMenu(
                                     },
                                 ),
                             )
+                            add(
+                                Material3MenuItemData(
+                                    title = { Text(text = stringResource(R.string.soun_car_mode)) },
+                                    icon = {
+                                        Icon(
+                                            painter = painterResource(R.drawable.soun_car),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(24.dp),
+                                        )
+                                    },
+                                    onClick = {
+                                        com.metrolist.music.ui.carmode.CarMode.open()
+                                        onDismiss()
+                                    },
+                                ),
+                            )
                         }
                     },
             )

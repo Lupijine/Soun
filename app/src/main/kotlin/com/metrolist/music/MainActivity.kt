@@ -1481,6 +1481,7 @@ class MainActivity : FragmentActivity() {
                     com.metrolist.music.ui.component.SounUpdatePrompt()
 
                     BottomSheetPage(state = LocalBottomSheetPageState.current)
+                    com.metrolist.music.ui.carmode.CarModeHost()
 
                     com.metrolist.music.ui.component.SounSnackbarHost(
                         snackbarHostState,
