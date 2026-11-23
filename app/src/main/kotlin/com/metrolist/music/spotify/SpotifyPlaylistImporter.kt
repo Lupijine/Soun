@@ -46,7 +46,7 @@ class SpotifyPlaylistImporter(
                     response.code == 401 || response.code == 403 -> throw SpotifyImportException(SpotifyImportError.EMPTY_OR_PRIVATE)
                     !response.isSuccessful -> throw SpotifyImportException(SpotifyImportError.NETWORK)
                 }
-                response.body?.string().orEmpty()
+                response.body.string()
             }
         } catch (e: IOException) {
             throw SpotifyImportException(SpotifyImportError.NETWORK, e)
