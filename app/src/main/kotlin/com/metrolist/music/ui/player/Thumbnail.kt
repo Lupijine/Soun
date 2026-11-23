@@ -14,6 +14,8 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.border
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -531,6 +533,10 @@ private fun ThumbnailItem(
     val incrementalSeekSkipEnabled by rememberPreference(SeekExtraSeconds, defaultValue = false)
     var skipMultiplier by remember { mutableIntStateOf(1) }
     var lastTapTime by remember { mutableLongStateOf(0L) }
+    // Soun: a double tap in the middle third likes the song (it never unlikes, like other apps);
+    // the outer thirds still seek back and forward.
+    var heartBursts by remember { mutableIntStateOf(0) }
+    val hapticView = androidx.compose.ui.platform.LocalView.current
 
     Box(
         modifier = modifier
@@ -565,6 +571,16 @@ private fun ThumbnailItem(
                         lastTapTime = now
 
                         val skipAmount = 5000 * skipMultiplier
+
+                        val third = size.width / 3f
+                        if (item.mediaId == currentMediaId && offset.x in third..(third * 2)) {
+                            skipMultiplier = 1
+                            val song = playerConnection.currentSong.value
+                            if (song != null && !song.song.liked) playerConnection.toggleLike()
+                            com.metrolist.music.ui.utils.SounHaptics.confirm(hapticView)
+                            heartBursts++
+                            return@detectTapGestures
+                        }
 
                         val isLeftSide = (layoutDirection == LayoutDirection.Ltr && offset.x < size.width / 2) ||
                                 (layoutDirection == LayoutDirection.Rtl && offset.x > size.width / 2)
@@ -601,6 +617,8 @@ private fun ThumbnailItem(
                 )
             }
             
+            SounHeartBurst(bursts = heartBursts, modifier = Modifier.align(Alignment.Center))
+
             // Cast button at top-right corner of thumbnail
             CastButton(
                 modifier = Modifier
@@ -685,4 +703,50 @@ private fun SeekEffectOverlay(
             .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
             .padding(8.dp)
     )
+}
+
+/**
+ * A heart that pops over the cover after a double tap: it springs up inside a small glass disc,
+ * holds for a moment and fades away.
+ */
+@Composable
+private fun SounHeartBurst(bursts: Int, modifier: Modifier = Modifier) {
+    val scale = remember { androidx.compose.animation.core.Animatable(0f) }
+    val alpha = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(bursts) {
+        if (bursts == 0) return@LaunchedEffect
+        alpha.snapTo(1f)
+        scale.snapTo(0.4f)
+        scale.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.45f, stiffness = 380f))
+        kotlinx.coroutines.delay(450)
+        kotlinx.coroutines.coroutineScope {
+            launch { alpha.animateTo(0f, androidx.compose.animation.core.tween(280)) }
+            launch { scale.animateTo(1.25f, androidx.compose.animation.core.tween(280)) }
+        }
+    }
+    if (alpha.value <= 0f) return
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .size(112.dp)
+            .graphicsLayer {
+                scaleX = scale.value
+                scaleY = scale.value
+                this.alpha = alpha.value
+            }
+            .clip(androidx.compose.foundation.shape.CircleShape)
+            .background(
+                androidx.compose.ui.graphics.Brush.linearGradient(
+                    listOf(Color.White.copy(alpha = 0.34f), Color.White.copy(alpha = 0.10f)),
+                ),
+            )
+            .border(1.dp, Color.White.copy(alpha = 0.38f), androidx.compose.foundation.shape.CircleShape),
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.favorite),
+            contentDescription = null,
+            tint = Color(0xFFF4A7B9),
+            modifier = Modifier.size(56.dp),
+        )
+    }
 }
