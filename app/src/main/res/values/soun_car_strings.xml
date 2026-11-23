@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="soun_car_mode">Car mode</string>
+    <string name="soun_car_mode_open">Open car mode</string>
+    <string name="soun_car_mode_open_desc">Big buttons and a screen that stays on, for driving</string>
+    <string name="soun_car_mode_auto_open">Open automatically in the car</string>
+    <string name="soun_car_mode_auto_open_desc">While Soun is open, car mode opens when your phone connects to a car\'s Bluetooth</string>
+    <string name="soun_car_mode_auto_open_by_name">No Bluetooth permission, so a Bluetooth device counts as a car when its name looks like one (car, auto, vehicle or a car brand). Allow \"Nearby devices\" for Soun in the system settings for exact detection</string>
+    <string name="soun_car_mode_exit">Exit car mode</string>
+    <string name="soun_car_mode_nothing_playing">Nothing playing</string>
+    <string name="soun_car_mode_like">Like</string>
+    <string name="soun_car_mode_unlike">Remove like</string>
+</resources>

@@ -1003,6 +1003,10 @@ fun PlayerSettings(
 
         Spacer(modifier = Modifier.height(27.dp))
 
+        com.metrolist.music.ui.carmode.CarModeSettingsGroup()
+
+        Spacer(modifier = Modifier.height(27.dp))
+
         Material3SettingsGroup(
             title = stringResource(R.string.misc),
             items = listOf(
