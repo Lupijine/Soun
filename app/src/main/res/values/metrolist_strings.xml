@@ -1113,4 +1113,6 @@
     <string name="soun_update_debug_build">Updates are only offered to release builds</string>
     <string name="soun_share_card">Share as card</string>
     <string name="soun_share_card_description">A Now listening image for stories</string>
+    <string name="soun_lock_screen_lyrics">Lyrics on the lock screen</string>
+    <string name="soun_lock_screen_lyrics_desc">Show the current line in place of the artist on the lock screen and in the notification</string>
 </resources>

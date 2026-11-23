@@ -8,6 +8,8 @@
 package com.metrolist.music.playback
 
 import com.metrolist.music.lyrics.LyricsRepository
+import com.metrolist.music.constants.LockScreenLyricsKey
+import com.metrolist.music.lyrics.LyricsUtils
 import com.metrolist.music.lyrics.LyricsLoadState
 import com.metrolist.music.lyrics.LyricsLoadStatus
 
@@ -181,6 +183,7 @@ import com.metrolist.music.eq.data.EQProfileRepository
 import com.metrolist.music.extensions.SilentHandler
 import com.metrolist.music.extensions.collect
 import com.metrolist.music.extensions.collectLatest
+import kotlinx.coroutines.flow.collectLatest as collectLatestFlow
 import com.metrolist.music.extensions.currentMetadata
 import com.metrolist.music.extensions.findNextMediaItemById
 import com.metrolist.music.extensions.mediaItems
@@ -408,6 +411,17 @@ class MusicService :
     private var crossfadeJob: Job? = null
     private var isRunning = false
     private var mediaSession: MediaLibrarySession? = null
+
+    // Soun: the session sees the player through this wrapper so the current lyric line can stand
+    // in for the artist on the lock screen and in the notification.
+    private var lyricLinePlayer: LyricLinePlayer? = null
+
+    private fun sessionPlayerFor(target: Player): Player {
+        val wrapper = LyricLinePlayer(target)
+        wrapper.line = lyricLinePlayer?.line
+        lyricLinePlayer = wrapper
+        return wrapper
+    }
     private var controllerFuture: com.google.common.util.concurrent.ListenableFuture<MediaController>? = null
 
     private val playerInitialized = MutableStateFlow(false)
@@ -705,7 +719,7 @@ class MusicService :
         }
         mediaSession =
             MediaLibrarySession
-                .Builder(this, player, mediaLibrarySessionCallback)
+                .Builder(this, sessionPlayerFor(player), mediaLibrarySessionCallback)
                 .setSessionActivity(
                     PendingIntent.getActivity(
                         this,
@@ -884,7 +898,7 @@ class MusicService :
 
         combine(
             currentMediaMetadata.distinctUntilChangedBy { it?.id },
-            dataStore.data.map { it[ShowLyricsKey] ?: false }.distinctUntilChanged(),
+            dataStore.data.map { (it[ShowLyricsKey] ?: false) || (it[LockScreenLyricsKey] ?: true) }.distinctUntilChanged(),
             lyricsRetryRequests,
             connectivityObserver.networkStatus,
         ) { metadata, show, _, _ -> metadata to show }
@@ -894,6 +908,35 @@ class MusicService :
                     val status = lyricsRepository.load(metadata)
                     lyricsLoadState.value = LyricsLoadState(metadata.id, status)
                 }
+            }
+
+        // Soun: follow the synced lyrics and show the current line on the lock screen.
+        combine(
+            currentMediaMetadata.distinctUntilChangedBy { it?.id },
+            dataStore.data.map { it[LockScreenLyricsKey] ?: true }.distinctUntilChanged(),
+        ) { metadata, enabled -> metadata to enabled }
+            .collectLatest(scope) { (metadata, enabled) ->
+                lyricLinePlayer?.line = null
+                if (!enabled || metadata == null) return@collectLatest
+                database.lyrics(metadata.id)
+                    .map { entity ->
+                        entity?.lyrics
+                            ?.takeIf { it.trimStart().startsWith("[") }
+                            ?.let { runCatching { LyricsUtils.parseLyrics(it) }.getOrNull() }
+                            ?.sortedBy { it.time }
+                            .orEmpty()
+                    }
+                    .distinctUntilChanged()
+                    .collectLatestFlow { entries ->
+                        lyricLinePlayer?.line = null
+                        if (entries.isEmpty()) return@collectLatest
+                        while (true) {
+                            val position = player.currentPosition
+                            val index = entries.indexOfLast { it.time <= position }
+                            lyricLinePlayer?.line = if (index >= 0) entries[index].text else null
+                            delay(if (player.isPlaying) 250L else 1000L)
+                        }
+                    }
             }
 
         dataStore.data
@@ -980,7 +1023,7 @@ class MusicService :
                 sleepTimer?.player = newPlayer
 
                 try {
-                    mediaSession?.let { (it as MediaSession).player = newPlayer }
+                    mediaSession?.let { (it as MediaSession).player = sessionPlayerFor(newPlayer) }
                 } catch (e: Exception) {
                     Timber.tag(TAG).e(e, "Failed to swap player in MediaSession")
                 }
@@ -4828,7 +4871,7 @@ class MusicService :
         sleepTimer?.player = player
 
         try {
-            mediaSession?.let { (it as MediaSession).player = player }
+            mediaSession?.let { (it as MediaSession).player = sessionPlayerFor(player) }
         } catch (e: Exception) {
             timber.log.Timber.e(e, "Failed to swap player in MediaSession")
         }

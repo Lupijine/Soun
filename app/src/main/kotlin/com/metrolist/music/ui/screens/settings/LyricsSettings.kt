@@ -84,6 +84,8 @@ fun LyricsSettings(navController: NavController) {
         )
     val (respectAgentPositioning, onRespectAgentPositioningChange) = rememberPreference(RespectAgentPositioningKey, defaultValue = true)
     val (experimentalLyrics, onExperimentalLyricsChange) = rememberPreference(ExperimentalLyricsKey, defaultValue = true)
+    val (lockScreenLyrics, onLockScreenLyricsChange) =
+        rememberPreference(com.metrolist.music.constants.LockScreenLyricsKey, defaultValue = true)
 
     val (lyricsGlowEffect, onLyricsGlowEffectChange) = rememberPreference(LyricsGlowEffectKey, defaultValue = false)
     val (lyricsAnimationStyle, onLyricsAnimationStyleChange) =
@@ -377,6 +379,28 @@ fun LyricsSettings(navController: NavController) {
                                 )
                             },
                             onClick = { showLyricsPositionDialog = true },
+                        ),
+                    )
+                    // Soun: the current line in place of the artist on the lock screen and in the notification.
+                    add(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.lyrics),
+                            title = { Text(stringResource(R.string.soun_lock_screen_lyrics)) },
+                            description = { Text(stringResource(R.string.soun_lock_screen_lyrics_desc)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = lockScreenLyrics,
+                                    onCheckedChange = onLockScreenLyricsChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter = painterResource(id = if (lockScreenLyrics) R.drawable.check else R.drawable.close),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize),
+                                        )
+                                    },
+                                )
+                            },
+                            onClick = { onLockScreenLyricsChange(!lockScreenLyrics) },
                         ),
                     )
                     if (experimentalLyrics) {
