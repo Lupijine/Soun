@@ -47,6 +47,30 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import com.metrolist.music.ui.theme.LocalSounSurfaceBackdrop
+import com.metrolist.music.ui.theme.sounGlassColors
+import com.metrolist.music.ui.theme.sounGlass
+import com.metrolist.music.ui.theme.sounPanel
+import com.metrolist.music.ui.component.StatsListeningClock
+import com.metrolist.music.ui.component.StatsAlbumTile
+import com.metrolist.music.ui.component.StatsRankedRow
+import com.metrolist.music.ui.component.StatsSectionHeader
+import com.metrolist.music.ui.component.StatsTopArtistCard
+import com.metrolist.music.ui.component.StatsFactsRow
+import com.metrolist.music.ui.component.StatsHeroCard
+import com.metrolist.music.ui.component.StatsRangeHeader
+import com.metrolist.music.utils.StatsRange
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -193,15 +217,15 @@ fun StatsScreen(
     val selectedOption by viewModel.selectedOption.collectAsStateWithLifecycle()
 
     var showTimeTransfer by rememberSaveable { mutableStateOf(false) }
-    var prevOptionOrdinal by rememberSaveable { mutableStateOf<OptionStats?>(null) }
-    var prevIndexChips by rememberSaveable { mutableStateOf<Int?>(null) }
+    val range by viewModel.range.collectAsStateWithLifecycle()
+    val overview by viewModel.overview.collectAsStateWithLifecycle()
+    var rangeBeforeTransfer by remember { mutableStateOf<StatsRange?>(null) }
 
     LaunchedEffect(showTimeTransfer) {
         if (showTimeTransfer) {
-            if (prevOptionOrdinal == null) prevOptionOrdinal = selectedOption
-            if (prevIndexChips == null) prevIndexChips = indexChips
-            viewModel.selectedOption.value = OptionStats.CONTINUOUS // "throughout time" in your VM
-            viewModel.indexChips.value = StatPeriod.ALL.ordinal // optional: ensure it’s actually “now -> throughout time”
+            // The transfer dialog needs every song ever played.
+            if (rangeBeforeTransfer == null) rangeBeforeTransfer = viewModel.range.value
+            viewModel.range.value = StatsRange(StatsRange.Kind.ALL)
         }
     }
 
@@ -209,12 +233,8 @@ fun StatsScreen(
         TimeTransfer(
             onDismiss = {
                 showTimeTransfer = false
-                prevOptionOrdinal?.let { viewModel.selectedOption.value = it }
-                prevIndexChips?.let { viewModel.indexChips.value = it }
-
-                // Clear snapshots for the next open
-                prevOptionOrdinal = null
-                prevIndexChips = null
+                rangeBeforeTransfer?.let { viewModel.range.value = it }
+                rangeBeforeTransfer = null
             },
         )
     }
@@ -223,81 +243,27 @@ fun StatsScreen(
         viewModel.syncMostPlaylistsIfNeeded()
     }
 
-    val weeklyDates =
-        if (currentDate != null && firstEvent != null) {
-            generateSequence(currentDate) { it.minusWeeks(1) }
-                .takeWhile { it.isAfter(firstEvent?.event?.timestamp?.minusWeeks(1)) }
-                .mapIndexed { index, date ->
-                    val endDate = date.plusWeeks(1).minusDays(1).coerceAtMost(currentDate)
-                    val formatter = DateTimeFormatter.ofPattern("dd MMM")
-
-                    val startDateFormatted = formatter.format(date)
-                    val endDateFormatted = formatter.format(endDate)
-
-                    val startMonth = date.month
-                    val endMonth = endDate.month
-                    val startYear = date.year
-                    val endYear = endDate.year
-
-                    val text =
-                        when {
-                            startYear != currentDate.year -> "$startDateFormatted, $startYear - $endDateFormatted, $endYear"
-                            startMonth != endMonth -> "$startDateFormatted - $endDateFormatted"
-                            else -> "${date.dayOfMonth} - $endDateFormatted"
-                        }
-                    Pair(index, text)
-                }.toList()
-        } else {
-            emptyList()
+    // Soun: period label and whether there is older listening to step back to.
+    val bounds = remember(range) { range.bounds(LocalDateTime.now()) }
+    val firstListen = firstEvent?.event?.timestamp
+    val dayMonth = remember { DateTimeFormatter.ofPattern("d MMM") }
+    val periodLabel =
+        when (range.kind) {
+            StatsRange.Kind.WEEK ->
+                if (range.offset == 0) {
+                    stringResource(R.string.soun_stats_last_7_days)
+                } else {
+                    "${dayMonth.format(bounds.first)} – ${dayMonth.format(bounds.second.minusDays(1))}"
+                }
+            StatsRange.Kind.MONTH -> DateTimeFormatter.ofPattern("LLLL yyyy").format(bounds.first)
+            StatsRange.Kind.YEAR -> "${bounds.first.year}"
+            StatsRange.Kind.ALL ->
+                firstListen?.let { stringResource(R.string.soun_stats_since, DateTimeFormatter.ofPattern("d MMM yyyy").format(it)) }
+                    ?: stringResource(R.string.soun_stats_all)
         }
-
-    val monthlyDates =
-        if (currentDate != null && firstEvent != null) {
-            generateSequence(
-                currentDate.plusMonths(1).withDayOfMonth(1).minusDays(1),
-            ) { it.minusMonths(1) }
-                .takeWhile {
-                    it.isAfter(
-                        firstEvent
-                            ?.event
-                            ?.timestamp
-                            ?.withDayOfMonth(1),
-                    )
-                }.mapIndexed { index, date ->
-                    val formatter = DateTimeFormatter.ofPattern("MMM")
-                    val formattedDate = formatter.format(date)
-                    val text =
-                        if (date.year != currentDate.year) {
-                            "$formattedDate ${date.year}"
-                        } else {
-                            formattedDate
-                        }
-                    Pair(index, text)
-                }.toList()
-        } else {
-            emptyList()
-        }
-
-    val yearlyDates =
-        if (currentDate != null && firstEvent != null) {
-            generateSequence(
-                currentDate
-                    .plusYears(1)
-                    .withDayOfYear(1)
-                    .minusDays(1),
-            ) { it.minusYears(1) }
-                .takeWhile {
-                    it.isAfter(
-                        firstEvent
-                            ?.event
-                            ?.timestamp,
-                    )
-                }.mapIndexed { index, date ->
-                    Pair(index, "${date.year}")
-                }.toList()
-        } else {
-            emptyList()
-        }
+    val canGoBack = firstListen != null && firstListen.isBefore(bounds.first)
+    var showAllSongs by rememberSaveable(range) { mutableStateOf(false) }
+    var showAllArtists by rememberSaveable(range) { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -322,120 +288,101 @@ fun StatsScreen(
                         artist.name.contains(query.text, ignoreCase = true)
                     }
 
-            item(key = "choice_chips") {
-                ChoiceChipsRow(
-                    chips =
-                        when (selectedOption) {
-                            OptionStats.WEEKS -> {
-                                weeklyDates
-                            }
-
-                            OptionStats.MONTHS -> {
-                                monthlyDates
-                            }
-
-                            OptionStats.YEARS -> {
-                                yearlyDates
-                            }
-
-                            OptionStats.CONTINUOUS -> {
-                                listOf(
-                                    StatPeriod.WEEK_1.ordinal to
-                                        pluralStringResource(
-                                            R.plurals.n_week,
-                                            1,
-                                            1,
-                                        ),
-                                    StatPeriod.MONTH_1.ordinal to
-                                        pluralStringResource(
-                                            R.plurals.n_month,
-                                            1,
-                                            1,
-                                        ),
-                                    StatPeriod.MONTH_3.ordinal to
-                                        pluralStringResource(
-                                            R.plurals.n_month,
-                                            3,
-                                            3,
-                                        ),
-                                    StatPeriod.MONTH_6.ordinal to
-                                        pluralStringResource(
-                                            R.plurals.n_month,
-                                            6,
-                                            6,
-                                        ),
-                                    StatPeriod.YEAR_1.ordinal to
-                                        pluralStringResource(
-                                            R.plurals.n_year,
-                                            1,
-                                            1,
-                                        ),
-                                    StatPeriod.ALL.ordinal to stringResource(R.string.filter_all),
-                                )
-                            }
-                        },
-                    options =
-                        listOf(
-                            OptionStats.CONTINUOUS to stringResource(id = R.string.continuous),
-                            OptionStats.WEEKS to stringResource(R.string.weeks),
-                            OptionStats.MONTHS to stringResource(R.string.months),
-                            OptionStats.YEARS to stringResource(R.string.years),
-                        ),
-                    selectedOption = selectedOption,
-                    onSelectionChange = {
-                        viewModel.selectedOption.value = it
-                        viewModel.indexChips.value = 0
-                    },
-                    currentValue = indexChips,
-                    onValueUpdate = { viewModel.indexChips.value = it },
-                )
-            }
-
-            if (visibleStatsPlaylists.isNotEmpty() && !isSearching && sArtists.isEmpty()) {
-                item(key = "mostPeriodPlaylistsTitle") {
-                    NavigationTitle(
-                        title =
-                            pluralStringResource(
-                                R.plurals.n_playlist,
-                                visibleStatsPlaylists.size,
-                                visibleStatsPlaylists.size,
-                            ),
-                        modifier = Modifier.animateItem(),
-                    )
-                }
-
-                item(key = "mostPeriodPlaylists") {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 4.dp),
-                        modifier = Modifier.animateItem(),
-                    ) {
-                        itemsIndexed(
-                            items = visibleStatsPlaylists,
-                            key = { _, playlist -> playlist.id },
-                        ) { _, playlist ->
-                            PlaylistGridItem(
-                                playlist = playlist,
-                                autoPlaylist = true,
-                                modifier =
-                                    Modifier
-                                        .combinedClickable(
-                                            onClick = {
-                                                navController.navigate("local_playlist/${playlist.id}")
-                                            },
-                                        ).animateItem(),
+            if (!isSearching) {
+                item(key = "stats_title") {
+                    Column(Modifier.padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 14.dp)) {
+                        Text(
+                            stringResource(R.string.soun_stats_title),
+                            fontSize = 36.sp,
+                            lineHeight = 40.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = (-0.8).sp,
+                        )
+                        if (sArtists.isNotEmpty()) {
+                            Text(
+                                sArtists.joinToString { it.name },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 1,
                             )
                         }
                     }
                 }
-            }
 
-            if (!isSearching) {
-                item(key = "mostPlayedSongs") {
-                    NavigationTitle(
-                        title = "${mostPlayedSongsStats.size} ${stringResource(id = R.string.songs)}",
-                        onPlayAllClick =
-                            if (orderedMostPlayedSongs.isNotEmpty()) {
-                                {
+                item(key = "stats_range") {
+                    StatsRangeHeader(
+                        range = range,
+                        periodLabel = periodLabel,
+                        canGoBack = canGoBack,
+                        onRangeChange = { viewModel.range.value = it },
+                    )
+                }
+
+                if (overview.totalPlayTimeMs <= 0L) {
+                    item(key = "stats_empty") {
+                        Text(
+                            stringResource(R.string.soun_stats_empty),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .padding(horizontal = 20.dp, vertical = 12.dp)
+                                .fillMaxWidth()
+                                .sounPanel(RoundedCornerShape(28.dp))
+                                .padding(32.dp),
+                        )
+                    }
+                } else {
+                    item(key = "stats_hero") {
+                        StatsHeroCard(overview, range.kind, Modifier.padding(top = 6.dp).animateItem())
+                    }
+                    item(key = "stats_facts") {
+                        StatsFactsRow(
+                            plays = overview.plays,
+                            songs = overview.uniqueSongs,
+                            artists = overview.uniqueArtists,
+                            modifier = Modifier.padding(top = 10.dp).animateItem(),
+                        )
+                    }
+                }
+
+                mostPlayedArtists.firstOrNull()?.let { top ->
+                    item(key = "stats_top_artist") {
+                        Column(Modifier.animateItem()) {
+                            Spacer(Modifier.height(10.dp))
+                            StatsTopArtistCard(
+                                name = top.artist.name,
+                                imageUrl = top.artist.thumbnailUrl,
+                                playTimeMs = top.timeListened?.toLong() ?: 0L,
+                                plays = top.songCount,
+                                onClick = { navController.navigate("artist/${top.id}") },
+                                onLongClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    menuState.show {
+                                        ArtistMenu(originalArtist = top, coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
+
+                if (mostPlayedSongsStats.isNotEmpty()) {
+                    item(key = "stats_songs_header") {
+                        StatsSectionHeader(
+                            title = stringResource(R.string.soun_stats_top_songs),
+                            modifier = Modifier.animateItem(),
+                        ) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                StatsHeaderButton(R.drawable.shuffle, stringResource(R.string.shuffle)) {
+                                    playerConnection.playQueue(
+                                        ListQueue(
+                                            title = context.getString(R.string.most_played_songs),
+                                            items = orderedMostPlayedSongs.map { it.toMediaMetadata().toMediaItem() }.shuffled(),
+                                        ),
+                                    )
+                                }
+                                StatsHeaderButton(R.drawable.play, stringResource(R.string.play_all)) {
                                     playerConnection.playQueue(
                                         ListQueue(
                                             title = context.getString(R.string.most_played_songs),
@@ -443,171 +390,149 @@ fun StatsScreen(
                                         ),
                                     )
                                 }
-                            } else {
-                                null
-                            },
-                        modifier = Modifier.animateItem(),
-                    )
-
-                    LazyRow(
-                        modifier = Modifier.animateItem(),
-                    ) {
-                        itemsIndexed(
-                            items = mostPlayedSongsStats,
-                            key = { index, song -> "${song.id}_$index" },
-                        ) { index, song ->
-                            LocalSongsGrid(
-                                title = "${index + 1}. ${song.title}",
-                                subtitle =
-                                    joinByBullet(
-                                        pluralStringResource(
-                                            R.plurals.n_time,
-                                            song.songCountListened,
-                                            song.songCountListened,
-                                        ),
-                                        makeTimeString(song.timeListened),
-                                    ),
-                                thumbnailUrl = song.thumbnailUrl,
-                                isActive = song.id == mediaMetadata?.id,
-                                isPlaying = isPlaying,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .combinedClickable(
-                                            onClick = {
-                                                if (song.id == mediaMetadata?.id) {
-                                                    playerConnection.togglePlayPause()
-                                                } else {
-                                                    val targetSong = mostPlayedSongs.find { it.id == song.id }
-                                                    if (targetSong != null) {
-                                                        playerConnection.playQueue(
-                                                            YouTubeQueue(
-                                                                endpoint = WatchEndpoint(song.id),
-                                                                preloadItem = targetSong.toMediaMetadata(),
-                                                            ),
-                                                        )
-                                                    }
-                                                }
-                                            },
-                                            onLongClick = {
-                                                val targetSong = mostPlayedSongs.find { it.id == song.id }
-                                                if (targetSong != null) {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    menuState.show {
-                                                        SongMenu(
-                                                            originalSong = targetSong,
-                                                            onDismiss = menuState::dismiss,
-                                                        )
-                                                    }
-                                                }
-                                            },
-                                        ).animateItem(),
-                            )
+                            }
                         }
                     }
-                }
-            }
-
-            if (!isSearching) {
-                item(key = "mostPlayedArtists") {
-                    NavigationTitle(
-                        title = "${mostPlayedArtists.size} ${stringResource(id = R.string.artists)}",
-                        modifier = Modifier.animateItem(),
-                    )
-
-                    LazyRow(
-                        modifier = Modifier.animateItem(),
-                    ) {
-                        itemsIndexed(
-                            items = mostPlayedArtists,
-                            key = { _, artist -> artist.id },
-                        ) { index, artist ->
-                            LocalArtistsGrid(
-                                title = "${index + 1}. ${artist.artist.name}",
-                                subtitle =
-                                    joinByBullet(
-                                        pluralStringResource(
-                                            R.plurals.n_time,
-                                            artist.songCount,
-                                            artist.songCount,
-                                        ),
-                                        makeTimeString(artist.timeListened?.toLong()),
-                                    ),
-                                thumbnailUrl = artist.artist.thumbnailUrl,
-                                modifier =
-                                    Modifier
-                                        .combinedClickable(
-                                            onClick = {
-                                                navController.navigate("artist/${artist.id}")
-                                            },
-                                            onLongClick = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                menuState.show {
-                                                    ArtistMenu(
-                                                        originalArtist = artist,
-                                                        coroutineScope = coroutineScope,
-                                                        onDismiss = menuState::dismiss,
-                                                    )
-                                                }
-                                            },
-                                        ).animateItem(),
-                            )
-                        }
-                    }
-                }
-            }
-
-            if (!isSearching) {
-                item(key = "mostPlayedAlbums") {
-                    NavigationTitle(
-                        title = "${mostPlayedAlbums.size} ${stringResource(id = R.string.albums)}",
-                        modifier = Modifier.animateItem(),
-                    )
-
-                    if (mostPlayedAlbums.isNotEmpty()) {
-                        LazyRow(
-                            modifier = Modifier.animateItem(),
-                        ) {
-                            itemsIndexed(
-                                items = mostPlayedAlbums,
-                                key = { _, album -> album.id },
-                            ) { index, album ->
-                                LocalAlbumsGrid(
-                                    title = "${index + 1}. ${album.album.title}",
-                                    subtitle =
-                                        joinByBullet(
-                                            pluralStringResource(
-                                                R.plurals.n_time,
-                                                album.songCountListened ?: 0,
-                                                album.songCountListened ?: 0,
+                    val shownSongs = if (showAllSongs) mostPlayedSongsStats else mostPlayedSongsStats.take(10)
+                    itemsIndexed(
+                        items = shownSongs,
+                        key = { index, song -> "stats_song_${song.id}_$index" },
+                    ) { index, song ->
+                        StatsRankedRow(
+                            rank = index + 1,
+                            imageUrl = song.thumbnailUrl,
+                            round = false,
+                            title = song.title,
+                            subtitle = song.artists.joinToString { it.name }.ifBlank { song.artistName.orEmpty() },
+                            detail = "${pluralStringResource(R.plurals.n_time, song.songCountListened, song.songCountListened)}\n${makeTimeString(song.timeListened)}",
+                            isActive = song.id == mediaMetadata?.id,
+                            onClick = {
+                                if (song.id == mediaMetadata?.id) {
+                                    playerConnection.togglePlayPause()
+                                } else {
+                                    mostPlayedSongs.find { it.id == song.id }?.let { targetSong ->
+                                        playerConnection.playQueue(
+                                            YouTubeQueue(
+                                                endpoint = WatchEndpoint(song.id),
+                                                preloadItem = targetSong.toMediaMetadata(),
                                             ),
-                                            makeTimeString(album.timeListened),
-                                        ),
-                                    thumbnailUrl = album.album.thumbnailUrl,
-                                    isActive = album.id == mediaMetadata?.album?.id,
-                                    isPlaying = isPlaying,
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .combinedClickable(
-                                                onClick = {
-                                                    navController.navigate("album/${album.id}")
-                                                },
-                                                onLongClick = {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    menuState.show {
-                                                        AlbumMenu(
-                                                            originalAlbum = album,
-                                                            onDismiss = menuState::dismiss,
-                                                        )
-                                                    }
-                                                },
-                                            ).animateItem(),
-                                )
+                                        )
+                                    }
+                                }
+                            },
+                            onLongClick = {
+                                mostPlayedSongs.find { it.id == song.id }?.let { targetSong ->
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    menuState.show { SongMenu(originalSong = targetSong, onDismiss = menuState::dismiss) }
+                                }
+                            },
+                            modifier = Modifier.padding(horizontal = 6.dp).animateItem(),
+                        )
+                    }
+                    if (mostPlayedSongsStats.size > 10) {
+                        item(key = "stats_songs_more") {
+                            StatsShowMore(
+                                expanded = showAllSongs,
+                                count = mostPlayedSongsStats.size,
+                                onToggle = { showAllSongs = !showAllSongs },
+                            )
+                        }
+                    }
+                }
+
+                if (mostPlayedArtists.size > 1) {
+                    item(key = "stats_artists_header") {
+                        StatsSectionHeader(stringResource(R.string.soun_stats_top_artists), Modifier.animateItem())
+                    }
+                    val shownArtists = mostPlayedArtists.drop(1).let { if (showAllArtists) it else it.take(9) }
+                    itemsIndexed(
+                        items = shownArtists,
+                        key = { _, artist -> "stats_artist_row_${artist.id}" },
+                    ) { index, artist ->
+                        StatsRankedRow(
+                            rank = index + 2,
+                            imageUrl = artist.artist.thumbnailUrl,
+                            round = true,
+                            title = artist.artist.name,
+                            subtitle = pluralStringResource(R.plurals.n_time, artist.songCount, artist.songCount),
+                            detail = makeTimeString(artist.timeListened?.toLong()),
+                            isActive = false,
+                            onClick = { navController.navigate("artist/${artist.id}") },
+                            onLongClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                menuState.show {
+                                    ArtistMenu(originalArtist = artist, coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
+                                }
+                            },
+                            modifier = Modifier.padding(horizontal = 6.dp).animateItem(),
+                        )
+                    }
+                    if (mostPlayedArtists.size > 10) {
+                        item(key = "stats_artists_more") {
+                            StatsShowMore(
+                                expanded = showAllArtists,
+                                count = mostPlayedArtists.size,
+                                onToggle = { showAllArtists = !showAllArtists },
+                            )
+                        }
+                    }
+                }
+
+                if (mostPlayedAlbums.isNotEmpty()) {
+                    item(key = "stats_albums") {
+                        Column(Modifier.animateItem()) {
+                            StatsSectionHeader(stringResource(R.string.soun_stats_top_albums))
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 20.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                itemsIndexed(items = mostPlayedAlbums, key = { _, album -> album.id }) { index, album ->
+                                    StatsAlbumTile(
+                                        rank = index + 1,
+                                        imageUrl = album.album.thumbnailUrl,
+                                        title = album.album.title,
+                                        subtitle = makeTimeString(album.timeListened),
+                                        onClick = { navController.navigate("album/${album.id}") },
+                                        onLongClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            menuState.show { AlbumMenu(originalAlbum = album, onDismiss = menuState::dismiss) }
+                                        },
+                                    )
+                                }
                             }
                         }
                     }
                 }
+
+                if (overview.peakHour != null) {
+                    item(key = "stats_clock") {
+                        Column(Modifier.animateItem()) {
+                            StatsSectionHeader(stringResource(R.string.soun_stats_when))
+                            StatsListeningClock(overview)
+                        }
+                    }
+                }
+
+                if (visibleStatsPlaylists.isNotEmpty() && sArtists.isEmpty()) {
+                    item(key = "stats_playlists") {
+                        Column(Modifier.animateItem()) {
+                            StatsSectionHeader(stringResource(R.string.soun_stats_playlists))
+                            LazyRow(contentPadding = PaddingValues(horizontal = 4.dp)) {
+                                itemsIndexed(items = visibleStatsPlaylists, key = { _, playlist -> playlist.id }) { _, playlist ->
+                                    PlaylistGridItem(
+                                        playlist = playlist,
+                                        autoPlaylist = true,
+                                        modifier = Modifier.combinedClickable(
+                                            onClick = { navController.navigate("local_playlist/${playlist.id}") },
+                                        ),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                item(key = "stats_bottom_space") { Spacer(Modifier.height(24.dp)) }
             }
 
             if (isSearching) {
@@ -653,22 +578,6 @@ fun StatsScreen(
                 }
             }
         }
-        // FAB to shuffle most played songs
-        if (mostPlayedSongsStats.isNotEmpty() && !isSearching) {
-            HideOnScrollFAB(
-                visible = true,
-                lazyListState = lazyListState,
-                icon = R.drawable.shuffle,
-                onClick = {
-                    playerConnection.playQueue(
-                        ListQueue(
-                            title = context.getString(R.string.most_played_songs),
-                            items = orderedMostPlayedSongs.map { it.toMediaMetadata().toMediaItem() }.shuffled(),
-                        ),
-                    )
-                },
-            )
-        }
     }
 
     TopAppBar(
@@ -713,10 +622,12 @@ fun StatsScreen(
                         }
                     }
                 }
-            } else {
-                Text(stringResource(R.string.stats))
             }
         },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.Transparent,
+            scrolledContainerColor = Color.Transparent,
+        ),
         navigationIcon = {
             if (inSelectMode) {
                 androidx.compose.material3.IconButton(onClick = onExitSelectionMode) {
@@ -789,3 +700,28 @@ fun StatsScreen(
 }
 
 enum class OptionStats { WEEKS, MONTHS, YEARS, CONTINUOUS }
+
+@Composable
+private fun StatsHeaderButton(icon: Int, description: String, onClick: () -> Unit) {
+    androidx.compose.material3.IconButton(
+        onClick = onClick,
+        modifier = Modifier
+            .size(44.dp)
+            .sounGlass(CircleShape, sounGlassColors(), backdrop = LocalSounSurfaceBackdrop.current),
+    ) {
+        Icon(painterResource(icon), description, Modifier.size(20.dp))
+    }
+}
+
+@Composable
+private fun StatsShowMore(expanded: Boolean, count: Int, onToggle: () -> Unit) {
+    Box(Modifier.fillMaxWidth().padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
+        androidx.compose.material3.TextButton(onClick = onToggle) {
+            Text(
+                if (expanded) stringResource(R.string.soun_stats_show_less)
+                else stringResource(R.string.soun_stats_show_all, count),
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}

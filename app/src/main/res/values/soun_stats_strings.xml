@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="soun_stats_title">Your stats</string>
+    <string name="soun_stats_week">Week</string>
+    <string name="soun_stats_month">Month</string>
+    <string name="soun_stats_year">Year</string>
+    <string name="soun_stats_all">All time</string>
+    <string name="soun_stats_last_7_days">Last 7 days</string>
+    <string name="soun_stats_since">Since %s</string>
+    <string name="soun_stats_previous">Previous period</string>
+    <string name="soun_stats_next">Next period</string>
+    <string name="soun_stats_listening_time">Listening time</string>
+    <string name="soun_stats_minutes_unit">min</string>
+    <string name="soun_stats_minutes">%d min</string>
+    <string name="soun_stats_hours_minutes">%1$d h %2$d min</string>
+    <string name="soun_stats_under_minute">under a minute</string>
+    <string name="soun_stats_change">%d%% vs previous</string>
+    <string name="soun_stats_plays">Plays</string>
+    <string name="soun_stats_songs">Songs</string>
+    <string name="soun_stats_artists">Artists</string>
+    <string name="soun_stats_top_artist">Top artist</string>
+    <string name="soun_stats_top_songs">Top songs</string>
+    <string name="soun_stats_top_artists">Top artists</string>
+    <string name="soun_stats_top_albums">Top albums</string>
+    <string name="soun_stats_show_all">Show all %d</string>
+    <string name="soun_stats_show_less">Show less</string>
+    <string name="soun_stats_when">When you listen</string>
+    <string name="soun_stats_peak">Most around %s</string>
+    <string name="soun_stats_tap_hint">Tap a bar to see that hour</string>
+    <string name="soun_stats_playlists">Made from your stats</string>
+    <string name="soun_stats_empty">No listening in this period yet</string>
+</resources>

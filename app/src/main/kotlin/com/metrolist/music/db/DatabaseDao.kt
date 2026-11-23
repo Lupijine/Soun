@@ -626,6 +626,31 @@ interface DatabaseDao {
     )
     fun dailyPlayTime(fromTimeStamp: LocalDateTime): Flow<List<DailyPlayTime>>
 
+    // Soun stats page: per-day play time inside a range (same day bucketing as above).
+    @Query(
+        """
+        SELECT timestamp / 86400000 AS day, SUM(playTime) AS playTime
+        FROM event
+        WHERE timestamp > :fromTimeStamp AND timestamp <= :toTimeStamp
+        GROUP BY day
+        """,
+    )
+    fun dailyPlayTimeInRange(fromTimeStamp: LocalDateTime, toTimeStamp: LocalDateTime): Flow<List<DailyPlayTime>>
+
+    // Hour of the local day each play started (timestamps are local wall-clock time stored as UTC).
+    @Query(
+        """
+        SELECT (timestamp / 3600000) % 24 AS hour, SUM(playTime) AS playTime
+        FROM event
+        WHERE timestamp > :fromTimeStamp AND timestamp <= :toTimeStamp
+        GROUP BY hour
+        """,
+    )
+    fun hourlyPlayTimeInRange(fromTimeStamp: LocalDateTime, toTimeStamp: LocalDateTime): Flow<List<com.metrolist.music.utils.HourlyPlayTime>>
+
+    @Query("SELECT COUNT(*) FROM event WHERE timestamp > :fromTimeStamp AND timestamp <= :toTimeStamp")
+    fun playCountInRange(fromTimeStamp: LocalDateTime, toTimeStamp: LocalDateTime): Flow<Int>
+
     @Query("SELECT SUM(playTime) FROM event WHERE songId = :songId")
     fun getTotalPlayTimeForSong(songId: String): Long?
 
