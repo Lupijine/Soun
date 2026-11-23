@@ -1101,4 +1101,10 @@
     <string name="soun_share_size_medium">Medium</string>
     <string name="soun_share_size_small">Small</string>
     <string name="soun_share_show_logo">Show the Soun logo</string>
+    <string name="soun_update_title">New version of Soun</string>
+    <string name="soun_update_whats_new">What\'s new</string>
+    <string name="soun_update_later">Later</string>
+    <string name="soun_update_install">Update</string>
+    <string name="soun_update_downloading">Downloading…</string>
+    <string name="soun_update_failed">The download didn\'t finish. Check your connection and try again.</string>
 </resources>

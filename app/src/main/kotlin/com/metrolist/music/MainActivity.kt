@@ -1478,6 +1478,7 @@ class MainActivity : FragmentActivity() {
 
                     // Modal sheets position themselves in their own window.
                     BottomSheetMenu(state = LocalMenuState.current)
+                    com.metrolist.music.ui.component.SounUpdatePrompt()
 
                     BottomSheetPage(state = LocalBottomSheetPageState.current)
 
