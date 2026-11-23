@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.border
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -212,6 +213,7 @@ fun Thumbnail(
     onCollapse: () -> Unit = {},
     moreAction: @Composable () -> Unit = {},
     backdrop: Backdrop? = null,
+    onOpenVideo: (() -> Unit)? = null,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
@@ -359,6 +361,7 @@ fun Thumbnail(
                         backdrop = backdrop,
                         onCollapse = onCollapse,
                         moreAction = moreAction,
+                        onVideo = onOpenVideo,
                     )
                 }
                 
@@ -462,6 +465,7 @@ private fun ThumbnailHeader(
     onCollapse: () -> Unit,
     moreAction: @Composable () -> Unit,
     backdrop: Backdrop?,
+    onVideo: (() -> Unit)? = null,
 ) {
     val listenTogetherManager = LocalListenTogetherManager.current
     val listenTogetherRoleState = listenTogetherManager?.role?.collectAsStateWithLifecycle(initialValue = RoomRole.NONE)
@@ -474,12 +478,24 @@ private fun ThumbnailHeader(
         IconButton(onClick = onCollapse, modifier = Modifier.align(Alignment.CenterStart).sounGlass(CircleShape, sounGlassColors(), backdrop = backdrop)) {
             Icon(painterResource(R.drawable.expand_more), stringResource(R.string.dismiss), tint = textColor)
         }
-        Box(Modifier.align(Alignment.CenterEnd)) { moreAction() }
+        Row(
+            modifier = Modifier.align(Alignment.CenterEnd),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Soun: open the song's music video.
+            if (onVideo != null && !isListenTogetherGuest) {
+                IconButton(onClick = onVideo, modifier = Modifier.sounGlass(CircleShape, sounGlassColors(), backdrop = backdrop)) {
+                    Icon(painterResource(R.drawable.soun_video), stringResource(R.string.soun_video_mode), tint = textColor)
+                }
+            }
+            moreAction()
+        }
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .align(Alignment.Center)
-                .padding(horizontal = 48.dp)
+                .padding(start = 48.dp, end = if (onVideo != null) 100.dp else 48.dp)
         ) {
             // Listen Together indicator
             if (listenTogetherRoleState?.value != RoomRole.NONE) {

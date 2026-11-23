@@ -101,6 +101,55 @@ object InnerTubeXPlayer {
             Result.failure(error)
         }
 
+    /** Soun video mode: a separate video-only and audio stream for the same song. */
+    class VideoStreams(
+        val videoUrl: String,
+        val audioUrl: String,
+        val headers: Map<String, String>,
+        val width: Int?,
+        val height: Int?,
+        val availableHeights: List<Int>,
+    )
+
+    suspend fun videoStreams(
+        videoId: String,
+        maxHeight: Int,
+    ): Result<VideoStreams> =
+        try {
+            val hints =
+                ContentHints(wantVideo = true, maxVideoHeight = maxHeight).withStreamCapabilities(
+                    allowHls = false,
+                    allowSabr = false,
+                    allowBoundedRange = true,
+                )
+            val stream =
+                requireNotNull(
+                    bundle().extractor.extract(
+                        videoId = videoId,
+                        hints = hints,
+                        excludedClients = failedStreamClients(videoId),
+                        audioQuality = InnerTubeXAudioQuality.AUTO,
+                        clientPlaybackNonce = generateClientPlaybackNonce(),
+                    ),
+                ) { "InnerTubeX returned no playable stream" }
+            val videoUrl = stream.videoUrl?.takeIf { it.startsWith("http") }
+                ?: error("This song has no video")
+            Result.success(
+                VideoStreams(
+                    videoUrl = videoUrl,
+                    audioUrl = stream.audioUrl,
+                    headers = stream.headers,
+                    width = stream.videoWidth,
+                    height = stream.videoHeight,
+                    availableHeights = stream.availableVideoHeights,
+                ),
+            )
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Result.failure(error)
+        }
+
     internal fun markStreamClientFailed(
         videoId: String,
         clientName: String,

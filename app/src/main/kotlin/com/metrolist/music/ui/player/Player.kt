@@ -258,6 +258,7 @@ fun BottomSheetPlayer(
     }
 
     var showRemainingTime by rememberSaveable { mutableStateOf(true) }
+    var showVideo by remember { mutableStateOf(false) }
 
     val playerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
@@ -2104,6 +2105,7 @@ fun BottomSheetPlayer(
                                     isPlayerExpanded = isExpandedProvider,
                                     isListenTogetherGuest = isListenTogetherGuest,
                                     backdrop = playerBackdrop,
+                                    onOpenVideo = { if (!isCasting) showVideo = true },
                                     onCollapse = { state.collapseSoft() },
                                     moreAction = { mediaMetadata?.let { PlayerMoreMenuButton(it, state, textButtonColor, TextBackgroundColor, playerBackdrop) } },
                                 )
@@ -2178,6 +2180,13 @@ fun BottomSheetPlayer(
                     showInlineLyrics = !showInlineLyrics
                 },
             )
+        }
+
+        // Soun: the music video, full screen over the player.
+        if (showVideo && state.isExpanded) {
+            mediaMetadata?.let { videoMetadata ->
+                SounVideoPlayer(mediaMetadata = videoMetadata, onClose = { showVideo = false })
+            }
         }
     }
 }
