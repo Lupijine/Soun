@@ -476,6 +476,15 @@ class MusicService :
         return true
     }
 
+    /** Soun: where the part of the current track that is playing ends (for the sleep timer). */
+    fun currentChapterEndMs(): Long? {
+        val chapters = activeChapters()
+        if (chapters.isEmpty()) return null
+        val position = player.currentPosition
+        return chapters.firstOrNull { it.startMs > position }?.startMs
+            ?: player.duration.takeIf { it != C.TIME_UNSET && it > 0 }
+    }
+
     fun seekToChapter(index: Int) {
         val chapter = activeChapters().getOrNull(index) ?: return
         player.seekTo(chapter.startMs)
@@ -2837,7 +2846,7 @@ class MusicService :
 
             // Check sleep timer guard - don't autoplay/repeat if sleep timer will pause
             val timer = sleepTimer ?: return
-            if (timer.isActive && timer.pauseWhenSongEnd) {
+            if (timer.isActive && (timer.pauseWhenSongEnd || timer.stopAt != null)) {
                 return
             }
 
@@ -4296,8 +4305,6 @@ class MusicService :
                         normalizationProcessor,
                         eqProcessor,
                         silenceProcessor,
-                        // Soun: measures the beat for the player background (pass-through).
-                        com.metrolist.music.playback.audio.BeatAudioProcessor(),
                     ),
                     SilenceSkippingAudioProcessor(2_000_000, 20_000, 256),
                     SonicAudioProcessor(),

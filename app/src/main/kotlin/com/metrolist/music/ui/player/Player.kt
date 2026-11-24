@@ -102,7 +102,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -807,9 +806,6 @@ fun BottomSheetPlayer(
 
     val playerBackdrop = rememberLayerBackdrop()
     val hapticView = LocalView.current
-    // Soun: the background moves with the beat while the player is open and playing.
-    val beatReactive by rememberPreference(com.metrolist.music.constants.BeatReactiveBackgroundKey, defaultValue = true)
-    val beatLevel = rememberBeatLevel(beatReactive && isPlaying && state.isExpanded)
     val sheetGlassBlur by animateDpAsState(
         targetValue = if (showInlineLyrics) 30.dp else 6.dp,
         animationSpec = tween(450),
@@ -926,30 +922,10 @@ fun BottomSheetPlayer(
                                 colors = gradientColors,
                                 dark = useDarkTheme,
                                 motionPaused = { !queueSheetState.isCollapsed || menuState.isVisible },
-                                beat = { beatLevel.value },
                                 modifier = Modifier.fillMaxSize().graphicsLayer { alpha = state.progress.coerceIn(0f, 1f) },
                             )
                         }
                     }
-                }
-                // Soun: with the blurred-cover and gradient styles, a soft light that pulses on the beat.
-                if (playerBackground == PlayerBackgroundStyle.BLUR || playerBackground == PlayerBackgroundStyle.GRADIENT) {
-                    Box(
-                        Modifier
-                            .fillMaxSize()
-                            .drawBehind {
-                                val pulse = beatLevel.value
-                                if (pulse > 0.01f) {
-                                    drawRect(
-                                        Brush.radialGradient(
-                                            listOf(Color.White.copy(alpha = 0.16f * pulse), Color.Transparent),
-                                            center = Offset(size.width * 0.5f, size.height * 0.32f),
-                                            radius = size.maxDimension * (0.55f + 0.1f * pulse),
-                                        ),
-                                    )
-                                }
-                            },
-                    )
                 }
             }
         },

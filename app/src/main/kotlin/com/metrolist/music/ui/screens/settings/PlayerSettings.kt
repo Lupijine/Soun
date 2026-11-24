@@ -99,8 +99,6 @@ fun PlayerSettings(
         AudioQualityKey,
         defaultValue = AudioQuality.AUTO
     )
-    val (beatReactive, onBeatReactiveChange) =
-        rememberPreference(com.metrolist.music.constants.BeatReactiveBackgroundKey, defaultValue = true)
     val (crossfadeEnabled, onCrossfadeEnabledChange) = rememberPreference(
         CrossfadeEnabledKey,
         defaultValue = false
@@ -301,28 +299,6 @@ fun PlayerSettings(
                         )
                     },
                     onClick = { showAudioQualityDialog = true }
-                ))
-                // Soun: the player background moves with the beat.
-                add(Material3SettingsItem(
-                    icon = painterResource(R.drawable.graphic_eq),
-                    title = { Text(stringResource(R.string.soun_beat_background)) },
-                    description = { Text(stringResource(R.string.soun_beat_background_desc)) },
-                    trailingContent = {
-                        Switch(
-                            checked = beatReactive,
-                            onCheckedChange = onBeatReactiveChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        id = if (beatReactive) R.drawable.check else R.drawable.close
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onBeatReactiveChange(!beatReactive) }
                 ))
                 add(Material3SettingsItem(
                     icon = painterResource(R.drawable.linear_scale),
