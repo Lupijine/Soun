@@ -1133,4 +1133,11 @@
         <item quantity="one">%d more new release</item>
         <item quantity="other">%d more new releases</item>
     </plurals>
+    <string name="soun_moments">Saved moments</string>
+    <string name="soun_moments_empty">Save a moment from the player menu to come back to the exact second later.</string>
+    <string name="soun_save_moment">Save this moment</string>
+    <string name="soun_save_moment_description">Come back to %s later</string>
+    <string name="soun_moment_saved">Moment saved at %s</string>
+    <string name="soun_share_from">Share from %s</string>
+    <string name="soun_share_from_description">A link that starts playing at this second</string>
 </resources>

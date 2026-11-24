@@ -85,6 +85,7 @@ import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.VarispeedKey
 import com.metrolist.music.listentogether.ConnectionState
@@ -130,6 +131,8 @@ fun PlayerMenu(
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val playerVolume = playerConnection.service.playerVolume.collectAsStateWithLifecycle()
+    // Soun: the second shown in "Save this moment" / "Share from" is the one when the menu opened.
+    val momentPosition = remember(mediaMetadata.id) { playerConnection.player.currentPosition }
 
     // Cast state for volume control - safely access castConnectionHandler to prevent crashes
     val castHandler =
@@ -513,6 +516,59 @@ fun PlayerMenu(
                                 onClick = {
                                     playerConnection.toggleLibrary()
                                     onDismiss()
+                                },
+                            ),
+                        )
+                        // Soun: save this second of the song, or share a link that starts here.
+                        add(
+                            Material3MenuItemData(
+                                title = { Text(text = stringResource(R.string.soun_save_moment)) },
+                                description = { Text(text = stringResource(R.string.soun_save_moment_description, makeTimeString(momentPosition))) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.soun_moment),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                },
+                                onClick = {
+                                    com.metrolist.music.utils.SounMoments.save(context, mediaMetadata, momentPosition)
+                                    showNotice(context.getString(R.string.soun_moment_saved, makeTimeString(momentPosition)))
+                                    onDismiss()
+                                },
+                            ),
+                        )
+                        add(
+                            Material3MenuItemData(
+                                title = { Text(text = stringResource(R.string.soun_share_from, makeTimeString(momentPosition))) },
+                                description = { Text(text = stringResource(R.string.soun_share_from_description)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.share),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                },
+                                onClick = {
+                                    com.metrolist.music.utils.SounMoments.share(context, mediaMetadata.title, mediaMetadata.id, momentPosition)
+                                    onDismiss()
+                                },
+                            ),
+                        )
+                        add(
+                            Material3MenuItemData(
+                                title = { Text(text = stringResource(R.string.soun_moments)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.history),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                },
+                                onClick = {
+                                    onDismiss()
+                                    playerBottomSheetState.collapseSoft()
+                                    navController.navigate("moments")
                                 },
                             ),
                         )

@@ -1738,6 +1738,8 @@ class MainActivity : FragmentActivity() {
                     }
 
                 val playlistId = uri.getQueryParameter("list")
+                // Soun: links shared from a moment start at that second (t=754, t=12m34s).
+                val startAt = com.metrolist.music.utils.SounMoments.parseStartTime(uri.getQueryParameter("t"))
 
                 if (videoId != null) {
                     coroutineScope.launch(Dispatchers.IO) {
@@ -1745,11 +1747,13 @@ class MainActivity : FragmentActivity() {
                             .queue(listOf(videoId), playlistId)
                             .onSuccess { queue ->
                                 withContext(Dispatchers.Main) {
-                                    playerConnection?.playQueue(
+                                    val youTubeQueue =
                                         YouTubeQueue(
                                             WatchEndpoint(videoId = queue.firstOrNull()?.id, playlistId = playlistId),
                                             queue.firstOrNull()?.toMediaMetadata(),
-                                        ),
+                                        )
+                                    playerConnection?.playQueue(
+                                        startAt?.let { com.metrolist.music.utils.StartAtQueue(youTubeQueue, it) } ?: youTubeQueue,
                                     )
                                 }
                             }.onFailure {
