@@ -123,7 +123,7 @@ internal fun buildTranslationRequest(
     val lineCount = text.lines().size
     val systemPrompt =
         customSystemPrompt.takeIf(String::isNotBlank)?.replace("{lineCount}", lineCount.toString())
-            ?: """You are a precise lyrics translation assistant. Your output must ALWAYS be a valid JSON object of the form {"lines": ["line1", "line2", "line3"].
+            ?: """You are a precise lyrics translation assistant. Your output must ALWAYS be a valid JSON object of the form {"lines": ["line1", "line2", "line3"]}.
 
 CRITICAL RULES:
 1. Output ONLY the JSON object: {"lines": ["line1", "line2", "line3"]}
@@ -218,7 +218,9 @@ Output MUST be a JSON object {"lines": [...]} with EXACTLY $lineCount strings.""
         )
         if (model.isNotBlank()) put("model", model)
         put("temperature", 0.3)
-        put("max_tokens", lineCount * 100)
+        // Room for models that think before answering: their reasoning counts against this
+        // limit, and a cut-off answer is unreadable JSON.
+        put("max_tokens", lineCount * 150 + 4096)
         put(
             "response_format",
             buildJsonObject {
@@ -286,26 +288,32 @@ internal fun parseTranslationContent(
 ): Result<List<String>> =
     runCatching {
         val cleaned = content.replace("```json", "").replace("```", "").trim()
-        val bracketed =
-            cleaned
-                .substringAfter('[', "")
-                .substringBeforeLast(']', "")
-                .takeIf(String::isNotEmpty)
-                ?.let { "[$it]" }
-        val translatedLines =
-            sequenceOf(content.trim(), cleaned, bracketed)
-                .filterNotNull()
+        val strict =
+            sequenceOf(content.trim(), cleaned)
                 .mapNotNull { candidate ->
                     runCatching { extractLines(translationJson.parseToJsonElement(candidate)) }.getOrNull()
                 }.firstOrNull()
-                ?: cleaned
-                    .lines()
-                    .filter(String::isNotBlank)
-                    .map { it.trim().removeSurrounding("\"").removeSurrounding("'") }
-                    .takeIf(List<String>::isNotEmpty)
-                ?: error("Failed to parse translation")
+        val translatedLines =
+            strict ?: run {
+                val scanned = scanTranslatedLines(cleaned)
+                when {
+                    // Plain text from a model that ignored the JSON format: one line each.
+                    scanned == null ->
+                        cleaned
+                            .lines()
+                            .filter(String::isNotBlank)
+                            .map { it.trim().removeSurrounding("\"").removeSurrounding("'") }
+                            .takeIf(List<String>::isNotEmpty)
+                            ?: error("Failed to parse translation")
+                    // JSON with something around it that a strict parser refuses.
+                    scanned.complete && scanned.lines.isNotEmpty() -> scanned.lines
+                    // Never show the raw JSON of an answer that was cut off.
+                    else -> error("The translation was cut off. Try again, or choose another model.")
+                }
+            }
 
-        translatedLines.take(expectedLineCount) + List((expectedLineCount - translatedLines.size).coerceAtLeast(0)) { "" }
+        val lines = translatedLines.map { it.replace('\n', ' ').replace('\r', ' ').trim() }
+        lines.take(expectedLineCount) + List((expectedLineCount - lines.size).coerceAtLeast(0)) { "" }
     }
 
 private fun extractLines(element: JsonElement): List<String>? =
@@ -316,6 +324,72 @@ private fun extractLines(element: JsonElement): List<String>? =
         is JsonArray -> element.map { it.jsonPrimitive.content }
         else -> null
     }
+
+/** The finished strings of a translation's `lines` array, and whether the array was closed. */
+internal data class ScannedLines(
+    val lines: List<String>,
+    val complete: Boolean,
+)
+
+/**
+ * Reads the `lines` array of a JSON answer that may still be arriving or may have been cut
+ * off, keeping only the strings that are already complete. Returns null when [content] is not
+ * JSON at all (plain text from a model that ignored the format).
+ */
+internal fun scanTranslatedLines(content: String): ScannedLines? {
+    val text = content.replace("```json", "").replace("```", "").trim()
+    val key = text.indexOf("\"lines\"")
+    val arrayStart =
+        when {
+            key >= 0 -> text.indexOf('[', key)
+            text.startsWith("[") -> 0
+            text.startsWith("{") -> return ScannedLines(emptyList(), complete = false)
+            else -> return null
+        }
+    if (arrayStart < 0) return ScannedLines(emptyList(), complete = false)
+
+    val lines = mutableListOf<String>()
+    var i = arrayStart + 1
+    while (i < text.length) {
+        when (text[i]) {
+            ']' -> return ScannedLines(lines, complete = true)
+            '"' -> {
+                val value = StringBuilder()
+                var j = i + 1
+                var closed = false
+                while (j < text.length) {
+                    val c = text[j]
+                    if (c == '"') {
+                        closed = true
+                        break
+                    }
+                    if (c != '\\') {
+                        value.append(c)
+                        j++
+                        continue
+                    }
+                    if (j + 1 >= text.length) break
+                    when (val escaped = text[j + 1]) {
+                        'n', 'r', 't' -> value.append(' ')
+                        'u' -> {
+                            val code = text.substring(j + 2, minOf(j + 6, text.length))
+                            if (code.length < 4) break
+                            code.toIntOrNull(16)?.let { value.append(it.toChar()) }
+                            j += 4
+                        }
+                        else -> value.append(escaped)
+                    }
+                    j += 2
+                }
+                if (!closed) return ScannedLines(lines, complete = false)
+                lines += value.toString().trim()
+                i = j + 1
+            }
+            else -> i++
+        }
+    }
+    return ScannedLines(lines, complete = false)
+}
 
 internal fun apiErrorMessage(
     body: String?,

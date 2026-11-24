@@ -12,6 +12,7 @@ import com.metrolist.music.db.entities.SongEntity
 import com.metrolist.music.api.DeepLService
 import com.metrolist.music.api.OpenRouterService
 import com.metrolist.music.api.OpenRouterStreamingService
+import com.metrolist.music.api.scanTranslatedLines
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -108,22 +109,27 @@ object LyricsTranslationHelper {
     }
 
     /**
-     * Attempts to parse partial translation content from the AI.
-     * This allows updating the UI progressively during streaming.
+     * The lines of a translation that is still arriving, so the UI can fill in as it streams.
+     * The answer is JSON (`{"lines": [...]}`): only strings that are already complete are
+     * shown, never the raw JSON around them.
      */
-    private fun tryParsePartialTranslation(content: String, expectedLines: Int): List<String> {
-        // AI usually returns lines separated by newlines or numbered lists
-        val lines = content.lines()
+    private fun tryParsePartialTranslation(content: String): List<String> {
+        scanTranslatedLines(content)?.let { return it.lines }
+        // A model that ignored the format and answered in plain lines.
+        return content.lines()
             .map { it.trim() }
             .filter { it.isNotBlank() }
-            // Remove common AI formatting like "1. ", "Line 1: ", etc.
             .map { line ->
                 line.replace(Regex("^\\d+\\.\\s*"), "")
                     .replace(Regex("^Line\\s+\\d+:\\s*", RegexOption.IGNORE_CASE), "")
                     .replace(Regex("^-\\s*"), "")
             }
-        
-        return lines
+    }
+
+    /** A translation an older build saved as raw JSON instead of lines; it must not be shown. */
+    private fun looksLikeRawJson(translated: String): Boolean {
+        val start = translated.trimStart()
+        return start.startsWith("{") || start.startsWith("[") || "\"lines\"" in translated
     }
 
     fun loadTranslationsFromDatabase(
@@ -132,7 +138,7 @@ object LyricsTranslationHelper {
         targetLanguage: String,
         mode: String
     ) {
-        if (lyricsEntity == null || lyricsEntity.translatedLyrics.isNullOrBlank()) {
+        if (lyricsEntity == null || lyricsEntity.translatedLyrics.isNullOrBlank() || looksLikeRawJson(lyricsEntity.translatedLyrics)) {
             _hasActiveTranslations.value = false
             lyrics.forEach { it.translatedTextFlow.value = null }
             return
@@ -220,7 +226,9 @@ object LyricsTranslationHelper {
                     // Check cache first
                     val cacheKey = getCacheKey(fullText, mode, targetLanguage)
                     val cachedTranslations = translationCache[cacheKey]
-                    if (cachedTranslations != null && cachedTranslations.size >= nonEmptyEntries.size) {
+                    if (cachedTranslations != null && cachedTranslations.size >= nonEmptyEntries.size &&
+                        !looksLikeRawJson(cachedTranslations.joinToString("\n"))
+                    ) {
                         // Use cached translations
                         nonEmptyEntries.forEachIndexed { idx, (originalIndex, _) ->
                             if (idx < cachedTranslations.size) {
@@ -310,7 +318,7 @@ object LyricsTranslationHelper {
 
                                             // Try to parse partial content and update UI progressively
                                             val partialContent = contentAccumulator.toString()
-                                            val partialResult = tryParsePartialTranslation(partialContent, nonEmptyEntries.size)
+                                            val partialResult = tryParsePartialTranslation(partialContent)
                                             if (partialResult.isNotEmpty()) {
                                                 // Update lyrics with partial translations as they become available
                                                 partialResult.forEachIndexed { idx, translation ->

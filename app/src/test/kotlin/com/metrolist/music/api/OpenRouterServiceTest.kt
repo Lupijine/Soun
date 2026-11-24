@@ -5,6 +5,8 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -23,6 +25,54 @@ class OpenRouterServiceTest {
             listOf("uno", "dos"),
             parseTranslationContent("""{"lines": ["uno", "dos"]}""", 2).getOrThrow(),
         )
+    }
+
+    @Test
+    fun `pretty-printed answers parse into lines, not json fragments`() {
+        val answer = "{\n  \"lines\": [\n    \"I beg of you, talk to me, my friends\",\n    \"An old photo\"\n  ]\n}"
+        assertEquals(
+            listOf("I beg of you, talk to me, my friends", "An old photo"),
+            parseTranslationContent(answer, 2).getOrThrow(),
+        )
+    }
+
+    @Test
+    fun `an answer that was cut off fails instead of showing raw json`() {
+        val cutOff = """{"lines": ["So far away from me", "The morning of yesterday", "I"""
+        assertTrue(parseTranslationContent(cutOff, 3).isFailure)
+    }
+
+    @Test
+    fun `text around the json is ignored`() {
+        assertEquals(
+            listOf("uno", "dos"),
+            parseTranslationContent("""Here it is: {"lines": ["uno", "dos"]} Enjoy!""", 2).getOrThrow(),
+        )
+    }
+
+    @Test
+    fun `line breaks inside a translated line are flattened`() {
+        assertEquals(
+            listOf("one two", "x"),
+            parseTranslationContent("""{"lines": ["one\ntwo", "x"]}""", 2).getOrThrow(),
+        )
+    }
+
+    @Test
+    fun `plain line answers still work`() {
+        assertEquals(listOf("uno", "dos"), parseTranslationContent("uno\ndos", 2).getOrThrow())
+    }
+
+    @Test
+    fun `streaming scan keeps only finished strings`() {
+        val partial = scanTranslatedLines("""{"lines": ["So far \"away\"", "caf\u00e9", "The morn""")!!
+        assertEquals(listOf("So far \"away\"", "café"), partial.lines)
+        assertFalse(partial.complete)
+
+        assertEquals(emptyList<String>(), scanTranslatedLines("{")!!.lines)
+        assertEquals(listOf("a"), scanTranslatedLines("""["a"]""")!!.lines)
+        assertTrue(scanTranslatedLines("""["a"]""")!!.complete)
+        assertNull(scanTranslatedLines("just text"))
     }
 
     @Test
