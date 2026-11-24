@@ -1224,4 +1224,6 @@
     <string name="soun_sleep_finish_song_desc">When time is up, pause after the current song</string>
     <string name="soun_sleep_is_default">Your default</string>
     <string name="soun_sleep_start">Start · %d min</string>
+    <string name="soun_glass_covers">Glass playlist covers</string>
+    <string name="soun_glass_covers_desc">Playlists without a cover get one made from the colours of their songs</string>
 </resources>

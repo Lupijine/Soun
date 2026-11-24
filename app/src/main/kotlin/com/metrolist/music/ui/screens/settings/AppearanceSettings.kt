@@ -203,6 +203,8 @@ fun AppearanceSettings(
         )
 
     val (densityScale, onDensityScaleChange) = rememberPreference(DensityScaleKey, defaultValue = 1f)
+    val (glassCovers, onGlassCoversChange) =
+        rememberPreference(com.metrolist.music.constants.GlassPlaylistCoversKey, defaultValue = true)
     var showDensityScaleDialog by rememberSaveable { mutableStateOf(false) }
 
     val (listenTogetherInTopBar, onListenTogetherInTopBarChange) =
@@ -734,6 +736,28 @@ fun AppearanceSettings(
                 title = stringResource(R.string.theme),
                 items =
                     buildList {
+                        // Soun: glass covers for playlists without a cover of their own.
+                        add(
+                            Material3SettingsItem(
+                                icon = painterResource(R.drawable.queue_music),
+                                title = { Text(stringResource(R.string.soun_glass_covers)) },
+                                description = { Text(stringResource(R.string.soun_glass_covers_desc)) },
+                                trailingContent = {
+                                    Switch(
+                                        checked = glassCovers,
+                                        onCheckedChange = onGlassCoversChange,
+                                        thumbContent = {
+                                            Icon(
+                                                painter = painterResource(id = if (glassCovers) R.drawable.check else R.drawable.close),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(SwitchDefaults.IconSize),
+                                            )
+                                        },
+                                    )
+                                },
+                                onClick = { onGlassCoversChange(!glassCovers) },
+                            ),
+                        )
                         add(
                             Material3SettingsItem(
                                 icon = painterResource(R.drawable.speed),

@@ -1158,6 +1158,7 @@ fun LocalPlaylistHeader(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         val songCount = if (playlist.songCount == 0) playlist.playlist.remoteSongCount ?: 0 else playlist.songCount
+        val glassCovers by rememberPreference(com.metrolist.music.constants.GlassPlaylistCoversKey, true)
         SounCollectionHeader(
             showActions = false,
             name = playlist.playlist.name,
@@ -1171,6 +1172,7 @@ fun LocalPlaylistHeader(
             enabled = songs.isNotEmpty(),
             onMore = openPlaylistMenu,
             moreEnabled = true,
+            glassCoverThumbnails = if (glassCovers) playlist.thumbnails else null,
         )
         if (coverBusy) LinearProgressIndicator(modifier = Modifier.width(160.dp).padding(top = 8.dp))
         Spacer(Modifier.height(12.dp))

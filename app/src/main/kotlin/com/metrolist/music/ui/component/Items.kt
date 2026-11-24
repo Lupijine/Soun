@@ -940,6 +940,17 @@ fun PlaylistListItem(
     },
     badges = badges,
     thumbnailContent = {
+        val glassCovers by rememberPreference(com.metrolist.music.constants.GlassPlaylistCoversKey, true)
+        if (glassCovers && !autoPlaylist && playlist.playlist.thumbnailUrl == null) {
+            // Soun: a glass cover made from the playlist's songs.
+            SounPlaylistCover(
+                name = playlist.playlist.name,
+                thumbnails = playlist.thumbnails,
+                shape = RoundedCornerShape(ThumbnailCornerRadius),
+                modifier = Modifier.size(ListThumbnailSize),
+            )
+            return@ListItem
+        }
         PlaylistThumbnail(
             thumbnails = playlist.thumbnails,
             size = ListThumbnailSize,
@@ -1040,6 +1051,17 @@ fun PlaylistGridItem(
     badges = badges,
     thumbnailContent = {
         val width = maxWidth
+        val glassCovers by rememberPreference(com.metrolist.music.constants.GlassPlaylistCoversKey, true)
+        if (glassCovers && !autoPlaylist && playlist.playlist.thumbnailUrl == null) {
+            // Soun: a glass cover made from the playlist's songs.
+            SounPlaylistCover(
+                name = playlist.playlist.name,
+                thumbnails = playlist.thumbnails,
+                shape = RoundedCornerShape(ThumbnailCornerRadius),
+                modifier = Modifier.size(width),
+            )
+            return@GridItem
+        }
         PlaylistThumbnail(
             thumbnails = playlist.thumbnails,
             size = width,

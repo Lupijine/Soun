@@ -33,9 +33,18 @@ internal fun SounCollectionHeader(
     moreEnabled: Boolean = enabled,
     showActions: Boolean = true,
     supportingContent: @Composable () -> Unit = {},
+    /** Soun: song covers for a glass cover when the collection has no cover of its own. */
+    glassCoverThumbnails: List<String>? = null,
 ) {
     Column(modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        if (artwork != null || thumbnail == null) {
+        if (artwork == null && thumbnail == null && glassCoverThumbnails != null) {
+            SounPlaylistCover(
+                name = name,
+                thumbnails = glassCoverThumbnails,
+                shape = RoundedCornerShape(28.dp),
+                modifier = Modifier.padding(top = 24.dp, bottom = 28.dp).size(216.dp),
+            )
+        } else if (artwork != null || thumbnail == null) {
             SounPlaylistArtwork(artwork, Modifier.padding(top = 12.dp, bottom = 16.dp).size(248.dp), colorSource = colorSource)
         } else {
             AsyncImage(thumbnail, null, contentScale = ContentScale.Crop,
