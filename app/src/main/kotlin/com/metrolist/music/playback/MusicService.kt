@@ -3346,6 +3346,8 @@ class MusicService :
             return
         }
 
+        if (mediaId != null && repairUnreadableDownload(mediaId, error)) return
+
         if (mediaId != null && hasExceededRetryLimit(mediaId)) {
             Timber.tag(TAG).w("Song $mediaId has exceeded retry limit, skipping")
             markSongAsFailed(mediaId)
@@ -3421,6 +3423,53 @@ class MusicService :
             stopOnError()
         }
     }
+
+    /** Songs whose saved copy was thrown away this session after it could not be read. */
+    private val repairedDownloads = mutableSetOf<String>()
+
+    /**
+     * Soun: a saved copy that ends partway (older versions could join two encodings of a song
+     * into one download) stopped the song after a few seconds every time, and retrying read the
+     * same bytes again. Such a copy is thrown away, downloaded again, and the song streams from
+     * the same second meanwhile.
+     */
+    private fun repairUnreadableDownload(
+        mediaId: String,
+        error: PlaybackException,
+    ): Boolean {
+        if (!isUnreadableAudioError(error)) return false
+        val savedBytes = cachedBytes(downloadCache, mediaId)
+        val cachedPlayerBytes = cachedBytes(playerCache, mediaId)
+        Timber.tag(STREAM_TAG).w(
+            "Unreadable audio for %s at %d ms: download %d bytes (recorded %s), player cache %d bytes (recorded %s), client=%s",
+            mediaId, player.currentPosition, savedBytes, cachedLength(downloadCache, mediaId),
+            cachedPlayerBytes, cachedLength(playerCache, mediaId), songUrlCache.clientName(mediaId),
+        )
+        if (savedBytes <= 0L || !repairedDownloads.add(mediaId)) return false
+
+        runCatching { downloadCache.removeResource(mediaId) }
+        runCatching { playerCache.removeResource(mediaId) }
+        songUrlCache.invalidate(mediaId)
+        downloadUtil.redownload(mediaId)
+
+        val index = player.currentMediaItemIndex
+        val position = player.currentPosition
+        retryJob?.cancel()
+        retryJob =
+            scope.launch {
+                delay(RETRY_DELAY_MS)
+                if (player.currentMediaItem?.mediaId != mediaId || index == C.INDEX_UNSET) return@launch
+                player.seekTo(index, position)
+                player.prepare()
+            }
+        return true
+    }
+
+    private fun isUnreadableAudioError(error: PlaybackException): Boolean =
+        error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED ||
+            generateSequence<Throwable>(error) { it.cause?.takeIf { cause -> cause !== it } }
+                .take(10)
+                .any { it is java.io.EOFException || it is androidx.media3.common.ParserException }
 
     /**
      * Performs aggressive cache clearing for a media item.
@@ -3789,40 +3838,45 @@ class MusicService :
         }
     }
 
-    private fun createCacheDataSource(): CacheDataSource.Factory =
-        CacheDataSource
-            .Factory()
-            .setCache(downloadCache)
-            .setUpstreamDataSourceFactory(
-                CacheDataSource
-                    .Factory()
-                    .setCache(playerCache)
-                    .setUpstreamDataSourceFactory(
-                        DefaultDataSource.Factory(
-                            this,
-                            // Soun: resolved YouTube streams are read in ranged pieces, so long
-                            // tracks keep loading instead of stalling on one open-ended request.
-                            ChunkedDataSource.Factory(
-                                OkHttpDataSource.Factory(
-                                    OkHttpClient
-                                        .Builder()
-                                        .proxy(YouTube.proxy)
-                                        .proxyAuthenticator { _, response ->
-                                            YouTube.proxyAuth?.let { auth ->
-                                                response.request
-                                                    .newBuilder()
-                                                    .header("Proxy-Authorization", auth)
-                                                    .build()
-                                            } ?: response.request
-                                        }.build(),
-                                ),
-                                chunkSizeBytes = ChunkedDataSource.PLAYBACK_CHUNK_SIZE_BYTES,
-                                onlyWhenHinted = true,
+    private fun createCacheDataSource(): DataSource.Factory {
+        val streamFactory =
+            CacheDataSource
+                .Factory()
+                .setCache(playerCache)
+                .setUpstreamDataSourceFactory(
+                    DefaultDataSource.Factory(
+                        this,
+                        // Soun: resolved YouTube streams are read in ranged pieces, so long
+                        // tracks keep loading instead of stalling on one open-ended request.
+                        ChunkedDataSource.Factory(
+                            OkHttpDataSource.Factory(
+                                OkHttpClient
+                                    .Builder()
+                                    .proxy(YouTube.proxy)
+                                    .proxyAuthenticator { _, response ->
+                                        YouTube.proxyAuth?.let { auth ->
+                                            response.request
+                                                .newBuilder()
+                                                .header("Proxy-Authorization", auth)
+                                                .build()
+                                        } ?: response.request
+                                    }.build(),
                             ),
+                            chunkSizeBytes = ChunkedDataSource.PLAYBACK_CHUNK_SIZE_BYTES,
+                            onlyWhenHinted = true,
                         ),
                     ),
-            ).setCacheWriteDataSinkFactory(null)
-            .setFlags(FLAG_IGNORE_CACHE_ON_ERROR)
+                )
+        val downloadedFactory =
+            CacheDataSource
+                .Factory()
+                .setCache(downloadCache)
+                .setUpstreamDataSourceFactory(streamFactory)
+                .setCacheWriteDataSinkFactory(null)
+                .setFlags(FLAG_IGNORE_CACHE_ON_ERROR)
+        // Soun: a streamed song never mixes in the bytes of an unfinished download.
+        return StreamOrDownloadDataSource.Factory(downloadedFactory, streamFactory)
+    }
 
     private var isSilenceSkipping = false
 
@@ -4132,22 +4186,28 @@ class MusicService :
             if (!shouldBypassCache) {
                 val usePlayerCache = dataStore.get(EnableSongCacheKey, true)
 
-                val contentLength = storedFormat?.contentLength
-                val requiredLength =
-                    when {
-                        dataSpec.length >= 0 -> dataSpec.length
-                        contentLength != null -> (contentLength - dataSpec.position).coerceAtLeast(1)
-                        else -> CHUNK_LENGTH // contentLength unknown yet — fall back to old probe size
-                    }
+                // Soun: a cache serves the request only if it holds the rest of the song, judged
+                // by the size it recorded itself. Otherwise the song is streamed; a request left
+                // unresolved would reach the network with no stream address.
+                fun holdsRest(cache: Cache): Boolean {
+                    val requiredLength =
+                        if (dataSpec.length >= 0) {
+                            dataSpec.length
+                        } else {
+                            val length = cachedLength(cache, mediaId) ?: storedFormat?.contentLength ?: return false
+                            (length - dataSpec.position).coerceAtLeast(1)
+                        }
+                    return cache.isCached(mediaId, dataSpec.position, requiredLength)
+                }
 
-                if (downloadCache.isCached(mediaId, dataSpec.position, requiredLength)) {
+                if (holdsRest(downloadCache)) {
                     recoverSongDeduped(mediaId)
                     return@Factory dataSpec
                 }
 
-                if (usePlayerCache && playerCache.isCached(mediaId, dataSpec.position, requiredLength)) {
+                if (usePlayerCache && holdsRest(playerCache)) {
                     recoverSongDeduped(mediaId)
-                    return@Factory dataSpec
+                    return@Factory dataSpec.buildUpon().setCustomData(StreamOrDownloadDataSource.FromPlayerCache).build()
                 }
 
                 songUrlCache[mediaId]?.let { cachedStream ->

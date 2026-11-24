@@ -107,126 +107,161 @@ constructor(
                 ),
         ) { dataSpec ->
             val mediaId = dataSpec.key ?: error("No media id")
-            val length = if (dataSpec.length >= 0) dataSpec.length else 1
 
-            if (playerCache.isCached(mediaId, dataSpec.position, length)) {
+            // A song the player cache holds whole is copied from there.
+            val playerCacheLength = cachedLength(playerCache, mediaId)
+            if (playerCacheLength != null && playerCache.isCached(mediaId, 0, playerCacheLength)) {
+                discardPartialDownloadOfAnotherStream(mediaId, playerCacheLength)
                 return@Factory dataSpec
             }
 
-            songUrlCache[mediaId]?.let { cachedStream ->
-                return@Factory dataSpec.withResolvedStream(cachedStream)
+            // Soun: every piece of a download must come from one and the same stream. YouTube
+            // serves a song in several encodings (formats, clients, re-encodes); bytes of one
+            // joined to the rest of another made a file that played for a few seconds and then
+            // stopped for good. So the request always carries the stream, and cached bytes that
+            // belong to another one are not used.
+            val stream = songUrlCache[mediaId] ?: resolveStream(mediaId)
+            discardPartialDownloadOfAnotherStream(mediaId, stream.contentLength)
+            if (cachedBytes(playerCache, mediaId) > 0L &&
+                (playerCacheLength == null || playerCacheLength != stream.contentLength)
+            ) {
+                Timber.tag(TAG).w("Not copying cached audio of $mediaId into its download: $playerCacheLength bytes recorded, stream has ${stream.contentLength}")
+                removeFromPlayerCache(mediaId)
             }
-            val cacheGeneration = songUrlCache.generation(mediaId)
-
-            val playbackData = runBlocking(Dispatchers.IO) {
-                val song = database.songEntity(mediaId)
-                InnerTubeXPlayer.playerResponseForPlayback(
-                    mediaId,
-                    audioQuality = audioQuality,
-                    connectivityManager = connectivityManager,
-                    contentHints = ContentHints(
-                        isExplicit = song?.explicit,
-                        isUploaded = song?.isUploaded,
-                    ),
-                    allowBoundedRange = false,
-                )
-            }.getOrThrow()
-            val format = playbackData.format
-
-            val actualContentLength =
-                format.contentLength?.takeIf { it > 0L } ?: run {
-                    val request = okhttp3.Request.Builder()
-                        .get()
-                        .url(playbackData.streamUrl)
-                        .apply {
-                            playbackData.streamHeaders.forEach { (name, value) ->
-                                header(name, value)
-                            }
-                        }
-                        .header("Range", "bytes=0-0")
-                        .build()
-                    try {
-                        streamHttpClient.newCall(request).execute().use { response ->
-                            downloadContentLength(
-                                statusCode = response.code,
-                                contentRange = response.header("Content-Range"),
-                                contentLength = response.header("Content-Length"),
-                            )
-                        }
-                    } catch (_: IOException) {
-                        null
-                    }
-                }
-
-            database.query {
-                if (actualContentLength != null) {
-                    upsert(
-                        FormatEntity(
-                            id = mediaId,
-                            itag = format.itag,
-                            mimeType = format.mimeType.substringBefore(";"),
-                            codecs =
-                                format.mimeType
-                                    .substringAfter("codecs=", missingDelimiterValue = "")
-                                    .substringBefore(";")
-                                    .trim()
-                                    .removeSurrounding("\""),
-                            bitrate = format.bitrate,
-                            sampleRate = format.audioSampleRate,
-                            contentLength = actualContentLength,
-                            loudnessDb = playbackData.audioConfig?.loudnessDb,
-                            perceptualLoudnessDb = playbackData.audioConfig?.perceptualLoudnessDb,
-                            playbackUrl = playbackData.playbackTracking?.videostatsPlaybackUrl?.baseUrl
-                        ),
-                    )
-                } else {
-                    deleteFormat(mediaId)
-                }
-
-                // Metadata registration only — dateDownload is intentionally NOT set here.
-                // It belongs solely to onDownloadChanged()'s STATE_COMPLETED branch below,
-                // which only fires once the download has actually finished. Setting it here
-                // (at URL-resolve time, i.e. the moment the download merely *starts*) would
-                // mark the song as "cached" before a single byte is written.
-                val existing = getSongByIdBlocking(mediaId)?.song
-                val updatedSong = existing ?: SongEntity(
-                    id = mediaId,
-                    title = playbackData.videoDetails?.title ?: "Unknown",
-                    duration = playbackData.videoDetails?.lengthSeconds?.toIntOrNull() ?: 0,
-                    thumbnailUrl = playbackData.videoDetails?.thumbnail?.thumbnails?.lastOrNull()?.url,
-                    dateDownload = null,
-                    isDownloaded = false
-                )
-
-                upsert(updatedSong)
-            }
-
-            val streamUrl = playbackData.streamUrl
-
-            songUrlCache.put(
-                mediaId = mediaId,
-                url = streamUrl,
-                requestHeaders = playbackData.streamHeaders,
-                clientName = playbackData.streamClient,
-                expiresInSeconds = playbackData.streamExpiresInSeconds,
-                requireBoundedRange = playbackData.requireBoundedRange,
-                rangeChunkSizeBytes = playbackData.rangeChunkSizeBytes,
-                useRangeChunks = playbackData.useRangeChunks,
-                contentLength = actualContentLength,
-                expectedGeneration = cacheGeneration,
-            )
-            dataSpec.withResolvedStream(
-                CachedStreamUrl(
-                    url = streamUrl,
-                    requestHeaders = playbackData.streamHeaders,
-                    clientName = playbackData.streamClient,
-                    requireBoundedRange = playbackData.requireBoundedRange,
-                    rangeChunkSizeBytes = playbackData.rangeChunkSizeBytes,
-                    useRangeChunks = playbackData.useRangeChunks,
-                    contentLength = actualContentLength,
-                ),
-            )
+            dataSpec.withResolvedStream(stream)
         }
+
+    /** Starts a download over (by failing this attempt) when the part already saved came from another stream. */
+    private fun discardPartialDownloadOfAnotherStream(mediaId: String, expectedLength: Long?) {
+        if (cachedBytes(downloadCache, mediaId) <= 0L) return
+        val savedLength = cachedLength(downloadCache, mediaId)
+        if (expectedLength == null || savedLength == expectedLength) return
+        Timber.tag(TAG).w("Partial download of $mediaId is from another stream ($savedLength bytes, now $expectedLength); starting over")
+        runCatching { downloadCache.removeResource(mediaId) }
+        throw IOException("The saved part of $mediaId came from another stream")
+    }
+
+    private fun resolveStream(mediaId: String): CachedStreamUrl {
+        val cacheGeneration = songUrlCache.generation(mediaId)
+
+        val playbackData = runBlocking(Dispatchers.IO) {
+            val song = database.songEntity(mediaId)
+            InnerTubeXPlayer.playerResponseForPlayback(
+                mediaId,
+                audioQuality = audioQuality,
+                connectivityManager = connectivityManager,
+                contentHints = ContentHints(
+                    isExplicit = song?.explicit,
+                    isUploaded = song?.isUploaded,
+                ),
+                allowBoundedRange = false,
+            )
+        }.getOrThrow()
+        val format = playbackData.format
+
+        val actualContentLength =
+            format.contentLength?.takeIf { it > 0L } ?: run {
+                val request = okhttp3.Request.Builder()
+                    .get()
+                    .url(playbackData.streamUrl)
+                    .apply {
+                        playbackData.streamHeaders.forEach { (name, value) ->
+                            header(name, value)
+                        }
+                    }
+                    .header("Range", "bytes=0-0")
+                    .build()
+                try {
+                    streamHttpClient.newCall(request).execute().use { response ->
+                        downloadContentLength(
+                            statusCode = response.code,
+                            contentRange = response.header("Content-Range"),
+                            contentLength = response.header("Content-Length"),
+                        )
+                    }
+                } catch (_: IOException) {
+                    null
+                }
+            }
+
+        database.query {
+            if (actualContentLength != null) {
+                upsert(
+                    FormatEntity(
+                        id = mediaId,
+                        itag = format.itag,
+                        mimeType = format.mimeType.substringBefore(";"),
+                        codecs =
+                            format.mimeType
+                                .substringAfter("codecs=", missingDelimiterValue = "")
+                                .substringBefore(";")
+                                .trim()
+                                .removeSurrounding("\""),
+                        bitrate = format.bitrate,
+                        sampleRate = format.audioSampleRate,
+                        contentLength = actualContentLength,
+                        loudnessDb = playbackData.audioConfig?.loudnessDb,
+                        perceptualLoudnessDb = playbackData.audioConfig?.perceptualLoudnessDb,
+                        playbackUrl = playbackData.playbackTracking?.videostatsPlaybackUrl?.baseUrl
+                    ),
+                )
+            } else {
+                deleteFormat(mediaId)
+            }
+
+            // Metadata registration only — dateDownload is intentionally NOT set here.
+            // It belongs solely to onDownloadChanged()'s STATE_COMPLETED branch below,
+            // which only fires once the download has actually finished. Setting it here
+            // (at URL-resolve time, i.e. the moment the download merely *starts*) would
+            // mark the song as "cached" before a single byte is written.
+            val existing = getSongByIdBlocking(mediaId)?.song
+            val updatedSong = existing ?: SongEntity(
+                id = mediaId,
+                title = playbackData.videoDetails?.title ?: "Unknown",
+                duration = playbackData.videoDetails?.lengthSeconds?.toIntOrNull() ?: 0,
+                thumbnailUrl = playbackData.videoDetails?.thumbnail?.thumbnails?.lastOrNull()?.url,
+                dateDownload = null,
+                isDownloaded = false
+            )
+
+            upsert(updatedSong)
+        }
+
+        val streamUrl = playbackData.streamUrl
+
+        songUrlCache.put(
+            mediaId = mediaId,
+            url = streamUrl,
+            requestHeaders = playbackData.streamHeaders,
+            clientName = playbackData.streamClient,
+            expiresInSeconds = playbackData.streamExpiresInSeconds,
+            requireBoundedRange = playbackData.requireBoundedRange,
+            rangeChunkSizeBytes = playbackData.rangeChunkSizeBytes,
+            useRangeChunks = playbackData.useRangeChunks,
+            contentLength = actualContentLength,
+            expectedGeneration = cacheGeneration,
+        )
+        return CachedStreamUrl(
+            url = streamUrl,
+            requestHeaders = playbackData.streamHeaders,
+            clientName = playbackData.streamClient,
+            requireBoundedRange = playbackData.requireBoundedRange,
+            rangeChunkSizeBytes = playbackData.rangeChunkSizeBytes,
+            useRangeChunks = playbackData.useRangeChunks,
+            contentLength = actualContentLength,
+        )
+    }
+
+    /**
+     * Soun: downloads a song again from scratch. Used when a finished download turns out to be
+     * unreadable partway (made from two encodings of the song by an older version).
+     */
+    fun redownload(songId: String) {
+        val request = downloads.value[songId]?.request ?: downloadManager.downloadIndex.getDownload(songId)?.request ?: return
+        songUrlCache.invalidate(songId)
+        DownloadService.sendRemoveDownload(context, ExoDownloadService::class.java, songId, false)
+        DownloadService.sendAddDownload(context, ExoDownloadService::class.java, request, false)
+    }
 
     val downloadNotificationHelper =
         DownloadNotificationHelper(context, ExoDownloadService.CHANNEL_ID)
@@ -484,3 +519,13 @@ internal fun downloadContentLength(
 
 private val PARTIAL_CONTENT_RANGE = Regex("""bytes\s+0-0/(\d+)""", RegexOption.IGNORE_CASE)
 private val UNSATISFIED_CONTENT_RANGE = Regex("""bytes\s+\*/(\d+)""", RegexOption.IGNORE_CASE)
+
+/** The size of [key]'s audio as recorded in [cache], if known. */
+internal fun cachedLength(cache: Cache, key: String): Long? =
+    androidx.media3.datasource.cache.ContentMetadata.getContentLength(cache.getContentMetadata(key))
+        .takeIf { it != androidx.media3.common.C.LENGTH_UNSET.toLong() && it > 0L }
+
+/** How many bytes of [key] [cache] holds. */
+internal fun cachedBytes(cache: Cache, key: String): Long =
+    runCatching { cache.getCachedBytes(key, 0L, Long.MAX_VALUE) }.getOrDefault(0L)
+
