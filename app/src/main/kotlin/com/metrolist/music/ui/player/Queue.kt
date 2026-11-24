@@ -240,17 +240,10 @@ fun Queue(
 
     val coroutineScope = rememberCoroutineScope()
     var showSleepTimerDialog by remember { mutableStateOf(false) }
-    val sleepTimerDefault by rememberPreference(SleepTimerDefaultKey, 30f)
-    var sleepTimerValue by remember { mutableFloatStateOf(sleepTimerDefault) }
-    val isAtDefault by remember {
-        derivedStateOf { sleepTimerValue.roundToInt() == sleepTimerDefault.roundToInt() }
-    }
-    LaunchedEffect(sleepTimerDefault) { sleepTimerValue = sleepTimerDefault }
-    val sleepTimerStopAfterCurrentSong by rememberPreference(SleepTimerStopAfterCurrentSongKey, false)
-    val sleepTimerFadeOut by rememberPreference(SleepTimerFadeOutKey, false)
     val sleepTimerEnabled = remember(
         playerConnection.service.sleepTimer?.triggerTime,
-        playerConnection.service.sleepTimer?.pauseWhenSongEnd
+        playerConnection.service.sleepTimer?.pauseWhenSongEnd,
+        playerConnection.service.sleepTimer?.stopAt,
     ) {
         playerConnection.service.sleepTimer?.isActive ?: false
     }
@@ -259,12 +252,7 @@ fun Queue(
     LaunchedEffect(sleepTimerEnabled) {
         if (sleepTimerEnabled) {
             while (isActive) {
-                sleepTimerTimeLeft =
-                    if (playerConnection.service.sleepTimer?.pauseWhenSongEnd == true) {
-                        playerConnection.player.duration - playerConnection.player.currentPosition
-                    } else {
-                        (playerConnection.service.sleepTimer?.triggerTime ?: 0L) - System.currentTimeMillis()
-                    }
+                sleepTimerTimeLeft = playerConnection.service.sleepTimer?.remainingMs() ?: 0L
                 delay(1000L)
             }
         }
@@ -622,147 +610,11 @@ fun Queue(
             }
 
             if (showSleepTimerDialog) {
-                ActionPromptDialog(
-                    titleBar = {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
-                        ) {
-                            Text(
-                                text =
-                                    stringResource(
-                                        if (sleepTimerEnabled) R.string.sleep_timer_active else R.string.sleep_timer,
-                                    ),
-                                overflow = TextOverflow.Ellipsis,
-                                maxLines = 1,
-                                style = MaterialTheme.typography.headlineSmall,
-                            )
-                        }
-                    },
+                // Soun: the redesigned glass sleep timer (time, or the end of this song, part or album).
+                SounSleepTimerSheet(
+                    playerConnection = playerConnection,
                     onDismiss = { showSleepTimerDialog = false },
-                    onConfirm = {
-                        showSleepTimerDialog = false
-                        if (sleepTimerEnabled) {
-                            playerConnection.service.sleepTimer?.clear()
-                        } else {
-                            playerConnection.service.sleepTimer?.start(
-                                minute = sleepTimerValue.roundToInt(),
-                                stopAfterCurrentSong = sleepTimerStopAfterCurrentSong,
-                                fadeOut = sleepTimerFadeOut,
-                            )
-                        }
-                    },
-                    onCancel = {
-                        showSleepTimerDialog = false
-                    },
-                    onReset =
-                        if (sleepTimerEnabled) {
-                            null
-                        } else {
-                            { sleepTimerValue = sleepTimerDefault }
-                        },
-                    confirmText = if (sleepTimerEnabled) stringResource(R.string.sleep_timer_turn_off) else null,
-                    content = {
-                        if (sleepTimerEnabled) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                if (playerConnection.service.sleepTimer?.pauseWhenSongEnd == true) {
-                                    Text(
-                                        text = stringResource(R.string.end_of_song),
-                                        style = MaterialTheme.typography.headlineMedium,
-                                    )
-                                } else {
-                                    Text(
-                                        text = stringResource(R.string.sleep_timer_time_remaining),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                    )
-                                    Spacer(Modifier.height(8.dp))
-                                    Text(
-                                        text = makeTimeString(sleepTimerTimeLeft),
-                                        style = MaterialTheme.typography.headlineMedium,
-                                    )
-                                }
-                                if (playerConnection.service.sleepTimer?.fadeOutEnabled == true) {
-                                    Spacer(Modifier.height(8.dp))
-                                    Text(
-                                        text = stringResource(R.string.sleep_timer_fade_out_title),
-                                        style = MaterialTheme.typography.bodySmall,
-                                    )
-                                }
-                            }
-                        } else {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text =
-                                    pluralStringResource(
-                                        R.plurals.minute,
-                                        sleepTimerValue.roundToInt(),
-                                        sleepTimerValue.roundToInt(),
-                                    ),
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
-
-                            Spacer(Modifier.height(16.dp))
-
-                            Slider(
-                                value = sleepTimerValue,
-                                onValueChange = { sleepTimerValue = it },
-                                valueRange = 5f..120f,
-                                steps = (120 - 5) / 5 - 1,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-
-                            Spacer(Modifier.height(8.dp))
-
-                            Column(
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                if (isAtDefault) {
-                                    Button(
-                                        onClick = {
-                                            coroutineScope.launch {
-                                                context.safeDataStoreEdit { settings ->
-                                                    settings[SleepTimerDefaultKey] = sleepTimerValue
-                                                }
-                                            }
-                                            showNotice(String.format(sleepTimerDefaultSetTemplate, sleepTimerValue.roundToInt()))
-                                        },
-                                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary,
-                                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                                        ),
-                                    ) {
-                                        Text(stringResource(R.string.set_as_default))
-                                    }
-                                } else {
-                                    OutlinedButton(
-                                        onClick = {
-                                            coroutineScope.launch {
-                                                context.safeDataStoreEdit { settings ->
-                                                    settings[SleepTimerDefaultKey] = sleepTimerValue
-                                                }
-                                            }
-                                            showNotice(String.format(sleepTimerDefaultSetTemplate, sleepTimerValue.roundToInt()))
-                                        },
-                                    ) {
-                                        Text(stringResource(R.string.set_as_default))
-                                    }
-                                }
-
-                                OutlinedButton(
-                                    onClick = {
-                                        showSleepTimerDialog = false
-                                        playerConnection.service.sleepTimer?.start(
-                                            minute = -1,
-                                        )
-                                    },
-                                ) {
-                                    Text(stringResource(R.string.end_of_song))
-                                }
-                            }
-                        }
-                        }
-                    },
+                    showNotice = showNotice,
                 )
             }
         },

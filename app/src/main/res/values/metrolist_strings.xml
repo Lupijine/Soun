@@ -1200,4 +1200,28 @@
         <item quantity="one">%d saved</item>
         <item quantity="other">%d saved</item>
     </plurals>
+    <string name="soun_sleep_subtitle">Pause the music after a while</string>
+    <string name="soun_sleep_running_subtitle">The music will pause on its own</string>
+    <string name="soun_sleep_at_end_song">at the end of this song</string>
+    <string name="soun_sleep_at_end_part">at the end of this part</string>
+    <string name="soun_sleep_at_end_album">at the end of this album</string>
+    <string name="soun_sleep_stops_at">Pauses at %s</string>
+    <string name="soun_sleep_add">+%d min</string>
+    <string name="soun_sleep_done">Done</string>
+    <string name="soun_sleep_less">5 minutes less</string>
+    <string name="soun_sleep_more">5 minutes more</string>
+    <plurals name="soun_sleep_minutes_unit">
+        <item quantity="one">minute</item>
+        <item quantity="other">minutes</item>
+    </plurals>
+    <string name="soun_sleep_or_end_of">Or at the end of</string>
+    <string name="soun_sleep_this_song">This song</string>
+    <string name="soun_sleep_this_part">This part</string>
+    <string name="soun_sleep_this_album">This album</string>
+    <string name="soun_sleep_fade">Fade out</string>
+    <string name="soun_sleep_fade_desc">Lower the volume slowly over the last minute</string>
+    <string name="soun_sleep_finish_song">Let the song finish</string>
+    <string name="soun_sleep_finish_song_desc">When time is up, pause after the current song</string>
+    <string name="soun_sleep_is_default">Your default</string>
+    <string name="soun_sleep_start">Start · %d min</string>
 </resources>
