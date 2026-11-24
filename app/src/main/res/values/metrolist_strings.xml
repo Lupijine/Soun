@@ -1140,4 +1140,6 @@
     <string name="soun_moment_saved">Moment saved at %s</string>
     <string name="soun_share_from">Share from %s</string>
     <string name="soun_share_from_description">A link that starts playing at this second</string>
+    <string name="soun_beat_background">Background moves with the beat</string>
+    <string name="soun_beat_background_desc">The light behind the glass pulses with the music while the player is open</string>
 </resources>

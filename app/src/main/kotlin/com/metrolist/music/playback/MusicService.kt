@@ -4296,6 +4296,8 @@ class MusicService :
                         normalizationProcessor,
                         eqProcessor,
                         silenceProcessor,
+                        // Soun: measures the beat for the player background (pass-through).
+                        com.metrolist.music.playback.audio.BeatAudioProcessor(),
                     ),
                     SilenceSkippingAudioProcessor(2_000_000, 20_000, 256),
                     SonicAudioProcessor(),
