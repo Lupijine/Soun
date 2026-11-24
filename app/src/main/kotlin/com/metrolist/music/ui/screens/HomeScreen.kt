@@ -150,6 +150,14 @@ import com.metrolist.music.ui.component.SpeedDialGridItem
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.YouTubeListItem
 import com.metrolist.music.ui.component.YourWeekCard
+import com.metrolist.music.ui.component.DriftedHomeCard
+import com.metrolist.music.ui.component.MomentsHomeCard
+import com.metrolist.music.ui.component.NewReleasesHomeCard
+import com.metrolist.music.ui.component.OnThisDayHomeCard
+import com.metrolist.music.ui.component.ResumeHomeCard
+import com.metrolist.music.ui.component.StreakHomeCard
+import com.metrolist.music.ui.component.TimeOfDayHomeCard
+import com.metrolist.music.ui.component.labelRes
 import com.metrolist.music.ui.component.shimmer.GridItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.component.shimmer.TextPlaceholder
@@ -682,6 +690,12 @@ fun HomeScreen(
     val dailyDiscover by viewModel.dailyDiscover.collectAsStateWithLifecycle()
     val communityPlaylists by viewModel.communityPlaylists.collectAsStateWithLifecycle()
     val weekSummary by viewModel.weekSummary.collectAsStateWithLifecycle()
+    // Soun: the listening cards under "Your week".
+    val homeCards by viewModel.homeCards.collectAsStateWithLifecycle()
+    val resumeCard by viewModel.resumeCard.collectAsStateWithLifecycle()
+    val cardContext = LocalContext.current
+    val recentReleases by remember { com.metrolist.music.utils.SounReleaseWatcher.recent(cardContext) }.collectAsStateWithLifecycle()
+    val savedMoments by remember { com.metrolist.music.utils.SounMoments.moments(cardContext) }.collectAsStateWithLifecycle()
 
     val allLocalItems by viewModel.allLocalItems.collectAsStateWithLifecycle()
     val allYtItems by viewModel.allYtItems.collectAsStateWithLifecycle()
@@ -1240,6 +1254,119 @@ fun HomeScreen(
                             YourWeekCard(
                                 summary = summary,
                                 onClick = { navController.navigate("stats") },
+                                modifier = Modifier.animateItem(),
+                            )
+                        }
+                    }
+
+                    // Soun: more listening cards; each shows only when there is something to show.
+                    resumeCard?.takeIf { it.song.id != mediaMetadata?.id }?.let { card ->
+                        item(key = "soun_card_resume") {
+                            ResumeHomeCard(
+                                card = card,
+                                onResume = {
+                                    if (!isListenTogetherGuest) {
+                                        playerConnection.playQueue(
+                                            com.metrolist.music.utils.StartAtQueue(
+                                                YouTubeQueue(WatchEndpoint(videoId = card.song.id), card.song.toMediaMetadata()),
+                                                card.positionMs,
+                                            ),
+                                        )
+                                    }
+                                },
+                                onStartOver = {
+                                    if (!isListenTogetherGuest) {
+                                        viewModel.forgetResumePosition(card.song.id) {
+                                            playerConnection.playQueue(
+                                                YouTubeQueue(WatchEndpoint(videoId = card.song.id), card.song.toMediaMetadata()),
+                                            )
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.animateItem(),
+                            )
+                        }
+                    }
+                    recentReleases?.takeIf { it.isNotEmpty() }?.let { releases ->
+                        item(key = "soun_card_releases") {
+                            NewReleasesHomeCard(
+                                releases = releases,
+                                onOpen = { navController.navigate("album/${it.browseId}") },
+                                onPlay = { release ->
+                                    if (!isListenTogetherGuest) {
+                                        release.playlistId?.let { playlistId ->
+                                            playerConnection.playQueue(YouTubeQueue(WatchEndpoint(playlistId = playlistId)))
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.animateItem(),
+                            )
+                        }
+                    }
+                    homeCards.timeOfDay?.let { mix ->
+                        item(key = "soun_card_time_of_day") {
+                            val title = stringResource(mix.period.labelRes())
+                            TimeOfDayHomeCard(
+                                mix = mix,
+                                onPlay = {
+                                    if (!isListenTogetherGuest) {
+                                        playerConnection.playQueue(ListQueue(title = title, items = mix.songs.map { it.toMediaItem() }))
+                                    }
+                                },
+                                modifier = Modifier.animateItem(),
+                            )
+                        }
+                    }
+                    homeCards.streak?.let { streak ->
+                        item(key = "soun_card_streak") {
+                            StreakHomeCard(
+                                streak = streak,
+                                onClick = { navController.navigate("stats") },
+                                modifier = Modifier.animateItem(),
+                            )
+                        }
+                    }
+                    homeCards.onThisDay.takeIf { it.isNotEmpty() }?.let { windows ->
+                        item(key = "soun_card_on_this_day") {
+                            val title = stringResource(R.string.soun_card_on_this_day_title)
+                            OnThisDayHomeCard(
+                                windows = windows,
+                                onPlay = { window ->
+                                    if (!isListenTogetherGuest) {
+                                        playerConnection.playQueue(ListQueue(title = title, items = window.songs.map { it.toMediaItem() }))
+                                    }
+                                },
+                                modifier = Modifier.animateItem(),
+                            )
+                        }
+                    }
+                    homeCards.drifted?.let { drifted ->
+                        item(key = "soun_card_drifted") {
+                            val title = stringResource(R.string.soun_card_drifted_title)
+                            DriftedHomeCard(
+                                drifted = drifted,
+                                onShuffle = {
+                                    if (!isListenTogetherGuest) {
+                                        playerConnection.playQueue(ListQueue(title = title, items = drifted.songs.shuffled().map { it.toMediaItem() }))
+                                    }
+                                },
+                                onAddToQueue = {
+                                    if (!isListenTogetherGuest) playerConnection.addToQueue(drifted.songs.map { it.toMediaItem() })
+                                },
+                                modifier = Modifier.animateItem(),
+                            )
+                        }
+                    }
+                    savedMoments?.takeIf { it.isNotEmpty() }?.let { moments ->
+                        item(key = "soun_card_moments") {
+                            MomentsHomeCard(
+                                moments = moments,
+                                onPlay = { moment ->
+                                    if (!isListenTogetherGuest) {
+                                        playerConnection.playQueue(com.metrolist.music.utils.SounMoments.queueFrom(moment.songId, moment.positionMs))
+                                    }
+                                },
+                                onOpenAll = { navController.navigate("moments") },
                                 modifier = Modifier.animateItem(),
                             )
                         }

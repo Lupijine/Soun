@@ -63,6 +63,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
@@ -180,6 +181,66 @@ class HomeViewModel @Inject constructor(
 
     fun refreshWeekSummary() {
         weekToday.value = LocalDate.now()
+    }
+
+    /**
+     * Soun: the listening cards under "Your week" (streak, on this day, songs you drifted from,
+     * your sound at this hour). Rebuilt when a play is recorded or the day rolls over.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class, kotlinx.coroutines.FlowPreview::class)
+    val homeCards: StateFlow<com.metrolist.music.utils.HomeCards> =
+        weekToday
+            .flatMapLatest { today ->
+                database.playCountInRange(today.minusDays(400).atStartOfDay(), LocalDateTime.now().plusYears(1))
+                    .distinctUntilChanged()
+                    .debounce(1_000)
+                    .mapLatest { com.metrolist.music.utils.loadHomeCards(database) }
+            }
+            .flowOn(Dispatchers.IO)
+            .catch { error ->
+                reportException(error)
+                emit(com.metrolist.music.utils.HomeCards())
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), com.metrolist.music.utils.HomeCards())
+
+    /** Soun: the unfinished long track to pick up, with where it stopped and its chapter. */
+    data class ResumeCard(
+        val song: Song,
+        val positionMs: Long,
+        val chapterTitle: String?,
+        val chapterIndex: Int,
+        val chapterCount: Int,
+    )
+
+    private val chapterCache by lazy { com.metrolist.music.playback.ChapterRepository(context) }
+
+    val resumeCard: StateFlow<ResumeCard?> =
+        database.resumableLongTrack()
+            .map { song ->
+                val position = song?.song?.playbackPosition ?: return@map null
+                val chapters = chapterCache.cached(song.id).orEmpty()
+                val index = chapters.indexOfLast { it.startMs <= position }
+                ResumeCard(
+                    song = song,
+                    positionMs = position,
+                    chapterTitle = chapters.getOrNull(index)?.title?.takeIf { it.isNotBlank() },
+                    chapterIndex = index,
+                    chapterCount = chapters.size,
+                )
+            }
+            .flowOn(Dispatchers.IO)
+            .catch { error ->
+                reportException(error)
+                emit(null)
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Soun: "Start over" on the resume card forgets the saved position first. */
+    fun forgetResumePosition(songId: String, then: () -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            database.updatePlaybackPosition(songId, null)
+            kotlinx.coroutines.withContext(Dispatchers.Main) { then() }
+        }
     }
 
     val speedDialItems: StateFlow<List<YTItem>> =

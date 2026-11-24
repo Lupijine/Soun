@@ -122,6 +122,10 @@ class ChapterRepository(context: Context) {
         }
     }
 
+    /** Chapters already found for [videoId], without going to the network; null if never looked up. */
+    fun cached(videoId: String): List<Chapter>? =
+        memory.get(videoId) ?: prefs.getString(videoId, null)?.let(::decode)
+
     private suspend fun fetchDescription(videoId: String): String? {
         for (client in listOf(YouTubeClient.ANDROID_VR_NO_AUTH, YouTubeClient.WEB_REMIX, YouTubeClient.IOS)) {
             val description =

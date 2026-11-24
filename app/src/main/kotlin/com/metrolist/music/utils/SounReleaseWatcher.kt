@@ -94,7 +94,83 @@ object SounReleaseWatcher {
             prefs.edit().putStringSet(key, (seen.orEmpty() + releases.map { it.browseId }).toSet()).apply()
             delay(600)
         }
-        if (fresh.isNotEmpty()) notify(app, fresh)
+        if (fresh.isNotEmpty()) {
+            remember(app, fresh)
+            notify(app, fresh)
+        }
+    }
+
+    /* Recent releases, for the home screen card ---------------------------------------- */
+
+    private const val KEY_RECENT = "recent"
+    private const val RECENT_KEEP_DAYS = 21L
+    private const val RECENT_MAX = 12
+
+    /** A release the watcher found, kept for a few weeks. */
+    data class FoundRelease(
+        val browseId: String,
+        val playlistId: String?,
+        val title: String,
+        val artist: String,
+        val thumbnailUrl: String?,
+        val foundAt: Long,
+    )
+
+    private val recentState = kotlinx.coroutines.flow.MutableStateFlow<List<FoundRelease>?>(null)
+
+    /** Releases found in the last [RECENT_KEEP_DAYS] days, newest first. */
+    fun recent(context: Context): kotlinx.coroutines.flow.StateFlow<List<FoundRelease>?> {
+        if (recentState.value == null) recentState.value = loadRecent(context.applicationContext)
+        return recentState
+    }
+
+    private fun remember(context: Context, fresh: List<Pair<String, AlbumItem>>) {
+        val now = System.currentTimeMillis()
+        val added =
+            fresh.map { (artistName, album) ->
+                FoundRelease(
+                    browseId = album.browseId,
+                    playlistId = album.playlistId.takeIf { it.isNotBlank() },
+                    title = album.title,
+                    artist = artistName,
+                    thumbnailUrl = album.thumbnail,
+                    foundAt = now,
+                )
+            }
+        val merged = (added + loadRecent(context)).distinctBy { it.browseId }.take(RECENT_MAX)
+        recentState.value = merged
+        val array = org.json.JSONArray()
+        merged.forEach {
+            array.put(
+                org.json.JSONObject()
+                    .put("id", it.browseId)
+                    .put("pl", it.playlistId ?: "")
+                    .put("title", it.title)
+                    .put("artist", it.artist)
+                    .put("thumb", it.thumbnailUrl ?: "")
+                    .put("at", it.foundAt),
+            )
+        }
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_RECENT, array.toString()).apply()
+    }
+
+    private fun loadRecent(context: Context): List<FoundRelease> {
+        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_RECENT, null) ?: return emptyList()
+        val cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(RECENT_KEEP_DAYS)
+        return runCatching {
+            val array = org.json.JSONArray(raw)
+            (0 until array.length()).map { i ->
+                val o = array.getJSONObject(i)
+                FoundRelease(
+                    browseId = o.getString("id"),
+                    playlistId = o.optString("pl").takeIf { it.isNotBlank() },
+                    title = o.optString("title"),
+                    artist = o.optString("artist"),
+                    thumbnailUrl = o.optString("thumb").takeIf { it.isNotBlank() },
+                    foundAt = o.optLong("at"),
+                )
+            }.filter { it.foundAt >= cutoff }
+        }.getOrDefault(emptyList())
     }
 
     private fun notify(context: Context, releases: List<Pair<String, AlbumItem>>) {

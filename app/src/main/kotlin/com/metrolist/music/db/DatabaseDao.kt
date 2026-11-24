@@ -651,6 +651,68 @@ interface DatabaseDao {
     @Query("SELECT COUNT(*) FROM event WHERE timestamp > :fromTimeStamp AND timestamp <= :toTimeStamp")
     fun playCountInRange(fromTimeStamp: LocalDateTime, toTimeStamp: LocalDateTime): Flow<Int>
 
+    // Soun home cards ------------------------------------------------------------------------
+
+    /** The long track (20 min+) most recently played that has a saved position to resume. */
+    @Transaction
+    @RewriteQueriesToDropUnusedColumns
+    @Query(
+        """
+        SELECT song.* FROM song
+        JOIN (SELECT songId, MAX(timestamp) AS lastPlayed FROM event GROUP BY songId) AS recent
+          ON recent.songId = song.id
+        WHERE song.playbackPosition IS NOT NULL
+          AND song.playbackPosition >= :minPositionMs
+          AND song.duration >= :minDurationS
+          AND song.isEpisode = 0
+        ORDER BY recent.lastPlayed DESC
+        LIMIT 1
+        """,
+    )
+    fun resumableLongTrack(
+        minPositionMs: Long = 30_000L,
+        minDurationS: Int = 20 * 60,
+    ): Flow<Song?>
+
+    /** Songs played at least [minPlays] times whose last play was before [before]. */
+    @Query(
+        """
+        SELECT songId, COUNT(1) AS plays, SUM(playTime) AS playTime, MAX(timestamp) AS lastPlayed
+        FROM event
+        GROUP BY songId
+        HAVING plays >= :minPlays AND lastPlayed < :before
+        ORDER BY plays DESC
+        LIMIT :limit
+        """,
+    )
+    suspend fun driftedSongStats(before: LocalDateTime, minPlays: Int, limit: Int): List<com.metrolist.music.utils.SongPlayStats>
+
+    /** The songs played most in a time range. */
+    @Query(
+        """
+        SELECT songId, COUNT(1) AS plays, SUM(playTime) AS playTime, MAX(timestamp) AS lastPlayed
+        FROM event
+        WHERE timestamp > :fromTimeStamp AND timestamp <= :toTimeStamp
+        GROUP BY songId
+        ORDER BY playTime DESC
+        LIMIT :limit
+        """,
+    )
+    suspend fun songStatsInRange(fromTimeStamp: LocalDateTime, toTimeStamp: LocalDateTime, limit: Int): List<com.metrolist.music.utils.SongPlayStats>
+
+    /** The songs played most during these hours of the day (timestamps are local wall-clock time). */
+    @Query(
+        """
+        SELECT songId, COUNT(1) AS plays, SUM(playTime) AS playTime, MAX(timestamp) AS lastPlayed
+        FROM event
+        WHERE timestamp > :fromTimeStamp AND ((timestamp / 3600000) % 24) IN (:hours)
+        GROUP BY songId
+        ORDER BY playTime DESC
+        LIMIT :limit
+        """,
+    )
+    suspend fun songStatsAtHours(fromTimeStamp: LocalDateTime, hours: List<Int>, limit: Int): List<com.metrolist.music.utils.SongPlayStats>
+
     @Query("SELECT SUM(playTime) FROM event WHERE songId = :songId")
     fun getTotalPlayTimeForSong(songId: String): Long?
 

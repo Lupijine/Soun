@@ -1142,4 +1142,64 @@
     <string name="soun_share_from_description">A link that starts playing at this second</string>
     <string name="soun_beat_background">Background moves with the beat</string>
     <string name="soun_beat_background_desc">The light behind the glass pulses with the music while the player is open</string>
+    <string name="soun_card_resume_title">Pick up where you left off</string>
+    <string name="soun_card_resume_part">Part %1$d of %2$d</string>
+    <string name="soun_card_resume_left">%s left</string>
+    <string name="soun_card_resume_at">Resume at %s</string>
+    <string name="soun_card_streak_title">Listening streak</string>
+    <plurals name="soun_card_streak_best">
+        <item quantity="one">Best: %d day</item>
+        <item quantity="other">Best: %d days</item>
+    </plurals>
+    <plurals name="soun_card_streak_days">
+        <item quantity="one">day in a row</item>
+        <item quantity="other">days in a row</item>
+    </plurals>
+    <string name="soun_card_streak_today_done">You listened today, nice</string>
+    <string name="soun_card_streak_keep">Listen today to make it %d</string>
+    <string name="soun_card_on_this_day_title">On this day</string>
+    <string name="soun_card_range_month_short">1 mo</string>
+    <string name="soun_card_range_half_short">6 mo</string>
+    <string name="soun_card_range_year_short">1 yr</string>
+    <string name="soun_card_range_month">A month ago today</string>
+    <string name="soun_card_range_half">Six months ago today</string>
+    <string name="soun_card_range_year">A year ago today</string>
+    <plurals name="soun_card_on_this_day_plays">
+        <item quantity="one">You played it once that week</item>
+        <item quantity="other">You played it %d times that week</item>
+    </plurals>
+    <string name="soun_card_on_this_day_play">Play that week</string>
+    <plurals name="soun_card_songs">
+        <item quantity="one">%d song</item>
+        <item quantity="other">%d songs</item>
+    </plurals>
+    <string name="soun_card_drifted_title">Songs you drifted from</string>
+    <string name="soun_card_drifted_text">You played each of these %1$d+ times, but not since %2$s</string>
+    <string name="soun_card_drifted_shuffle">Shuffle them</string>
+    <string name="soun_card_hour_yours">your hour</string>
+    <string name="soun_card_hour_text">You listen most around %s</string>
+    <string name="soun_card_period_morning">Mornings</string>
+    <string name="soun_card_period_afternoon">Afternoons</string>
+    <string name="soun_card_period_evening">Evenings</string>
+    <string name="soun_card_period_night">Late nights</string>
+    <string name="soun_card_period_morning_title">What you play in the morning</string>
+    <string name="soun_card_period_afternoon_title">What you play in the afternoon</string>
+    <string name="soun_card_period_evening_title">What you play in the evening</string>
+    <string name="soun_card_period_night_title">What you play when it gets late</string>
+    <string name="soun_card_period_morning_play">Play your morning mix</string>
+    <string name="soun_card_period_afternoon_play">Play your afternoon mix</string>
+    <string name="soun_card_period_evening_play">Play your evening mix</string>
+    <string name="soun_card_period_night_play">Play your late-night mix</string>
+    <string name="soun_card_releases_title">New from artists you follow</string>
+    <string name="soun_card_releases_new">NEW</string>
+    <string name="soun_card_releases_today">Today</string>
+    <plurals name="soun_card_releases_days_ago">
+        <item quantity="one">Yesterday</item>
+        <item quantity="other">%d days ago</item>
+    </plurals>
+    <string name="soun_card_moments_title">Your moments</string>
+    <plurals name="soun_card_moments_saved">
+        <item quantity="one">%d saved</item>
+        <item quantity="other">%d saved</item>
+    </plurals>
 </resources>
