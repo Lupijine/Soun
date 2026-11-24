@@ -254,6 +254,11 @@
             android:permission="android.permission.BIND_JOB_SERVICE" />
 
         <service
+            android:name=".utils.SounReleaseJobService"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+
+        <service
             android:name=".playback.ExoDownloadService"
             android:exported="false"
             android:foregroundServiceType="dataSync">

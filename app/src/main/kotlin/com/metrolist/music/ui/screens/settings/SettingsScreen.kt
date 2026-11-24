@@ -56,6 +56,8 @@ fun SettingsScreen(
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
     var checkingForUpdate by remember { mutableStateOf(false) }
+    val (newReleaseAlerts, onNewReleaseAlertsChange) =
+        com.metrolist.music.utils.rememberPreference(com.metrolist.music.constants.NewReleaseNotificationsKey, defaultValue = true)
     val updateScope = rememberCoroutineScope()
     val isAndroid12OrLater = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val hasAndroidAuto = remember {
@@ -267,6 +269,27 @@ fun SettingsScreen(
                                 }
                             }
                         },
+                    )
+                )
+                // Soun: notifications for new albums and singles from followed artists.
+                add(
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.notification),
+                        title = { Text(stringResource(R.string.soun_new_releases_setting)) },
+                        description = {
+                            Text(
+                                text = stringResource(R.string.soun_new_releases_setting_desc),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        trailingContent = {
+                            androidx.compose.material3.Switch(
+                                checked = newReleaseAlerts,
+                                onCheckedChange = onNewReleaseAlertsChange,
+                            )
+                        },
+                        onClick = { onNewReleaseAlertsChange(!newReleaseAlerts) },
                     )
                 )
                 val showChangelog = com.metrolist.music.LocalChangelogState.current

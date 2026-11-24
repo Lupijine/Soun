@@ -1124,4 +1124,13 @@
     <string name="soun_chapter_untitled">Part %d</string>
     <string name="soun_resumed_at">Resumed at %s</string>
     <string name="soun_start_over">Start over</string>
+    <string name="soun_new_release_title">New from %s</string>
+    <string name="soun_new_releases_channel">New releases</string>
+    <string name="soun_new_releases_channel_desc">New albums and singles from artists you follow</string>
+    <string name="soun_new_releases_setting">New release alerts</string>
+    <string name="soun_new_releases_setting_desc">A notification when an artist you follow puts out an album or single</string>
+    <plurals name="soun_new_releases_more">
+        <item quantity="one">%d more new release</item>
+        <item quantity="other">%d more new releases</item>
+    </plurals>
 </resources>
