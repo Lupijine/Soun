@@ -15,6 +15,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.io.InterruptedIOException
+import java.net.SocketTimeoutException
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -27,6 +31,8 @@ class ChunkedDataSourceTest {
         private val maxResponseBytes: Long = Long.MAX_VALUE,
         /** For each new connection in turn: drop it after this many bytes (0: before any data). */
         failAfterBytes: List<Int> = emptyList(),
+        /** Fail like a stalled connection (OkHttp's read timeout) instead of a dropped one. */
+        private val stall: Boolean = false,
     ) : DataSource.Factory {
         val requests = mutableListOf<DataSpec>()
         private val failures = ArrayDeque(failAfterBytes)
@@ -59,7 +65,16 @@ class ChunkedDataSourceTest {
             }
 
             override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
-                if (failAfter != null && sent >= failAfter) throw IOException("connection dropped")
+                if (failAfter != null && sent >= failAfter) {
+                    if (stall) {
+                        throw HttpDataSource.HttpDataSourceException.createForIOException(
+                            SocketTimeoutException("timeout"),
+                            current!!,
+                            HttpDataSource.HttpDataSourceException.TYPE_READ,
+                        )
+                    }
+                    throw IOException("connection dropped")
+                }
                 if (pos >= end) return C.RESULT_END_OF_INPUT
                 var n = minOf(length.toLong(), end - pos).toInt()
                 if (failAfter != null) n = minOf(n, failAfter - sent)
@@ -184,6 +199,31 @@ class ChunkedDataSourceTest {
         assertArrayEquals(content, source.readAll())
         // The second range failed twice before it came through.
         assertEquals(listOf(0L, 1_000L, 1_000L, 1_000L, 2_000L), server.requests.map { it.position })
+    }
+
+    @Test
+    fun `a stalled connection is retried instead of being taken for a cancelled load`() {
+        val server = RangeServer(content, failAfterBytes = listOf(1_000_000, 0, 300), stall = true)
+        val source = ChunkedDataSource(server, onlyWhenHinted = true)
+
+        source.open(spec())
+        assertArrayEquals(content, source.readAll())
+        assertEquals(listOf(0L, 1_000L, 1_000L, 1_300L, 2_300L), server.requests.map { it.position })
+    }
+
+    @Test
+    fun `only a real interruption counts as a cancelled load`() {
+        val stalled =
+            HttpDataSource.HttpDataSourceException.createForIOException(
+                SocketTimeoutException("timeout"),
+                spec(),
+                HttpDataSource.HttpDataSourceException.TYPE_READ,
+            )
+        assertFalse(ChunkedDataSource.isCancellation(stalled))
+        assertFalse(ChunkedDataSource.isCancellation(SocketTimeoutException("timeout")))
+        assertFalse(ChunkedDataSource.isCancellation(IOException("connection reset")))
+        assertTrue(ChunkedDataSource.isCancellation(InterruptedIOException("cancelled")))
+        assertTrue(ChunkedDataSource.isCancellation(IOException("wrapped", InterruptedIOException("cancelled"))))
     }
 
     @Test

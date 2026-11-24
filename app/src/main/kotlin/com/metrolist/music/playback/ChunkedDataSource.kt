@@ -15,6 +15,8 @@ import androidx.media3.datasource.TransferListener
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InterruptedIOException
+import java.net.SocketTimeoutException
+import timber.log.Timber
 
 /**
  * How the [ChunkedDataSource] further down the chain should read a resolved stream. Carried in
@@ -119,6 +121,10 @@ class ChunkedDataSource(
                 hint?.contentLength?.takeIf { it > dataSpec.position }?.let { bytesRemaining = it - dataSpec.position }
             }
         }
+        Timber.tag(LOG_TAG).d(
+            "open %s at %d: asked %d, remaining %d (confirmed=%s), max range %d, hinted length %s",
+            dataSpec.key, dataSpec.position, dataSpec.length, bytesRemaining, lengthConfirmed, maxChunkSize, hint?.contentLength,
+        )
         if (first == null || first.isEmpty()) {
             ended = true
             return if (bytesRemaining == C.LENGTH_UNSET.toLong()) 0L else bytesRemaining
@@ -150,7 +156,11 @@ class ChunkedDataSource(
             if (next == null || next.isEmpty()) {
                 // The server has nothing more. That is only wrong if it told us otherwise: then
                 // fail, and the player retries from here.
-                if (lengthConfirmed) throw IOException("Range request ended $bytesRemaining bytes early")
+                if (lengthConfirmed) {
+                    Timber.tag(LOG_TAG).w("%s: server sent nothing at %d with %d bytes still due", spec?.key, position(), bytesRemaining)
+                    throw IOException("Range request ended $bytesRemaining bytes early")
+                }
+                Timber.tag(LOG_TAG).d("%s: end of stream at %d", spec?.key, position())
                 ended = true
                 return C.RESULT_END_OF_INPUT
             }
@@ -190,11 +200,12 @@ class ChunkedDataSource(
                         break
                     }
                 }
-                adapt(received.size().toLong(), SystemClock.elapsedRealtime() - startedAt, timedOut)
+                val elapsed = SystemClock.elapsedRealtime() - startedAt
+                adapt(received.size().toLong(), elapsed, timedOut)
+                logRange(dataSpec, wanted, received.size(), elapsed, attempt, if (timedOut) "slow, cut short" else null)
                 return received.toByteArray().also { nextRangeStart += it.size }
-            } catch (e: InterruptedIOException) {
-                throw e
             } catch (e: HttpDataSource.InvalidResponseCodeException) {
+                Timber.tag(LOG_TAG).w("%s: HTTP %d at %d (attempt %d)", dataSpec.key, e.responseCode, dataSpec.position + nextRangeStart, attempt + 1)
                 when {
                     // 416 past the last byte of a stream of unknown size means we're done.
                     e.responseCode == 416 && !lengthConfirmed && !first -> return null
@@ -204,10 +215,15 @@ class ChunkedDataSource(
                 }
             } catch (e: IOException) {
                 // The player cancelled the load (a seek, a skip): stop at once, don't retry.
-                if (e.cause is InterruptedIOException || Thread.currentThread().isInterrupted) throw e
+                if (isCancellation(e)) throw e
+                val elapsed = SystemClock.elapsedRealtime() - startedAt
+                Timber.tag(LOG_TAG).w(
+                    "%s: range at %d failed after %d ms with %d bytes (attempt %d): %s",
+                    dataSpec.key, dataSpec.position + nextRangeStart, elapsed, received.size(), attempt + 1, describe(e),
+                )
                 // Keep whatever arrived; the next range picks up from there.
                 if (received.size() > 0) {
-                    adapt(received.size().toLong(), SystemClock.elapsedRealtime() - startedAt, timedOut = true)
+                    adapt(received.size().toLong(), elapsed, timedOut = true)
                     return received.toByteArray().also { nextRangeStart += it.size }
                 }
                 lastError = e
@@ -217,7 +233,19 @@ class ChunkedDataSource(
                 runCatching { source.close() }
             }
         }
+        Timber.tag(LOG_TAG).e("%s: giving up on the range at %d after %d attempts", dataSpec.key, dataSpec.position + nextRangeStart, MAX_RANGE_ATTEMPTS)
         throw lastError ?: IOException("Range request failed")
+    }
+
+    private fun position(): Long = (spec?.position ?: 0L) + nextRangeStart
+
+    private fun logRange(dataSpec: DataSpec, wanted: Long, got: Int, elapsedMs: Long, attempt: Int, note: String?) {
+        Timber.tag(LOG_TAG).d(
+            "%s: range at %d got %d of %d bytes in %d ms%s%s",
+            dataSpec.key, dataSpec.position + nextRangeStart, got, wanted, elapsedMs,
+            if (attempt > 0) " (attempt ${attempt + 1})" else "",
+            note?.let { " ($it)" } ?: "",
+        )
     }
 
     /** Halves the range size after a slow range, doubles it back after a quick full one. */
@@ -268,6 +296,29 @@ class ChunkedDataSource(
     }
 
     companion object {
+        private const val LOG_TAG = "SounStream"
+
+        /**
+         * A stalled connection (no data for the HTTP read timeout) also surfaces as an
+         * [InterruptedIOException]: a [SocketTimeoutException]. That one is retried; only a real
+         * interruption, the player cancelling the load, is passed on at once.
+         */
+        internal fun isCancellation(e: IOException): Boolean {
+            if (Thread.currentThread().isInterrupted) return true
+            var cause: Throwable? = e
+            while (cause != null) {
+                if (cause is SocketTimeoutException) return false
+                if (cause is InterruptedIOException) return true
+                cause = cause.cause?.takeIf { it !== cause }
+            }
+            return false
+        }
+
+        private fun describe(e: Throwable): String {
+            val root = generateSequence(e) { it.cause?.takeIf { next -> next !== it } }.last()
+            return if (root === e) "${e::class.simpleName}: ${e.message}" else "${e::class.simpleName} (${root::class.simpleName}: ${root.message})"
+        }
+
         /** 4 MB: small enough that YouTube serves each piece at full speed. */
         const val DEFAULT_CHUNK_SIZE_BYTES = 4L * 1024 * 1024
 

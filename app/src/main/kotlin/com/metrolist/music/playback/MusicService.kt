@@ -569,6 +569,7 @@ class MusicService :
     private var retryJob: Job? = null
     private var retryCount = 0
     private var initialBufferRecoveryJob: Job? = null
+    private var stallRecoveryJob: Job? = null
     private var initialBufferRecoveryAttemptedMediaId: String? = null
     // True only when stopOnError() paused playback purely because of a network outage
     // (waitOnNetworkError exhausting its attempts). Lets triggerRetry() know it's safe —
@@ -2936,6 +2937,7 @@ class MusicService :
     private fun updateInitialBufferRecovery(
         @Player.State playbackState: Int,
     ) {
+        updateStallRecovery(playbackState)
         val mediaId = player.currentMediaItem?.mediaId
         val shouldWatch =
             playbackState == Player.STATE_BUFFERING &&
@@ -2977,6 +2979,80 @@ class MusicService :
                     retryReason = "initial buffer stall",
                 )
             }
+    }
+
+    /**
+     * Soun: a stream that stops loading partway through a track (most often a long one) used to
+     * leave the player buffering for good. If nothing more arrives for a while, the stream is
+     * fetched again, from another client if this one keeps failing, and playback carries on from
+     * the same second. Slow loading that still makes progress is left alone.
+     */
+    private fun updateStallRecovery(
+        @Player.State playbackState: Int,
+    ) {
+        val mediaId = player.currentMediaItem?.mediaId
+        val shouldWatch =
+            playbackState == Player.STATE_BUFFERING &&
+                player.playWhenReady &&
+                player.currentPosition >= INITIAL_BUFFER_RECOVERY_POSITION_MS &&
+                mediaId != null &&
+                !mediaId.startsWith("content://")
+        if (!shouldWatch) {
+            stallRecoveryJob?.cancel()
+            stallRecoveryJob = null
+            return
+        }
+        if (stallRecoveryJob?.isActive == true) return
+
+        Timber.tag(STREAM_TAG).d(
+            "Buffering %s at %d ms, buffered to %d ms, client=%s",
+            mediaId, player.currentPosition, player.bufferedPosition, songUrlCache.clientName(mediaId),
+        )
+        stallRecoveryJob =
+            scope.launch {
+                var buffered = player.bufferedPosition
+                while (true) {
+                    delay(STALL_RECOVERY_DELAY_MS)
+                    if (player.playbackState != Player.STATE_BUFFERING ||
+                        !player.playWhenReady ||
+                        player.currentMediaItem?.mediaId != mediaId
+                    ) {
+                        return@launch
+                    }
+                    // Waiting for the network is handled elsewhere.
+                    if (!isNetworkConnected.value) continue
+                    val now = player.bufferedPosition
+                    if (now > buffered + 1_000L) {
+                        buffered = now
+                        continue
+                    }
+                    break
+                }
+                recoverFromStall(mediaId)
+            }
+    }
+
+    private fun recoverFromStall(mediaId: String) {
+        val failedStreamClient = songUrlCache.clientName(mediaId)
+        Timber.tag(STREAM_TAG).w(
+            "Stalled: %s at %d ms, buffered to %d ms, client=%s. Fetching the stream again",
+            mediaId, player.currentPosition, player.bufferedPosition, failedStreamClient,
+        )
+        if (hasExceededRetryLimit(mediaId)) {
+            markSongAsFailed(mediaId)
+            handleFinalFailure()
+            return
+        }
+        incrementRetryCount(mediaId)
+        songUrlCache.invalidate(mediaId)
+        failedStreamClient?.let { InnerTubeXPlayer.markStreamClientFailed(mediaId, it) }
+        val index = player.currentMediaItemIndex
+        val position = player.currentPosition
+        if (index == C.INDEX_UNSET) return
+        // A seek alone can stay inside the buffer and keep the stuck load; start the item over.
+        player.stop()
+        player.seekTo(index, position)
+        player.prepare()
     }
 
     override fun onEvents(
@@ -4076,6 +4152,7 @@ class MusicService :
 
                 songUrlCache[mediaId]?.let { cachedStream ->
                     recoverSongDeduped(mediaId)
+                    Timber.tag(STREAM_TAG).d("Reusing the stream of %s at %d (client=%s)", mediaId, dataSpec.position, cachedStream.clientName)
                     currentStreamClient.value = cachedStream.clientName
                     return@Factory dataSpec.withResolvedStream(cachedStream)
                 }
@@ -4184,6 +4261,13 @@ class MusicService :
 
                 val streamUrl = nonNullPlayback.streamUrl
                 currentStreamClient.value = nonNullPlayback.streamClient
+                Timber.tag(STREAM_TAG).i(
+                    "Resolved %s at %d: client=%s itag=%d %s, %s bytes, bounded=%s, ranges=%s/%s, expires in %ss, host=%s",
+                    mediaId, dataSpec.position, nonNullPlayback.streamClient, format.itag, format.mimeType.substringBefore(";"),
+                    format.contentLength, nonNullPlayback.requireBoundedRange, nonNullPlayback.useRangeChunks,
+                    nonNullPlayback.rangeChunkSizeBytes, nonNullPlayback.streamExpiresInSeconds,
+                    runCatching { android.net.Uri.parse(streamUrl).host }.getOrNull(),
+                )
 
                 songUrlCache.put(
                     mediaId = mediaId,
@@ -4538,6 +4622,7 @@ class MusicService :
         player.removeListener(this)
         sleepTimer?.let { player.removeListener(it) }
         initialBufferRecoveryJob?.cancel()
+        stallRecoveryJob?.cancel()
         controllerFuture?.let { MediaController.releaseFuture(it) }
         controllerFuture = null
         releaseExoPlayer(player)
@@ -5253,6 +5338,8 @@ class MusicService :
 
         private const val INITIAL_BUFFER_RECOVERY_DELAY_MS = 15_000L
         private const val INITIAL_BUFFER_RECOVERY_POSITION_MS = 5_000L
+        private const val STALL_RECOVERY_DELAY_MS = 25_000L
+        private const val STREAM_TAG = "SounStream"
         private const val TAG = "MusicService"
 
         @Volatile
