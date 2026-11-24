@@ -5,10 +5,18 @@
 
 package com.metrolist.music.utils
 
+import android.Manifest
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.metrolist.music.BuildConfig
+import com.metrolist.music.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,9 +37,13 @@ object SounUpdater {
     private const val REPO_API = "https://api.github.com/repos/Lupijine/Soun"
     private const val PREFS = "soun_updater"
     private const val KEY_LAST_CHECK = "last_check"
-    private const val KEY_SKIPPED_TAG = "skipped_tag"
-    private const val CHECK_INTERVAL_MS = 6L * 60 * 60 * 1000
+    private const val KEY_NOTIFIED_TAG = "notified_tag"
+
+    /** Re-check when the app comes back to the screen at most this often (always on launch). */
+    private const val FOREGROUND_CHECK_INTERVAL_MS = 20L * 60 * 1000
     private const val MAX_CHANGES = 8
+    private const val NOTIFICATION_CHANNEL = "updates"
+    private const val NOTIFICATION_ID = 0x534F55
 
     data class Update(
         val tag: String,
@@ -44,6 +56,17 @@ object SounUpdater {
     /** The update waiting to be shown; set by the automatic check or by "Check for updates". */
     val pending = MutableStateFlow<Update?>(null)
 
+    /** True while the app is on screen; a background check then shows the prompt, not a notification. */
+    @Volatile
+    var inForeground = false
+
+    /** Release put off with "Later": not offered again until the app is launched anew. */
+    @Volatile
+    private var dismissedTag: String? = null
+
+    @Volatile
+    private var checkedThisLaunch = false
+
     private val client by lazy {
         OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
@@ -54,23 +77,27 @@ object SounUpdater {
     val installedCommit: String? =
         BuildConfig.VERSION_NAME.substringAfter('+', "").lowercase().takeIf { it.matches(Regex("[0-9a-f]{7,40}")) }
 
-    /** True when an automatic check is due (at most every few hours). */
+    /** True on every launch, and when the app returns to the screen after a while. */
     fun isCheckDue(context: Context): Boolean {
         if (installedCommit == null) return false
+        if (!checkedThisLaunch) return true
         val last = prefs(context).getLong(KEY_LAST_CHECK, 0L)
-        return System.currentTimeMillis() - last > CHECK_INTERVAL_MS
+        return System.currentTimeMillis() - last > FOREGROUND_CHECK_INTERVAL_MS
     }
 
-    fun skip(context: Context, update: Update) {
-        prefs(context).edit().putString(KEY_SKIPPED_TAG, update.tag).apply()
+    /** "Later": hides this release until the next launch. */
+    fun dismiss(update: Update) {
+        dismissedTag = update.tag
+        if (pending.value?.tag == update.tag) pending.value = null
     }
 
     /**
      * Looks for a newer release. [ignoreSkipped] is for a manual check, which should also show a
-     * release the user chose to skip earlier.
+     * release put off with "Later".
      */
     suspend fun check(context: Context, ignoreSkipped: Boolean = false): Update? = withContext(Dispatchers.IO) {
         val installed = installedCommit ?: return@withContext null
+        checkedThisLaunch = true
         prefs(context).edit().putLong(KEY_LAST_CHECK, System.currentTimeMillis()).apply()
         runCatching {
             val release = JSONObject(get("$REPO_API/releases/latest") ?: return@runCatching null)
@@ -79,7 +106,7 @@ object SounUpdater {
             if (!tag.startsWith("soun-") || installed.startsWith(latestCommit) || latestCommit.startsWith(installed)) {
                 return@runCatching null
             }
-            if (!ignoreSkipped && prefs(context).getString(KEY_SKIPPED_TAG, null) == tag) return@runCatching null
+            if (!ignoreSkipped && dismissedTag == tag) return@runCatching null
 
             val assets = release.optJSONArray("assets") ?: return@runCatching null
             val apk = (0 until assets.length()).map { assets.getJSONObject(it) }
@@ -143,6 +170,48 @@ object SounUpdater {
             .setDataAndType(uri, "application/vnd.android.package-archive")
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(intent)
+    }
+
+    /**
+     * Shows a system notification for [update] once per release, so a new version is noticed
+     * even while Soun is closed. Tapping it opens the app, which shows the update window.
+     */
+    fun notifyIfNew(context: Context, update: Update) {
+        val prefs = prefs(context)
+        if (prefs.getString(KEY_NOTIFIED_TAG, null) == update.tag) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        val launch =
+            context.packageManager.getLaunchIntentForPackage(context.packageName)
+                ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                ?: return
+        val open = PendingIntent.getActivity(
+            context,
+            NOTIFICATION_ID,
+            launch,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val summary = update.changes.firstOrNull() ?: update.title
+        val details = update.changes.joinToString("\n") { "• $it" }.ifBlank { summary }
+        val notification =
+            NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
+                .setSmallIcon(R.drawable.update)
+                .setContentTitle(context.getString(R.string.soun_update_title))
+                .setContentText(summary)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(details))
+                .setContentIntent(open)
+                .setAutoCancel(true)
+                .build()
+        runCatching { NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification) }
+            .onSuccess { prefs.edit().putString(KEY_NOTIFIED_TAG, update.tag).apply() }
+    }
+
+    /** Removes the update notification (the window is showing it, or it was installed). */
+    fun cancelNotification(context: Context) {
+        runCatching { NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID) }
     }
 
     private fun get(url: String): String? {

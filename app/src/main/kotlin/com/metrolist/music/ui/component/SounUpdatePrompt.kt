@@ -38,10 +38,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import com.metrolist.music.R
 import com.metrolist.music.ui.theme.SounGlassDialog
 import com.metrolist.music.utils.SounUpdater
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -57,16 +61,26 @@ fun SounUpdatePrompt() {
     var progress by remember { mutableStateOf<Float?>(null) }
     var failed by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        if (SounUpdater.isCheckDue(context)) {
-            SounUpdater.check(context)?.let { SounUpdater.pending.value = it }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    // Check on every launch and whenever Soun comes back to the screen after a while.
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            SounUpdater.inForeground = true
+            try {
+                if (SounUpdater.isCheckDue(context)) {
+                    SounUpdater.check(context)?.let { SounUpdater.pending.value = it }
+                }
+                awaitCancellation()
+            } finally {
+                SounUpdater.inForeground = false
+            }
         }
     }
 
     val current = update ?: return
+    LaunchedEffect(current.tag) { SounUpdater.cancelNotification(context) }
     val later = {
-        SounUpdater.skip(context, current)
-        SounUpdater.pending.value = null
+        SounUpdater.dismiss(current)
         failed = false
     }
 

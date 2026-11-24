@@ -191,6 +191,7 @@ class App :
             }
         val nm = getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(channel)
+        com.metrolist.music.utils.SounUpdateJobService.schedule(this)
     }
 
     private fun observeSettingsChanges() {
