@@ -1331,9 +1331,9 @@ class MusicService :
                     saveQueueToDisk()
                 }
                 val currentMetadata = player.currentMediaItem?.metadata
-                if (currentMetadata?.isEpisode == true && player.isPlaying && player.currentPosition > 0) {
+                if (isResumable(currentMetadata) && player.isPlaying && player.currentPosition > 0) {
                     previousEpisodePosition = player.currentPosition
-                    saveEpisodePosition(currentMetadata.id, player.currentPosition)
+                    saveEpisodePosition(currentMetadata!!.id, player.currentPosition)
                 }
             }
         }
@@ -2626,6 +2626,7 @@ class MusicService :
     // naturally (and is therefore safe to mark as fully cached).
     private var lastTransitionedMediaId: String? = null
     private var previousEpisodePosition: Long = 0L
+    private var previousResumeMetadata: com.metrolist.music.models.MediaMetadata? = null
 
     /**
      * Save podcast episode playback position to database.
@@ -2634,12 +2635,39 @@ class MusicService :
     private fun saveEpisodePosition(
         episodeId: String,
         positionMs: Long,
+        knownMetadata: com.metrolist.music.models.MediaMetadata? = null,
     ) {
         if (positionMs < 3000) return // Don't save if less than 3 seconds played
+        val metadata = knownMetadata ?: player.currentMediaItem?.metadata?.takeIf { it.id == episodeId }
+        val toSave = if (metadata != null) resumePositionToSave(metadata, positionMs) else positionMs
         scope.launch(Dispatchers.IO + SilentHandler) {
-            database.updatePlaybackPosition(episodeId, positionMs)
-            Timber.tag(TAG).d("Saved episode position: $episodeId at ${positionMs}ms")
+            database.updatePlaybackPosition(episodeId, toSave)
+            Timber.tag(TAG).d("Saved resume position: $episodeId at ${toSave}ms")
         }
+    }
+
+    /**
+     * Soun: long tracks (20 minutes and more, like full albums and mixes) remember where you
+     * stopped, the same way podcast episodes do.
+     */
+    private fun isResumable(metadata: com.metrolist.music.models.MediaMetadata?): Boolean =
+        metadata != null && (metadata.isEpisode || metadata.duration >= RESUME_MIN_DURATION_S)
+
+    /** Nothing to resume near the end of a long track: the next play starts over. */
+    private fun resumePositionToSave(metadata: com.metrolist.music.models.MediaMetadata, positionMs: Long): Long? {
+        if (metadata.isEpisode) return positionMs
+        val durationMs = metadata.duration * 1000L
+        return positionMs.takeIf { it >= RESUME_MIN_POSITION_MS && (durationMs <= 0L || it < durationMs - RESUME_END_MARGIN_MS) }
+    }
+
+    /** Set when a long track picked up where it was left; the player offers to start over. */
+    val resumedFrom = MutableStateFlow<Pair<String, Long>?>(null)
+
+    fun startOverResumed() {
+        val (mediaId, _) = resumedFrom.value ?: return
+        resumedFrom.value = null
+        if (player.currentMediaItem?.mediaId == mediaId) player.seekTo(0)
+        scope.launch(Dispatchers.IO + SilentHandler) { database.updatePlaybackPosition(mediaId, null) }
     }
 
     /**
@@ -2647,13 +2675,19 @@ class MusicService :
      * Seeks to saved position if available.
      */
     private fun restoreEpisodePosition(episodeId: String) {
+        val isEpisode = player.currentMediaItem?.metadata?.isEpisode == true
         scope.launch(Dispatchers.IO + SilentHandler) {
             val savedPosition = database.getPlaybackPosition(episodeId)
             if (savedPosition != null && savedPosition > 0) {
                 withContext(Dispatchers.Main) {
-                    if (player.currentMediaItem?.mediaId == episodeId) {
+                    // A long track only resumes when it starts from the top: a chosen moment,
+                    // chapter or restored queue position wins.
+                    if (player.currentMediaItem?.mediaId == episodeId &&
+                        (isEpisode || player.currentPosition < 5_000)
+                    ) {
                         player.seekTo(savedPosition)
-                        Timber.tag(TAG).d("Restored episode position: $episodeId to ${savedPosition}ms")
+                        if (!isEpisode) resumedFrom.value = episodeId to savedPosition
+                        Timber.tag(TAG).d("Restored position: $episodeId to ${savedPosition}ms")
                     }
                 }
             }
@@ -2686,12 +2720,18 @@ class MusicService :
         updateInitialBufferRecovery(player.playbackState)
 
         previousEpisodeId?.let { episodeId ->
-            if (previousEpisodePosition > 0) {
-                saveEpisodePosition(episodeId, previousEpisodePosition)
+            val previousMetadata = previousResumeMetadata
+            if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO && previousMetadata?.isEpisode == false) {
+                // A long track played to the end: start over next time.
+                scope.launch(Dispatchers.IO + SilentHandler) { database.updatePlaybackPosition(episodeId, null) }
+            } else if (previousEpisodePosition > 0) {
+                saveEpisodePosition(episodeId, previousEpisodePosition, previousMetadata)
             }
         }
         previousEpisodeId = null
         previousEpisodePosition = 0L
+        previousResumeMetadata = null
+        if (resumedFrom.value?.first != mediaItem?.mediaId) resumedFrom.value = null
 
         val newMetadata = mediaItem?.metadata
         deviceArtworkJob?.cancel()
@@ -2712,8 +2752,9 @@ class MusicService :
                 }
             }
         }
-        if (newMetadata?.isEpisode == true) {
-            previousEpisodeId = newMetadata.id
+        if (isResumable(newMetadata)) {
+            previousEpisodeId = newMetadata!!.id
+            previousResumeMetadata = newMetadata
             scope.launch {
                 delay(100)
                 restoreEpisodePosition(newMetadata.id)
@@ -2870,8 +2911,8 @@ class MusicService :
 
         if (!playWhenReady) {
             val currentMetadata = player.currentMediaItem?.metadata
-            if (currentMetadata?.isEpisode == true && player.currentPosition > 0) {
-                saveEpisodePosition(currentMetadata.id, player.currentPosition)
+            if (isResumable(currentMetadata) && player.currentPosition > 0) {
+                saveEpisodePosition(currentMetadata!!.id, player.currentPosition)
                 previousEpisodePosition = player.currentPosition
             }
         }
@@ -4446,9 +4487,9 @@ class MusicService :
         }
 
         val currentMetadata = player.currentMediaItem?.metadata
-        if (currentMetadata?.isEpisode == true && player.currentPosition > 0) {
+        if (isResumable(currentMetadata) && player.currentPosition > 0) {
             runBlocking(Dispatchers.IO) {
-                database.updatePlaybackPosition(currentMetadata.id, player.currentPosition)
+                database.updatePlaybackPosition(currentMetadata!!.id, resumePositionToSave(currentMetadata, player.currentPosition))
             }
         }
 
@@ -5174,6 +5215,9 @@ class MusicService :
     }
 
     companion object {
+        private const val RESUME_MIN_DURATION_S = 20 * 60
+        private const val RESUME_MIN_POSITION_MS = 30_000L
+        private const val RESUME_END_MARGIN_MS = 30_000L
         const val ACTION_ALARM_TRIGGER = "com.metrolist.music.action.ALARM_TRIGGER"
         const val EXTRA_ALARM_ID = "extra_alarm_id"
         const val EXTRA_ALARM_PLAYLIST_ID = "extra_alarm_playlist_id"

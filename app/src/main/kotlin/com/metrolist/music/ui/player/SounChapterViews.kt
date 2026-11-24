@@ -46,6 +46,7 @@ import com.metrolist.music.R
 import com.metrolist.music.playback.Chapter
 import com.metrolist.music.ui.theme.SounAccent
 import com.metrolist.music.utils.makeTimeString
+import kotlinx.coroutines.delay
 
 /** The title of a chapter, or "Part N" when the description gave it none. */
 @Composable
@@ -105,6 +106,59 @@ fun SounChapterPill(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
+
+/**
+ * "Resumed at 42:10 · Start over": shown for a few seconds when a long track picks up where it
+ * was left.
+ */
+@Composable
+fun SounResumePill(
+    positionMs: Long,
+    color: Color,
+    onStartOver: () -> Unit,
+    onTimeout: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LaunchedEffect(positionMs) {
+        delay(8_000)
+        onTimeout()
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier =
+            modifier
+                .padding(top = 6.dp)
+                .clip(RoundedCornerShape(50))
+                .background(color.copy(alpha = 0.12f))
+                .padding(start = 10.dp, end = 4.dp, top = 3.dp, bottom = 3.dp),
+    ) {
+        Icon(
+            painterResource(R.drawable.history),
+            contentDescription = null,
+            tint = color.copy(alpha = 0.85f),
+            modifier = Modifier.size(15.dp),
+        )
+        Text(
+            text = stringResource(R.string.soun_resumed_at, makeTimeString(positionMs)),
+            color = color.copy(alpha = 0.85f),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
+        Text(
+            text = stringResource(R.string.soun_start_over),
+            color = SounAccent,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            modifier =
+                Modifier
+                    .clip(RoundedCornerShape(50))
+                    .clickable(onClick = onStartOver)
+                    .padding(horizontal = 8.dp, vertical = 3.dp),
+        )
     }
 }
 

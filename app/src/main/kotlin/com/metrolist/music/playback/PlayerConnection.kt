@@ -193,6 +193,15 @@ class PlayerConnection(
     val chapterState get() = service.chapterState
     val currentChapterIndex get() = service.currentChapterIndex
 
+    /** Soun: (mediaId, position) when a long track picked up where it was left. */
+    val resumedFrom get() = service.resumedFrom
+
+    fun startOverResumed() = service.startOverResumed()
+
+    fun dismissResumed() {
+        service.resumedFrom.value = null
+    }
+
     fun seekToChapter(index: Int) {
         service.seekToChapter(index)
         player.playWhenReady = true

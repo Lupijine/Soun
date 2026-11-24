@@ -349,6 +349,7 @@ fun BottomSheetPlayer(
     val chapterState by playerConnection.chapterState.collectAsState()
     val currentChapterIndex by playerConnection.currentChapterIndex.collectAsState()
     val chapters = chapterState.chapters.takeIf { chapterState.mediaId == mediaMetadata?.id }.orEmpty()
+    val resumedFrom by playerConnection.resumedFrom.collectAsState()
     val currentSong by playerConnection.currentSong.collectAsStateWithLifecycle(initialValue = null)
     val automix by playerConnection.service.automixItems.collectAsStateWithLifecycle()
     val repeatMode by playerConnection.repeatMode.collectAsStateWithLifecycle()
@@ -1147,6 +1148,15 @@ fun BottomSheetPlayer(
                             }
                         },
                     )
+
+                    resumedFrom?.takeIf { it.first == mediaMetadata.id }?.let { (_, position) ->
+                        SounResumePill(
+                            positionMs = position,
+                            color = TextBackgroundColor,
+                            onStartOver = playerConnection::startOverResumed,
+                            onTimeout = playerConnection::dismissResumed,
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
