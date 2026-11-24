@@ -153,6 +153,17 @@ fun NavGraphBuilder.navigationBuilder(
         SounMomentsScreen()
     }
 
+    composable("tags") {
+        SounTagsScreen()
+    }
+
+    composable(
+        route = "tag/{name}",
+        arguments = listOf(navArgument("name") { type = NavType.StringType }),
+    ) { entry ->
+        SounTagScreen(entry.arguments?.getString("name").orEmpty())
+    }
+
     composable("mood_and_genres") {
         MoodAndGenresScreen(navController)
     }

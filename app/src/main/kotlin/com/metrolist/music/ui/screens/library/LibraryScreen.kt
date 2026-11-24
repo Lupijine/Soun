@@ -115,6 +115,12 @@ fun LibraryScreen(viewModel: LibraryMixViewModel = hiltViewModel()) {
                     SounShortcut(stringResource(R.string.history), stringResource(R.string.soun_recent_listening),
                         R.drawable.history, Modifier.weight(1f)) { nav.navigate("history") }
                 }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SounShortcut(stringResource(R.string.soun_tags), stringResource(R.string.soun_tags_shortcut),
+                        R.drawable.soun_tag, Modifier.weight(1f)) { nav.navigate("tags") }
+                    SounShortcut(stringResource(R.string.soun_moments_short), stringResource(R.string.soun_moments_shortcut),
+                        R.drawable.soun_moment, Modifier.weight(1f)) { nav.navigate("moments") }
+                }
             }
         }
         if (selected == LibraryFilter.PLAYLISTS) {

@@ -240,6 +240,15 @@ fun SongMenu(
         mutableStateOf(false)
     }
 
+    // Soun: personal tags for this song.
+    var showTagsDialog by rememberSaveable { mutableStateOf(false) }
+    if (showTagsDialog) {
+        com.metrolist.music.ui.screens.SounTagsDialog(
+            songIds = listOf(song.id),
+            onDismiss = { showTagsDialog = false },
+        )
+    }
+
     AddToPlaylistDialog(
         isVisible = showChoosePlaylistDialog,
         onGetSong = { listOf(song.id) },
@@ -600,6 +609,17 @@ fun SongMenu(
                         } else {
                             null
                         },
+                        Material3MenuItemData(
+                            title = { Text(text = stringResource(R.string.soun_tags)) },
+                            description = { Text(text = stringResource(R.string.soun_tags_menu_description)) },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.soun_tag),
+                                    contentDescription = null,
+                                )
+                            },
+                            onClick = { showTagsDialog = true },
+                        ),
                         if (!isGuest) {
                             Material3MenuItemData(
                                 title = { Text(text = stringResource(R.string.start_radio)) },

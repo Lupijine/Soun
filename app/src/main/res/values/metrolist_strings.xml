@@ -1226,4 +1226,20 @@
     <string name="soun_sleep_start">Start · %d min</string>
     <string name="soun_glass_covers">Glass playlist covers</string>
     <string name="soun_glass_covers_desc">Playlists without a cover get one made from the colours of their songs</string>
+    <string name="soun_tags">Tags</string>
+    <string name="soun_tags_dialog_subtitle">Group songs your own way. A song can carry many tags.</string>
+    <string name="soun_tags_menu_description">Add this song to your own tags</string>
+    <string name="soun_tags_shortcut">Your own groups</string>
+    <string name="soun_tags_empty">No tags yet. Open a song\'s menu and choose Tags to start one.</string>
+    <string name="soun_tag_new">New tag</string>
+    <string name="soun_tag_add">Add tag</string>
+    <string name="soun_tag_delete">Delete tag</string>
+    <string name="soun_tag_remove_song">Remove from tag</string>
+    <string name="soun_tag_suggest_workout">Workout</string>
+    <string name="soun_tag_suggest_focus">Focus</string>
+    <string name="soun_tag_suggest_rain">Rain</string>
+    <string name="soun_tag_suggest_night_drive">Night drive</string>
+    <string name="soun_tag_suggest_chill">Chill</string>
+    <string name="soun_moments_short">Moments</string>
+    <string name="soun_moments_shortcut">Seconds you saved</string>
 </resources>

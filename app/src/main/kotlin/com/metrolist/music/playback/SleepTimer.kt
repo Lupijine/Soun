@@ -218,7 +218,7 @@ class SleepTimer(
             val metadata = player.getMediaItemAt(index).metadata ?: break
             if (metadata.album?.id != albumId) break
             total += metadata.duration * 1000L
-            index = player.timeline.getNextWindowIndex(index, Player.REPEAT_MODE_OFF, player.shuffleModeEnabled)
+            index = player.currentTimeline.getNextWindowIndex(index, Player.REPEAT_MODE_OFF, player.shuffleModeEnabled)
         }
         return total
     }

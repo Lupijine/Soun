@@ -196,6 +196,16 @@ fun PlayerMenu(
         },
     )
 
+    // Soun: personal tags for this song.
+    var showTagsDialog by rememberSaveable { mutableStateOf(false) }
+    if (showTagsDialog) {
+        com.metrolist.music.ui.screens.SounTagsDialog(
+            songIds = listOf(mediaMetadata.id),
+            onDismiss = { showTagsDialog = false },
+            beforeTagging = { database.withTransaction { insert(mediaMetadata) } },
+        )
+    }
+
     ListenTogetherDialog(
         visible = showListenTogetherDialog,
         mediaMetadata = mediaMetadata,
@@ -517,6 +527,20 @@ fun PlayerMenu(
                                     playerConnection.toggleLibrary()
                                     onDismiss()
                                 },
+                            ),
+                        )
+                        add(
+                            Material3MenuItemData(
+                                title = { Text(text = stringResource(R.string.soun_tags)) },
+                                description = { Text(text = stringResource(R.string.soun_tags_menu_description)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.soun_tag),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                },
+                                onClick = { showTagsDialog = true },
                             ),
                         )
                         // Soun: save this second of the song, or share a link that starts here.
