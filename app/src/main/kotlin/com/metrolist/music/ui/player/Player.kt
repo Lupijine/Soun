@@ -345,6 +345,10 @@ fun BottomSheetPlayer(
 
     val playbackState by playerConnection.playbackState.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    // Soun: chapters of a long track (full albums, mixes).
+    val chapterState by playerConnection.chapterState.collectAsState()
+    val currentChapterIndex by playerConnection.currentChapterIndex.collectAsState()
+    val chapters = chapterState.chapters.takeIf { chapterState.mediaId == mediaMetadata?.id }.orEmpty()
     val currentSong by playerConnection.currentSong.collectAsStateWithLifecycle(initialValue = null)
     val automix by playerConnection.service.automixItems.collectAsStateWithLifecycle()
     val repeatMode by playerConnection.repeatMode.collectAsStateWithLifecycle()
@@ -1124,6 +1128,25 @@ fun BottomSheetPlayer(
                             }
                         }
                     }
+
+                    SounChapterPill(
+                        chapters = chapters,
+                        currentIndex = currentChapterIndex,
+                        color = TextBackgroundColor,
+                        onClick = {
+                            menuState.show(playerBackdrop) {
+                                SounChaptersMenu(
+                                    trackTitle = mediaMetadata.title,
+                                    chapters = chapters,
+                                    currentIndex = currentChapterIndex,
+                                    onSelect = { index ->
+                                        playerConnection.seekToChapter(index)
+                                        menuState.dismiss()
+                                    },
+                                )
+                            }
+                        },
+                    )
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -1385,6 +1408,12 @@ fun BottomSheetPlayer(
                     SounProgressBar(
                         value = (sliderPosition ?: effectivePosition).toFloat(),
                         valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
+                        markers =
+                            if (duration == C.TIME_UNSET || duration <= 0L) {
+                                emptyList()
+                            } else {
+                                chapters.map { it.startMs.toFloat() / duration }
+                            },
                         onValueChange = {
                             if (!isListenTogetherGuest) {
                                 sliderPosition = it.toLong()

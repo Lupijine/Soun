@@ -189,6 +189,15 @@ class PlayerConnection(
     val shuffleModeEnabled = MutableStateFlow(false)
     val smartShuffleEnabled get() = service.smartShuffleEnabled
 
+    /** Soun: chapters of the current long track, and which one is playing. */
+    val chapterState get() = service.chapterState
+    val currentChapterIndex get() = service.currentChapterIndex
+
+    fun seekToChapter(index: Int) {
+        service.seekToChapter(index)
+        player.playWhenReady = true
+    }
+
     /** Soun: the shuffle button cycles off → shuffle → smart shuffle → off. */
     fun cycleShuffle() {
         when {
@@ -435,6 +444,11 @@ class PlayerConnection(
                 castHandler.skipToNext()
                 return
             }
+            // Soun: in a track with chapters, next moves to the next chapter first.
+            if (service.seekToNextChapter()) {
+                player.playWhenReady = true
+                return
+            }
             player.seekToNext()
             if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
                 player.prepare()
@@ -454,6 +468,11 @@ class PlayerConnection(
             val castHandler = service.castConnectionHandler
             if (castHandler?.isCasting?.value == true) {
                 castHandler.skipToPrevious()
+                return
+            }
+
+            if (service.seekToPreviousChapter()) {
+                player.playWhenReady = true
                 return
             }
 

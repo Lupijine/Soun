@@ -27,6 +27,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -52,6 +55,8 @@ fun SounProgressBar(
     color: Color,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    /** Soun: chapter starts as fractions of the bar (0..1), drawn as small gaps. */
+    markers: List<Float> = emptyList(),
 ) {
     var dragging by remember { mutableStateOf(false) }
     val view = LocalView.current
@@ -71,6 +76,7 @@ fun SounProgressBar(
     val latestRange by rememberUpdatedState(valueRange)
     val latestChange by rememberUpdatedState(onValueChange)
     val latestFinished by rememberUpdatedState(onValueChangeFinished)
+    val latestMarkers by rememberUpdatedState(markers)
 
     Box(
         contentAlignment = Alignment.CenterStart,
@@ -102,10 +108,21 @@ fun SounProgressBar(
                         SounHaptics.touch(view)
                         down.consume()
                         latestChange(valueAt(down.position.x))
+                        var lastX = down.position.x
                         try {
                             drag(down.id) { change ->
                                 change.consume()
-                                latestChange(valueAt(change.position.x))
+                                val x = change.position.x
+                                // A light tick when the finger passes a chapter start.
+                                if (size.width > 0 && latestMarkers.any { m ->
+                                        val mx = m * size.width
+                                        (lastX < mx && x >= mx) || (lastX > mx && x <= mx)
+                                    }
+                                ) {
+                                    SounHaptics.tick(view)
+                                }
+                                lastX = x
+                                latestChange(valueAt(x))
                             }
                         } finally {
                             dragging = false
@@ -120,7 +137,10 @@ fun SounProgressBar(
             Modifier
                 .fillMaxWidth()
                 .height(thickness)
-                .graphicsLayer { scaleX = stretch }
+                .graphicsLayer {
+                    scaleX = stretch
+                    if (markers.isNotEmpty()) compositingStrategy = CompositingStrategy.Offscreen
+                }
                 .clip(CircleShape)
                 .background(color.copy(alpha = 0.22f))
                 .drawWithContent {
@@ -128,6 +148,17 @@ fun SounProgressBar(
                         color = color.copy(alpha = if (dragging) 1f else 0.92f),
                         size = Size(size.width * fraction, size.height),
                     )
+                    // Chapter starts cut small gaps through the capsule.
+                    val gap = 2.dp.toPx()
+                    markers.forEach { m ->
+                        if (m <= 0.002f || m >= 0.998f) return@forEach
+                        drawRect(
+                            color = Color.Black,
+                            topLeft = Offset(size.width * m - gap / 2f, 0f),
+                            size = Size(gap, size.height),
+                            blendMode = BlendMode.Clear,
+                        )
+                    }
                 },
         )
     }

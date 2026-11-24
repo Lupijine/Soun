@@ -417,10 +417,69 @@ class MusicService :
     private var lyricLinePlayer: LyricLinePlayer? = null
 
     private fun sessionPlayerFor(target: Player): Player {
+        val previous = lyricLinePlayer
         val wrapper = LyricLinePlayer(target)
-        wrapper.line = lyricLinePlayer?.line
+        wrapper.line = previous?.line
+        wrapper.chapter = previous?.chapter
+        wrapper.hasChapters = previous?.hasChapters ?: false
+        wrapper.chapterNavigator = chapterNavigator
         lyricLinePlayer = wrapper
         return wrapper
+    }
+
+    // Soun: chapters of long tracks (full albums, mixes), read from the video description.
+    private val chapterRepository by lazy { ChapterRepository(this) }
+    val chapterState = MutableStateFlow(ChapterState())
+    val currentChapterIndex = MutableStateFlow(-1)
+
+    private val chapterNavigator =
+        object : ChapterNavigator {
+            override fun nextChapter(): Boolean = seekToNextChapter()
+
+            override fun previousChapter(): Boolean = seekToPreviousChapter()
+        }
+
+    private fun activeChapters(): List<Chapter> {
+        val state = chapterState.value
+        if (state.chapters.isEmpty() || state.mediaId != player.currentMediaItem?.mediaId) return emptyList()
+        return state.chapters
+    }
+
+    /** Jumps to the next chapter of the current track; false when there is none (go to the next track). */
+    fun seekToNextChapter(): Boolean {
+        val chapters = activeChapters()
+        if (chapters.isEmpty()) return false
+        val next = chapters.firstOrNull { it.startMs > player.currentPosition + 500 } ?: return false
+        player.seekTo(next.startMs)
+        currentChapterIndex.value = chapters.indexOf(next)
+        return true
+    }
+
+    /**
+     * Back to the start of the current chapter, or to the previous one in its first seconds;
+     * false at the very start of the track (go to the previous track).
+     */
+    fun seekToPreviousChapter(): Boolean {
+        val chapters = activeChapters()
+        if (chapters.isEmpty()) return false
+        val position = player.currentPosition
+        val index = chapters.indexOfLast { it.startMs <= position }
+        if (index < 0) return false
+        val target =
+            when {
+                position - chapters[index].startMs > 3_000 -> index
+                index > 0 -> index - 1
+                else -> return false
+            }
+        player.seekTo(chapters[target].startMs)
+        currentChapterIndex.value = target
+        return true
+    }
+
+    fun seekToChapter(index: Int) {
+        val chapter = activeChapters().getOrNull(index) ?: return
+        player.seekTo(chapter.startMs)
+        currentChapterIndex.value = index
     }
     private var controllerFuture: com.google.common.util.concurrent.ListenableFuture<MediaController>? = null
 
@@ -937,6 +996,38 @@ class MusicService :
                             delay(if (player.isPlaying) 250L else 1000L)
                         }
                     }
+            }
+
+        // Soun: find the chapters of long tracks and follow the current one.
+        currentMediaMetadata
+            .distinctUntilChangedBy { it?.id }
+            .collectLatest(scope) { metadata ->
+                chapterState.value = ChapterState()
+                currentChapterIndex.value = -1
+                lyricLinePlayer?.chapter = null
+                lyricLinePlayer?.hasChapters = false
+                if (metadata == null || metadata.isEpisode) return@collectLatest
+                var durationMs = metadata.duration * 1000L
+                if (durationMs <= 0L) {
+                    // Wait briefly for the player to learn the length.
+                    var waited = 0
+                    while ((player.duration == C.TIME_UNSET || player.duration <= 0L) && waited < 20) {
+                        delay(500)
+                        waited++
+                    }
+                    durationMs = player.duration.takeIf { it != C.TIME_UNSET } ?: 0L
+                }
+                if (durationMs < ChapterRepository.MIN_TRACK_MS) return@collectLatest
+                val chapters = runCatching { chapterRepository.chapters(metadata.id, durationMs) }.getOrDefault(emptyList())
+                if (chapters.isEmpty() || player.currentMediaItem?.mediaId != metadata.id) return@collectLatest
+                chapterState.value = ChapterState(metadata.id, chapters)
+                lyricLinePlayer?.hasChapters = true
+                while (true) {
+                    val index = chapters.indexOfLast { it.startMs <= player.currentPosition }
+                    currentChapterIndex.value = index
+                    lyricLinePlayer?.chapter = chapters.getOrNull(index)?.title
+                    delay(if (player.isPlaying) 500L else 1500L)
+                }
             }
 
         dataStore.data

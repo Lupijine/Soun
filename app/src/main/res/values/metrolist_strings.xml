@@ -1119,4 +1119,7 @@
     <string name="soun_smart_shuffle_on">Smart shuffle: similar songs are mixed into your queue</string>
     <string name="soun_video_mode">Music video</string>
     <string name="soun_video_not_found">No music video was found for this song.</string>
+    <string name="soun_chapters">Chapters</string>
+    <string name="soun_chapters_count">%d parts</string>
+    <string name="soun_chapter_untitled">Part %d</string>
 </resources>
