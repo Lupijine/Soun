@@ -14,59 +14,72 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.ByteArrayOutputStream
+import java.io.IOException
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
 class ChunkedDataSourceTest {
-    /** A server that answers byte ranges of [content], like googlevideo does. */
+    /** A server that answers byte ranges of [content], like googlevideo does; one connection per request. */
     private class RangeServer(
         private val content: ByteArray,
         private val sendContentRange: Boolean = true,
         /** Most bytes one response carries, like a server that cuts long responses short. */
         private val maxResponseBytes: Long = Long.MAX_VALUE,
-    ) : DataSource {
+        /** For each new connection in turn: drop it after this many bytes (0: before any data). */
+        failAfterBytes: List<Int> = emptyList(),
+    ) : DataSource.Factory {
         val requests = mutableListOf<DataSpec>()
-        private var current: DataSpec? = null
-        private var pos = 0L
-        private var end = 0L
+        private val failures = ArrayDeque(failAfterBytes)
 
-        override fun addTransferListener(transferListener: TransferListener) = Unit
+        override fun createDataSource(): DataSource = Connection(failures.removeFirstOrNull())
 
-        override fun open(dataSpec: DataSpec): Long {
-            requests += dataSpec
-            if (dataSpec.position >= content.size && dataSpec.position > 0) {
-                throw HttpDataSource.InvalidResponseCodeException(416, null, null, emptyMap(), dataSpec, ByteArray(0))
-            }
-            current = dataSpec
-            pos = dataSpec.position
-            end =
-                if (dataSpec.length == C.LENGTH_UNSET.toLong()) {
-                    content.size.toLong()
-                } else {
-                    minOf(content.size.toLong(), dataSpec.position + dataSpec.length)
+        inner class Connection(private val failAfter: Int?) : DataSource {
+            private var current: DataSpec? = null
+            private var pos = 0L
+            private var end = 0L
+            private var sent = 0
+
+            override fun addTransferListener(transferListener: TransferListener) = Unit
+
+            override fun open(dataSpec: DataSpec): Long {
+                requests += dataSpec
+                if (dataSpec.position >= content.size && dataSpec.position > 0) {
+                    throw HttpDataSource.InvalidResponseCodeException(416, null, null, emptyMap(), dataSpec, ByteArray(0))
                 }
-            if (end - pos > maxResponseBytes) end = pos + maxResponseBytes
-            return end - pos
-        }
+                current = dataSpec
+                pos = dataSpec.position
+                end =
+                    if (dataSpec.length == C.LENGTH_UNSET.toLong()) {
+                        content.size.toLong()
+                    } else {
+                        minOf(content.size.toLong(), dataSpec.position + dataSpec.length)
+                    }
+                if (end - pos > maxResponseBytes) end = pos + maxResponseBytes
+                return end - pos
+            }
 
-        override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
-            if (pos >= end) return C.RESULT_END_OF_INPUT
-            val n = minOf(length.toLong(), end - pos).toInt()
-            System.arraycopy(content, pos.toInt(), buffer, offset, n)
-            pos += n
-            return n
-        }
+            override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+                if (failAfter != null && sent >= failAfter) throw IOException("connection dropped")
+                if (pos >= end) return C.RESULT_END_OF_INPUT
+                var n = minOf(length.toLong(), end - pos).toInt()
+                if (failAfter != null) n = minOf(n, failAfter - sent)
+                System.arraycopy(content, pos.toInt(), buffer, offset, n)
+                pos += n
+                sent += n
+                return n
+            }
 
-        override fun getUri(): Uri? = current?.uri
+            override fun getUri(): Uri? = current?.uri
 
-        override fun getResponseHeaders(): Map<String, List<String>> {
-            val spec = current ?: return emptyMap()
-            if (!sendContentRange) return emptyMap()
-            return mapOf("content-range" to listOf("bytes ${spec.position}-${end - 1}/${content.size}"))
-        }
+            override fun getResponseHeaders(): Map<String, List<String>> {
+                val spec = current ?: return emptyMap()
+                if (!sendContentRange) return emptyMap()
+                return mapOf("content-range" to listOf("bytes ${spec.position}-${end - 1}/${content.size}"))
+            }
 
-        override fun close() {
-            current = null
+            override fun close() {
+                current = null
+            }
         }
     }
 
@@ -150,6 +163,27 @@ class ChunkedDataSourceTest {
         source.open(spec(hint = RangeChunkHint()))
         assertArrayEquals(content, source.readAll())
         assertEquals(listOf(800L, 800L, 800L, 100L), server.requests.map { it.length })
+    }
+
+    @Test
+    fun `a dropped connection keeps what arrived and carries on`() {
+        val server = RangeServer(content, failAfterBytes = listOf(400))
+        val source = ChunkedDataSource(server, onlyWhenHinted = true)
+
+        assertEquals(2_500L, source.open(spec()))
+        assertArrayEquals(content, source.readAll())
+        assertEquals(400L, server.requests[1].position)
+    }
+
+    @Test
+    fun `a range that fails before any data is retried on a fresh connection`() {
+        val server = RangeServer(content, failAfterBytes = listOf(1_000_000, 0, 0))
+        val source = ChunkedDataSource(server, onlyWhenHinted = true)
+
+        source.open(spec())
+        assertArrayEquals(content, source.readAll())
+        // The second range failed twice before it came through.
+        assertEquals(listOf(0L, 1_000L, 1_000L, 1_000L, 2_000L), server.requests.map { it.position })
     }
 
     @Test
