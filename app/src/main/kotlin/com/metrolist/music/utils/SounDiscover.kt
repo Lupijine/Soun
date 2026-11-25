@@ -38,6 +38,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
+import androidx.datastore.preferences.core.edit
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -160,13 +161,15 @@ data class DiscoverPage(
     val model: String,
     /** Google's search suggestions (HTML), shown with any page that used Google Search. */
     val searchSuggestionsHtml: String? = null,
+    /** Web search was on but this key could not use it (newer models search only with billing). */
+    val madeWithoutSearch: Boolean = false,
 ) {
     val songs: List<DiscoverSong> get() = sections.flatMap { section -> section.picks.map { it.song } }
 }
 
 enum class DiscoverStep { PROFILE, ASKING, FINDING }
 
-enum class DiscoverError { NO_KEY, BAD_KEY, BAD_MODEL, QUOTA, SERVICE, NETWORK, BAD_REPLY, NOTHING_FOUND }
+enum class DiscoverError { NO_KEY, BAD_KEY, BAD_MODEL, QUOTA, SERVICE, NETWORK, BAD_REPLY, NOTHING_FOUND, SEARCH_UNAVAILABLE }
 
 data class DiscoverState(
     val page: DiscoverPage? = null,
@@ -257,6 +260,9 @@ internal fun bestMatch(title: String, artist: String, candidates: List<SongCandi
 
 /* Refresh times ----------------------------------------------------------------------------- */
 
+/** Models Google offers new keys, tried in turn when the chosen one is not available. */
+val DiscoverFallbackModels = listOf("gemini-3.8-flash", "gemini-3.5-flash-lite")
+
 val DiscoverMorningTime: LocalTime = LocalTime.of(7, 30)
 val DiscoverEveningTime: LocalTime = LocalTime.of(19, 30)
 
@@ -343,6 +349,21 @@ internal val DiscoverJson = Json { ignoreUnknownKeys = true; isLenient = true; e
 
 class DiscoverException(val error: DiscoverError, message: String? = null, cause: Throwable? = null) : Exception(message, cause)
 
+/** What an error answer from Gemini means for the page. */
+internal fun discoverErrorFor(code: Int, message: String?, webSearch: Boolean): DiscoverError =
+    when {
+        // Search refused for this key or model: newer models search only on a paid plan.
+        webSearch && code in 400..499 && code != 404 &&
+            message?.contains(Regex("search|grounding|tool", RegexOption.IGNORE_CASE)) == true -> DiscoverError.SEARCH_UNAVAILABLE
+        code == 429 -> DiscoverError.QUOTA
+        code == 404 -> DiscoverError.BAD_MODEL
+        code == 401 || code == 403 -> DiscoverError.BAD_KEY
+        code == 400 && message?.contains("API key", ignoreCase = true) == true -> DiscoverError.BAD_KEY
+        code == 400 && message?.contains("model", ignoreCase = true) == true -> DiscoverError.BAD_MODEL
+        code >= 500 -> DiscoverError.SERVICE
+        else -> DiscoverError.BAD_REPLY
+    }
+
 internal data class GeminiReply(val text: String, val searchSuggestionsHtml: String?)
 
 internal object GeminiDiscover {
@@ -367,7 +388,6 @@ internal object GeminiDiscover {
                 }
                 if (webSearch) putJsonArray("tools") { addJsonObject { putJsonObject("google_search") {} } }
                 putJsonObject("generationConfig") {
-                    put("temperature", 0.9)
                     // Search grounding cannot be combined with a JSON response type, so JSON is asked for in the prompt.
                     if (!webSearch) put("responseMimeType", "application/json")
                 }
@@ -388,16 +408,7 @@ internal object GeminiDiscover {
         if (code !in 200..299) {
             val message = runCatching { DiscoverJson.parseToJsonElement(raw).jsonObject["error"]?.jsonObject?.get("message")?.jsonPrimitive?.contentOrNull }.getOrNull()
             Timber.tag(TAG).w("Gemini answered %d: %s", code, message ?: raw.take(300))
-            val error =
-                when {
-                    code == 429 -> DiscoverError.QUOTA
-                    code == 404 -> DiscoverError.BAD_MODEL
-                    code == 401 || code == 403 -> DiscoverError.BAD_KEY
-                    code == 400 && message?.contains("API key", ignoreCase = true) == true -> DiscoverError.BAD_KEY
-                    code == 400 && message?.contains("model", ignoreCase = true) == true -> DiscoverError.BAD_MODEL
-                    code >= 500 -> DiscoverError.SERVICE
-                    else -> DiscoverError.BAD_REPLY
-                }
+            val error = discoverErrorFor(code, message, webSearch)
             throw DiscoverException(error, message)
         }
         return readReply(raw) ?: throw DiscoverException(DiscoverError.BAD_REPLY, "No text in the reply")
@@ -506,7 +517,8 @@ object SounDiscover {
         val language = Locale.getDefault().getDisplayLanguage(Locale.ENGLISH).ifBlank { "English" }
 
         state.update { it.copy(step = DiscoverStep.ASKING) }
-        val reply = GeminiDiscover.generate(apiKey, model, discoverPrompt(profile, now, language, webSearch), webSearch)
+        val asked = ask(context, apiKey, model, webSearch) { search -> discoverPrompt(profile, now, language, search) }
+        val reply = asked.reply
         val curated = parseCuratedPage(reply.text) ?: throw DiscoverException(DiscoverError.BAD_REPLY, reply.text.take(200))
 
         state.update { it.copy(step = DiscoverStep.FINDING) }
@@ -517,9 +529,48 @@ object SounDiscover {
             period = DayPeriod.of(now.hour).name,
             intro = curated.intro,
             sections = sections,
-            model = model,
+            model = asked.model,
             searchSuggestionsHtml = reply.searchSuggestionsHtml,
+            madeWithoutSearch = webSearch && !asked.searched,
         )
+    }
+
+    private class Asked(val reply: GeminiReply, val model: String, val searched: Boolean)
+
+    /**
+     * Asks [model], moving on to a model Google offers new keys when it is not available (the
+     * 2.5 models answer 404 to projects that never used them), and without web search when the
+     * key may not use it. A model that worked in place of the chosen one is kept for next time.
+     */
+    private suspend fun ask(
+        context: Context,
+        apiKey: String,
+        model: String,
+        webSearch: Boolean,
+        prompt: (Boolean) -> String,
+    ): Asked {
+        var lastError: DiscoverException? = null
+        for (candidate in (listOf(model) + DiscoverFallbackModels).distinct()) {
+            try {
+                val asked =
+                    try {
+                        Asked(GeminiDiscover.generate(apiKey, candidate, prompt(webSearch), webSearch), candidate, webSearch)
+                    } catch (e: DiscoverException) {
+                        if (!webSearch || e.error != DiscoverError.SEARCH_UNAVAILABLE) throw e
+                        Timber.tag(TAG).i("Web search is not available to this key on %s; asking without it", candidate)
+                        Asked(GeminiDiscover.generate(apiKey, candidate, prompt(false), false), candidate, false)
+                    }
+                if (candidate != model) {
+                    Timber.tag(TAG).i("%s is not available to this key; using %s from now on", model, candidate)
+                    context.dataStore.edit { it[DiscoverModelKey] = candidate }
+                }
+                return asked
+            } catch (e: DiscoverException) {
+                if (e.error != DiscoverError.BAD_MODEL) throw e
+                lastError = e
+            }
+        }
+        throw lastError ?: DiscoverException(DiscoverError.BAD_MODEL)
     }
 
     private suspend fun findSongs(curated: CuratedPage, known: Set<String>): List<DiscoverSection> {

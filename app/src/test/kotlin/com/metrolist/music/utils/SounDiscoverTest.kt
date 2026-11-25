@@ -89,4 +89,14 @@ class SounDiscoverTest {
         assertEquals("<div>chips</div>", reply.searchSuggestionsHtml)
         assertNull(GeminiDiscover.readReply("""{"candidates": []}"""))
     }
+
+    @Test
+    fun `reads what Gemini's error answers mean`() {
+        assertEquals(DiscoverError.BAD_MODEL, discoverErrorFor(404, "This model models/gemini-2.5-flash is no longer available to new users.", webSearch = true))
+        assertEquals(DiscoverError.SEARCH_UNAVAILABLE, discoverErrorFor(400, "Search Grounding is not supported on the free tier.", webSearch = true))
+        assertEquals(DiscoverError.SEARCH_UNAVAILABLE, discoverErrorFor(429, "Quota exceeded for metric: search_grounding_requests, limit: 0", webSearch = true))
+        assertEquals(DiscoverError.QUOTA, discoverErrorFor(429, "Quota exceeded for metric: search_grounding_requests, limit: 0", webSearch = false))
+        assertEquals(DiscoverError.BAD_KEY, discoverErrorFor(400, "API key not valid. Please pass a valid API key.", webSearch = true))
+        assertEquals(DiscoverError.SERVICE, discoverErrorFor(503, "The model is overloaded.", webSearch = true))
+    }
 }

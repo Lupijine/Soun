@@ -209,6 +209,13 @@ fun SounDiscoverScreen() {
                                 }
                             }
                             // A refresh running over the current page, or one that failed.
+                            if (page.madeWithoutSearch) {
+                                Text(
+                                    stringResource(R.string.soun_discover_without_search),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                             AnimatedVisibility(state.refreshing || state.error != null) {
                                 Text(
                                     if (state.refreshing) stepText(state.step) else errorText(state.error),
@@ -278,6 +285,7 @@ private fun errorText(error: DiscoverError?): String =
             DiscoverError.NETWORK -> R.string.soun_discover_error_network
             DiscoverError.BAD_REPLY -> R.string.soun_discover_error_bad_reply
             DiscoverError.NOTHING_FOUND -> R.string.soun_discover_error_nothing_found
+            DiscoverError.SEARCH_UNAVAILABLE -> R.string.soun_discover_error_search
             DiscoverError.SERVICE, null -> R.string.soun_discover_error_service
         },
     )
@@ -514,7 +522,13 @@ private fun Pill(
 
 /* Settings ---------------------------------------------------------------------------------- */
 
-private val SuggestedModels = listOf(DiscoverDefaultModel to true, "gemini-2.5-flash-lite" to true, "gemini-3.6-flash" to false)
+/** Models to pick from, with a note on who can use them. */
+private val SuggestedModels =
+    listOf(
+        "gemini-3.8-flash" to R.string.soun_discover_model_best,
+        "gemini-3.5-flash-lite" to R.string.soun_discover_model_fast,
+        "gemini-2.5-flash" to R.string.soun_discover_model_older_keys,
+    )
 
 @Composable
 fun DiscoverSettingsDialog(onDismiss: () -> Unit) {
@@ -611,7 +625,7 @@ fun DiscoverSettingsDialog(onDismiss: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                SuggestedModels.forEach { (name, free) ->
+                SuggestedModels.forEach { (name, note) ->
                     val selected = model.trim() == name
                     Column(
                         modifier =
@@ -624,7 +638,7 @@ fun DiscoverSettingsDialog(onDismiss: () -> Unit) {
                     ) {
                         Text(name.removePrefix("gemini-"), fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
-                            stringResource(if (free) R.string.soun_discover_model_free else R.string.soun_discover_model_paid),
+                            stringResource(note),
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

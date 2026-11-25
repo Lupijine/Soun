@@ -1264,7 +1264,9 @@
     <string name="soun_discover_retry">Try again</string>
     <string name="soun_discover_error_no_key">Add your Gemini API key in the settings.</string>
     <string name="soun_discover_error_bad_key">Gemini did not accept the API key. Check it in the settings.</string>
-    <string name="soun_discover_error_bad_model">Gemini does not know this model. Pick another one in the settings.</string>
+    <string name="soun_discover_error_bad_model">None of the models is available to this key. Pick another one in the settings.</string>
+    <string name="soun_discover_error_search">Gemini refused the web search. Turn it off in the settings and try again.</string>
+    <string name="soun_discover_without_search">Made without web search: Gemini searches Google with this key only once billing is on, so new releases may be missing.</string>
     <string name="soun_discover_error_quota">You have reached Gemini\'s limit for now. Try again later.</string>
     <string name="soun_discover_error_service">Gemini could not make the page right now. Try again later.</string>
     <string name="soun_discover_error_network">No connection. Try again when you are online.</string>
@@ -1275,10 +1277,11 @@
     <string name="soun_discover_hide_key">Hide the key</string>
     <string name="soun_discover_get_key">Get a free key from Google AI Studio</string>
     <string name="soun_discover_model">Model</string>
-    <string name="soun_discover_model_free">Free plan</string>
-    <string name="soun_discover_model_paid">Paid plan</string>
+    <string name="soun_discover_model_best">Best picks</string>
+    <string name="soun_discover_model_fast">Fastest</string>
+    <string name="soun_discover_model_older_keys">Older keys only</string>
     <string name="soun_discover_web_search">Search the web</string>
-    <string name="soun_discover_web_search_desc">Gemini uses Google Search to find new releases</string>
+    <string name="soun_discover_web_search_desc">Gemini uses Google Search to find new releases. On the free plan only older keys can search; with billing on, every key can.</string>
     <string name="soun_discover_refresh_at">Make a new page at %1$s</string>
     <string name="soun_discover_privacy">To make the page, the artists and songs you play most and your recent likes are sent to Google. On Gemini\'s free plan, Google may use them to improve its products.</string>
     <string name="soun_discover_card_eyebrow">New · AI picks</string>
