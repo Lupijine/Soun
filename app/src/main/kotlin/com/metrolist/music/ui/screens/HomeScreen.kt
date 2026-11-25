@@ -695,6 +695,8 @@ fun HomeScreen(
     val resumeCard by viewModel.resumeCard.collectAsStateWithLifecycle()
     val cardContext = LocalContext.current
     val recentReleases by remember { com.metrolist.music.utils.SounReleaseWatcher.recent(cardContext) }.collectAsStateWithLifecycle()
+    val discoverState by remember { com.metrolist.music.utils.SounDiscover.state(cardContext) }.collectAsStateWithLifecycle()
+    val discoverKey by rememberPreference(com.metrolist.music.constants.DiscoverGeminiApiKey, "")
     val savedMoments by remember { com.metrolist.music.utils.SounMoments.moments(cardContext) }.collectAsStateWithLifecycle()
 
     val allLocalItems by viewModel.allLocalItems.collectAsStateWithLifecycle()
@@ -1257,6 +1259,27 @@ fun HomeScreen(
                                 modifier = Modifier.animateItem(),
                             )
                         }
+                    }
+
+                    item(key = "soun_card_discover") {
+                        com.metrolist.music.ui.component.DiscoverHomeCard(
+                            page = discoverState.page,
+                            hasKey = discoverKey.isNotBlank(),
+                            refreshing = discoverState.refreshing,
+                            onOpen = { navController.navigate("discover") },
+                            onPlay = {
+                                val songs = discoverState.page?.songs.orEmpty()
+                                if (!isListenTogetherGuest && songs.isNotEmpty()) {
+                                    playerConnection.playQueue(
+                                        com.metrolist.music.playback.queues.ListQueue(
+                                            title = cardContext.getString(R.string.soun_discover),
+                                            items = songs.map { it.toMediaMetadata().toMediaItem() },
+                                        ),
+                                    )
+                                }
+                            },
+                            modifier = Modifier.animateItem(),
+                        )
                     }
 
                     // Soun: more listening cards; each shows only when there is something to show.

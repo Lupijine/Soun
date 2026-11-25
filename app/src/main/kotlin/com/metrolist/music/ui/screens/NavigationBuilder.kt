@@ -149,6 +149,10 @@ fun NavGraphBuilder.navigationBuilder(
         StatsScreen(navController)
     }
 
+    composable("discover") {
+        SounDiscoverScreen()
+    }
+
     composable("moments") {
         SounMomentsScreen()
     }

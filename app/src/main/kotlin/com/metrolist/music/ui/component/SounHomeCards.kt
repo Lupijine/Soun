@@ -62,6 +62,7 @@ import com.metrolist.music.ui.theme.SounAccent
 import com.metrolist.music.ui.theme.sounPanel
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.DayPeriod
+import com.metrolist.music.utils.DiscoverPage
 import com.metrolist.music.utils.DriftedSongs
 import com.metrolist.music.utils.OnThisDayRange
 import com.metrolist.music.utils.OnThisDayWindow
@@ -781,3 +782,75 @@ fun MomentsHomeCard(
         }
     }
 }
+
+/* Discover: songs picked by Gemini --------------------------------------------------------------- */
+
+@Composable
+fun DiscoverHomeCard(
+    page: DiscoverPage?,
+    hasKey: Boolean,
+    refreshing: Boolean,
+    onOpen: () -> Unit,
+    onPlay: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    HomeCard(modifier, onClick = onOpen) {
+        when {
+            page == null -> {
+                Eyebrow(stringResource(R.string.soun_discover_card_eyebrow))
+                Text(
+                    stringResource(if (hasKey && refreshing) R.string.soun_discover_card_picking else R.string.soun_discover_setup_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+                if (!hasKey) {
+                    Text(
+                        stringResource(R.string.soun_discover_card_setup),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row { SecondaryPill(stringResource(R.string.soun_discover_setup_action), onOpen) }
+                }
+            }
+            else -> {
+                val period = runCatching { DayPeriod.valueOf(page.period) }.getOrNull()
+                Eyebrow(
+                    if (period != null) {
+                        stringResource(R.string.soun_discover_card_for, stringResource(period.discoverLabel()))
+                    } else {
+                        stringResource(R.string.soun_discover)
+                    },
+                )
+                Text(
+                    page.intro.ifBlank { page.sections.first().title },
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    page.songs.take(5).forEach { song ->
+                        Cover(song.thumbnailUrl, 52.dp, 12.dp)
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    PrimaryPill(stringResource(R.string.play), R.drawable.play, onPlay, Modifier.weight(1f))
+                    Text(
+                        pluralStringResource(R.plurals.soun_discover_sections, page.sections.size, page.sections.size),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** "evening", as in "for your evening". */
+fun DayPeriod.discoverLabel(): Int =
+    when (this) {
+        DayPeriod.MORNING -> R.string.soun_discover_period_morning
+        DayPeriod.AFTERNOON -> R.string.soun_discover_period_afternoon
+        DayPeriod.EVENING -> R.string.soun_discover_period_evening
+        DayPeriod.NIGHT -> R.string.soun_discover_period_night
+    }

@@ -193,6 +193,7 @@ class App :
         nm.createNotificationChannel(channel)
         com.metrolist.music.utils.SounUpdateJobService.schedule(this)
         com.metrolist.music.utils.SounReleaseJobService.schedule(this)
+        applicationScope.launch(Dispatchers.IO) { com.metrolist.music.utils.SounDiscoverJobService.schedule(this@App) }
     }
 
     private fun observeSettingsChanges() {

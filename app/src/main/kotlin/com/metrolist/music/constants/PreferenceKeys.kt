@@ -441,6 +441,14 @@ val LyricsTextPositionKey = stringPreferencesKey("lyricsTextPosition")
 val LockScreenLyricsKey = booleanPreferencesKey("sounLockScreenLyrics")
 val NewReleaseNotificationsKey = booleanPreferencesKey("sounNewReleaseNotifications")
 val GlassPlaylistCoversKey = booleanPreferencesKey("sounGlassPlaylistCovers")
+
+// Soun: Discover, a page of picks made by Gemini from your listening.
+val DiscoverGeminiApiKey = stringPreferencesKey("sounDiscoverGeminiApiKey")
+val DiscoverModelKey = stringPreferencesKey("sounDiscoverModel")
+const val DiscoverDefaultModel = "gemini-2.5-flash"
+val DiscoverWebSearchKey = booleanPreferencesKey("sounDiscoverWebSearch")
+val DiscoverMorningRefreshKey = booleanPreferencesKey("sounDiscoverMorningRefresh")
+val DiscoverEveningRefreshKey = booleanPreferencesKey("sounDiscoverEveningRefresh")
 val LyricsClickKey = booleanPreferencesKey("lyricsClick")
 val LyricsScrollKey = booleanPreferencesKey("lyricsScrollKey")
 val HideStatusBarOnFullscreenKey = booleanPreferencesKey("hideStatusBarOnFullscreen")
