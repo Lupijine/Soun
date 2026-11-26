@@ -821,12 +821,11 @@ fun DiscoverHomeCard(
                         stringResource(R.string.soun_discover)
                     },
                 )
-                Text(
-                    page.intro.ifBlank { page.sections.first().title },
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
+                SounGradientText(
+                    text = page.intro.ifBlank { page.sections.first().title },
+                    typingKey = "home_discover_${page.generatedAt}",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
                     maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     page.songs.take(5).forEach { song ->

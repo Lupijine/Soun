@@ -153,6 +153,13 @@ fun NavGraphBuilder.navigationBuilder(
         SounDiscoverScreen()
     }
 
+    composable(
+        route = "discover/song/{songId}",
+        arguments = listOf(navArgument("songId") { type = NavType.StringType }),
+    ) { entry ->
+        SounDiscoverSongScreen(entry.arguments?.getString("songId").orEmpty())
+    }
+
     composable("moments") {
         SounMomentsScreen()
     }

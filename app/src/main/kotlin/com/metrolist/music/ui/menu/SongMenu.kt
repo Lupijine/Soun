@@ -117,6 +117,7 @@ fun SongMenu(
         return
     }
     val navController = LocalNavController.current
+    val discoverKey by com.metrolist.music.utils.rememberPreference(com.metrolist.music.constants.DiscoverGeminiApiKey, "")
     val context = LocalContext.current
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -619,6 +620,28 @@ fun SongMenu(
                                 )
                             },
                             onClick = { showTagsDialog = true },
+                        ),
+                        Material3MenuItemData(
+                            title = { Text(text = stringResource(R.string.soun_discover_more_like_this)) },
+                            description = { Text(text = stringResource(R.string.soun_discover_more_like_this_desc)) },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.soun_discover),
+                                    contentDescription = null,
+                                )
+                            },
+                            onClick = {
+                                onDismiss()
+                                if (discoverKey.isNotBlank()) {
+                                    com.metrolist.music.utils.SounDiscover.discoverFrom(
+                                        context,
+                                        com.metrolist.music.utils.DiscoverSong.from(song),
+                                    )
+                                    navController.navigate("discover/song/${song.id}")
+                                } else {
+                                    navController.navigate("discover")
+                                }
+                            },
                         ),
                         if (!isGuest) {
                             Material3MenuItemData(

@@ -1296,4 +1296,19 @@
         <item quantity="one">%d section</item>
         <item quantity="other">%d sections</item>
     </plurals>
+    <string name="soun_discover_kind_time">For your %1$s</string>
+    <string name="soun_discover_kind_new">New releases</string>
+    <string name="soun_discover_kind_history">From your history</string>
+    <string name="soun_discover_kind_because">Because you played</string>
+    <string name="soun_discover_kind_goes_with">Goes with it</string>
+    <string name="soun_discover_kind_mix">Mix</string>
+    <string name="soun_discover_kind_albums">Albums for you</string>
+    <plurals name="soun_discover_show_more">
+        <item quantity="one">Show %d more</item>
+        <item quantity="other">Show %d more</item>
+    </plurals>
+    <string name="soun_discover_show_less">Show less</string>
+    <string name="soun_discover_more_like_this">More like this</string>
+    <string name="soun_discover_more_like_this_desc">Gemini picks songs, a mix and albums that go with it</string>
+    <string name="soun_discover_seed_missing">This page is no longer here. Open it again from the song\'s menu.</string>
 </resources>

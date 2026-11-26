@@ -99,4 +99,41 @@ class SounDiscoverTest {
         assertEquals(DiscoverError.BAD_KEY, discoverErrorFor(400, "API key not valid. Please pass a valid API key.", webSearch = true))
         assertEquals(DiscoverError.SERVICE, discoverErrorFor(503, "The model is overloaded.", webSearch = true))
     }
+
+    @Test
+    fun `reads typed sections with a seed song and albums`() {
+        val reply =
+            """
+            {"intro": "x", "sections": [
+              {"type": "because", "title": "Because you played Watermark", "seed": {"title": "Watermark", "artist": "Djrum"},
+               "songs": [{"title": "A", "artist": "B"}]},
+              {"type": "albums", "title": "Albums", "albums": [{"title": "Tohu Bohu", "artist": "Rone", "why": "w"}]},
+              {"type": "mix", "title": "Rone × Bonobo", "songs": [{"title": "C", "artist": "D"}]},
+              {"type": "albums", "title": "No albums in it", "songs": [{"title": "E", "artist": "F"}]}
+            ]}
+            """.trimIndent()
+        val page = parseCuratedPage(reply)!!
+        assertEquals(listOf(DiscoverKind.BECAUSE, DiscoverKind.ALBUMS, DiscoverKind.MIX), page.sections.map { it.kind })
+        assertEquals("Watermark", page.sections[0].seed?.title)
+        assertEquals(listOf("Tohu Bohu"), page.sections[1].albums.map { it.title })
+        assertEquals(emptyList<CuratedSong>(), page.sections[1].songs)
+        assertEquals(DiscoverKind.SONGS, discoverKindOf("something else"))
+    }
+
+    @Test
+    fun `finds a music video titled Artist - Title from another channel`() {
+        val candidates = listOf(SongCandidate("Bonobo - Kerala (Official Video)", listOf("Ninja Tune"), isVideo = true))
+        assertEquals(0, bestMatch("Kerala", "Bonobo", candidates, requireArtist = true))
+    }
+
+    @Test
+    fun `accepts a title written a little differently when the artist matches`() {
+        assertEquals(0, bestMatch("The Golden Age", "Beck", listOf(SongCandidate("Golden Age, The", listOf("Beck"), isVideo = false))))
+        assertEquals(-1, bestMatch("The Golden Age", "Beck", listOf(SongCandidate("Golden Age, The", listOf("Someone"), isVideo = false))))
+    }
+
+    @Test
+    fun `albums need the right artist`() {
+        assertEquals(-1, bestMatch("Kerala", "Bonobo", listOf(SongCandidate("Kerala", listOf("Someone Else"), isVideo = false)), requireArtist = true))
+    }
 }

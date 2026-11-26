@@ -126,6 +126,7 @@ fun PlayerMenu(
         return
     }
     val navController = LocalNavController.current
+    val discoverKey by rememberPreference(com.metrolist.music.constants.DiscoverGeminiApiKey, "")
     val context = LocalContext.current
     val showNotice = com.metrolist.music.ui.component.LocalSounNotice.current
     val database = LocalDatabase.current
@@ -541,6 +542,33 @@ fun PlayerMenu(
                                     )
                                 },
                                 onClick = { showTagsDialog = true },
+                            ),
+                        )
+                        // Soun: a Discover page made around this song.
+                        add(
+                            Material3MenuItemData(
+                                title = { Text(text = stringResource(R.string.soun_discover_more_like_this)) },
+                                description = { Text(text = stringResource(R.string.soun_discover_more_like_this_desc)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.soun_discover),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                },
+                                onClick = {
+                                    onDismiss()
+                                    playerBottomSheetState.collapseSoft()
+                                    if (discoverKey.isNotBlank()) {
+                                        com.metrolist.music.utils.SounDiscover.discoverFrom(
+                                            context,
+                                            com.metrolist.music.utils.DiscoverSong.from(mediaMetadata),
+                                        )
+                                        navController.navigate("discover/song/${mediaMetadata.id}")
+                                    } else {
+                                        navController.navigate("discover")
+                                    }
+                                },
                             ),
                         )
                         // Soun: save this second of the song, or share a link that starts here.

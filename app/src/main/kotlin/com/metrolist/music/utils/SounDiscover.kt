@@ -12,6 +12,7 @@ import android.app.job.JobService
 import android.content.ComponentName
 import android.content.Context
 import com.metrolist.innertube.YouTube
+import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.Album as YTAlbum
 import com.metrolist.innertube.models.Artist as YTArtist
@@ -35,7 +36,9 @@ import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import androidx.datastore.preferences.core.edit
@@ -121,6 +124,31 @@ data class DiscoverSong(
         )
 
     companion object {
+        fun from(metadata: MediaMetadata) =
+            DiscoverSong(
+                id = metadata.id,
+                title = metadata.title,
+                artists = metadata.artists.map { DiscoverArtist(it.id, it.name) },
+                duration = metadata.duration,
+                thumbnailUrl = metadata.thumbnailUrl,
+                albumId = metadata.album?.id,
+                albumTitle = metadata.album?.title,
+                explicit = metadata.explicit,
+                musicVideoType = metadata.musicVideoType,
+            )
+
+        fun from(song: com.metrolist.music.db.entities.Song) =
+            DiscoverSong(
+                id = song.id,
+                title = song.song.title,
+                artists = song.artists.map { DiscoverArtist(it.id, it.name) },
+                duration = song.song.duration,
+                thumbnailUrl = song.song.thumbnailUrl,
+                albumId = song.song.albumId,
+                albumTitle = song.song.albumName,
+                explicit = song.song.explicit,
+            )
+
         fun from(item: SongItem): DiscoverSong {
             val metadata = item.toMediaMetadata()
             return DiscoverSong(
@@ -145,11 +173,55 @@ data class DiscoverPick(
     val why: String = "",
 )
 
+/** An album found on YouTube Music for a pick. */
+@Serializable
+data class DiscoverAlbum(
+    val browseId: String,
+    val playlistId: String? = null,
+    val title: String,
+    val artists: String,
+    val year: Int? = null,
+    val thumbnailUrl: String? = null,
+)
+
+@Serializable
+data class DiscoverAlbumPick(
+    val album: DiscoverAlbum,
+    val why: String = "",
+)
+
+/** What a section is built from, which also decides how it looks. */
+@Serializable
+enum class DiscoverKind {
+    SONGS,
+
+    /** For this part of the day. */
+    TIME,
+
+    /** Recent releases. */
+    NEW,
+
+    /** A pattern in the listening history. */
+    HISTORY,
+
+    /** Songs that go with one song you played ([DiscoverSection.seed]). */
+    BECAUSE,
+
+    /** A flowing blend of a few of your artists and new ones. */
+    MIX,
+
+    /** Whole albums ([DiscoverSection.albums]). */
+    ALBUMS,
+}
+
 @Serializable
 data class DiscoverSection(
     val title: String,
     val reason: String = "",
-    val picks: List<DiscoverPick>,
+    val picks: List<DiscoverPick> = emptyList(),
+    val kind: DiscoverKind = DiscoverKind.SONGS,
+    val seed: DiscoverSong? = null,
+    val albums: List<DiscoverAlbumPick> = emptyList(),
 )
 
 @Serializable
@@ -163,6 +235,8 @@ data class DiscoverPage(
     val searchSuggestionsHtml: String? = null,
     /** Web search was on but this key could not use it (newer models search only with billing). */
     val madeWithoutSearch: Boolean = false,
+    /** The song a "More like this" page was made around; null for the main page. */
+    val seed: DiscoverSong? = null,
 ) {
     val songs: List<DiscoverSong> get() = sections.flatMap { section -> section.picks.map { it.song } }
 }
@@ -184,7 +258,25 @@ data class DiscoverState(
 
 data class CuratedSong(val title: String, val artist: String, val why: String)
 
-data class CuratedSection(val title: String, val reason: String, val songs: List<CuratedSong>)
+data class CuratedSection(
+    val title: String,
+    val reason: String,
+    val songs: List<CuratedSong>,
+    val kind: DiscoverKind = DiscoverKind.SONGS,
+    val seed: CuratedSong? = null,
+    val albums: List<CuratedSong> = emptyList(),
+)
+
+internal fun discoverKindOf(type: String): DiscoverKind =
+    when (type.trim().lowercase(Locale.ROOT)) {
+        "time" -> DiscoverKind.TIME
+        "new", "new releases", "releases" -> DiscoverKind.NEW
+        "history" -> DiscoverKind.HISTORY
+        "because", "seed", "song" -> DiscoverKind.BECAUSE
+        "mix" -> DiscoverKind.MIX
+        "albums", "album" -> DiscoverKind.ALBUMS
+        else -> DiscoverKind.SONGS
+    }
 
 data class CuratedPage(val intro: String, val sections: List<CuratedSection>)
 
@@ -198,15 +290,29 @@ internal fun parseCuratedPage(text: String): CuratedPage? {
     val sections =
         (root["sections"] as? JsonArray).orEmpty().mapNotNull { element ->
             val section = element as? JsonObject ?: return@mapNotNull null
-            val songs =
-                ((section["songs"] ?: section["picks"]) as? JsonArray).orEmpty().mapNotNull { songElement ->
-                    val song = songElement as? JsonObject ?: return@mapNotNull null
-                    val title = song.string("title")
-                    val artist = song.string("artist")
-                    if (title.isEmpty() || artist.isEmpty()) null else CuratedSong(title, artist, song.string("why"))
-                }
+            fun JsonObject.item(): CuratedSong? {
+                val title = string("title")
+                val artist = string("artist")
+                return if (title.isEmpty() || artist.isEmpty()) null else CuratedSong(title, artist, string("why"))
+            }
+            fun list(key: String) = (section[key] as? JsonArray).orEmpty().mapNotNull { (it as? JsonObject)?.item() }
+            val kind = discoverKindOf(section.string("type"))
+            val songs = list("songs").ifEmpty { list("picks") }
+            val albums = list("albums")
             val title = section.string("title")
-            if (title.isEmpty() || songs.isEmpty()) null else CuratedSection(title, section.string("reason"), songs)
+            val usable = if (kind == DiscoverKind.ALBUMS) albums.isNotEmpty() else songs.isNotEmpty()
+            if (title.isEmpty() || !usable) {
+                null
+            } else {
+                CuratedSection(
+                    title = title,
+                    reason = section.string("reason"),
+                    songs = if (kind == DiscoverKind.ALBUMS) emptyList() else songs,
+                    kind = kind,
+                    seed = (section["seed"] as? JsonObject)?.item(),
+                    albums = if (kind == DiscoverKind.ALBUMS) albums else emptyList(),
+                )
+            }
         }
     if (sections.isEmpty()) return null
     return CuratedPage(root.string("intro"), sections)
@@ -235,20 +341,49 @@ private fun looselyEqual(a: String, b: String): Boolean {
     return a == b || a.startsWith(b) || b.startsWith(a)
 }
 
+/** Most of the words in common, for titles written a little differently. */
+private fun closeEnough(a: String, b: String): Boolean {
+    val wordsA = a.split(' ').filter { it.isNotEmpty() }.toSet()
+    val wordsB = b.split(' ').filter { it.isNotEmpty() }.toSet()
+    if (wordsA.isEmpty() || wordsB.isEmpty()) return false
+    return (wordsA intersect wordsB).size.toDouble() / (wordsA union wordsB).size >= 0.6
+}
+
+private val TitleDash = Regex("""\s+[-–—]\s+""")
+
+/** A title as written, and for "Artist - Title" uploads also the part after the dash. */
+private fun titleVariants(raw: String): List<String> {
+    val dash = TitleDash.find(raw)
+    return listOfNotNull(normalizeForMatch(raw), dash?.let { normalizeForMatch(raw.substring(it.range.last + 1)) })
+        .filter { it.isNotEmpty() }
+}
+
 /**
  * The index of the result that is the picked song, or -1. The title has to match; a matching
  * artist and an audio track (not a video) rank higher. Taking whatever came first would play
  * wrong songs for picks YouTube does not have.
  */
-internal fun bestMatch(title: String, artist: String, candidates: List<SongCandidate>): Int {
+internal fun bestMatch(
+    title: String,
+    artist: String,
+    candidates: List<SongCandidate>,
+    requireArtist: Boolean = false,
+): Int {
     val wantedTitle = normalizeForMatch(title)
     val wantedArtists = artist.split(Regex("""\s*(?:,|&|\bfeat\.?|\bft\.?|\bx\b|\band\b)\s*""", RegexOption.IGNORE_CASE)).map(::normalizeForMatch).filter { it.isNotEmpty() }
     var best = -1
     var bestScore = 0
     candidates.take(6).forEachIndexed { index, candidate ->
-        if (!looselyEqual(normalizeForMatch(candidate.title), wantedTitle)) return@forEachIndexed
         val names = candidate.artists.map(::normalizeForMatch)
-        val artistMatches = wantedArtists.any { wanted -> names.any { looselyEqual(it, wanted) } }
+        // A video's channel is often not the artist, so its title ("Artist - Title") counts too.
+        val uploaderInTitle = TitleDash.find(candidate.title)?.let { normalizeForMatch(candidate.title.substring(0, it.range.first)) }
+        val artistMatches =
+            wantedArtists.any { wanted -> names.any { looselyEqual(it, wanted) } || (uploaderInTitle != null && looselyEqual(uploaderInTitle, wanted)) }
+        if (requireArtist && !artistMatches) return@forEachIndexed
+        val variants = titleVariants(candidate.title)
+        val titleMatches =
+            variants.any { looselyEqual(it, wantedTitle) } || (artistMatches && variants.any { closeEnough(it, wantedTitle) })
+        if (!titleMatches) return@forEachIndexed
         val score = 2 + (if (artistMatches) 4 else 0) + (if (candidate.isVideo) 0 else 1) - index.coerceAtMost(3) / 2
         if (score > bestScore) {
             best = index
@@ -281,6 +416,10 @@ data class TasteProfile(
     val recentLikes: List<String>,
     val songsThisTimeOfDay: List<String>,
     val knownSongIds: Set<String>,
+    /** Played most in the last few days: the songs "Because you played" sections start from. */
+    val recentSongs: List<String> = emptyList(),
+    /** Every song named above, to show the one a section starts from. */
+    val songsByLine: Map<String, DiscoverSong> = emptyMap(),
 ) {
     val isEmpty: Boolean get() = artistsYear.isEmpty() && recentLikes.isEmpty()
 }
@@ -296,14 +435,19 @@ suspend fun buildTasteProfile(dao: DatabaseDao, now: LocalDateTime): TasteProfil
     val likes = dao.likedSongsByCreateDateDesc(limit = 25, offset = 0)
     val period = DayPeriod.of(now.hour)
     val periodStats = dao.songStatsAtHours(now.minusDays(90), period.hours, 15)
-    val periodSongs = dao.getSongsByIds(periodStats.map { it.songId }).associateBy { it.id }
+    val recentStats = dao.songStatsInRange(now.minusDays(4), now, 12)
+    val byId = dao.getSongsByIds((periodStats + recentStats).map { it.songId }.distinct()).associateBy { it.id }
+    val recent = recentStats.mapNotNull { byId[it.songId] }
+    val periodSongs = periodStats.mapNotNull { byId[it.songId] }
     return TasteProfile(
         artistsMonth = artistsMonth,
         artistsYear = artistsYear,
         songsMonth = songsMonth.map { it.line() },
         recentLikes = likes.map { it.line() },
-        songsThisTimeOfDay = periodStats.mapNotNull { periodSongs[it.songId]?.line() },
-        knownSongIds = (songsMonth + likes).map { it.id }.toSet() + periodStats.map { it.songId },
+        songsThisTimeOfDay = periodSongs.map { it.line() },
+        knownSongIds = (songsMonth + likes + periodSongs + recent).map { it.id }.toSet(),
+        recentSongs = recent.map { it.line() },
+        songsByLine = (recent + songsMonth + likes + periodSongs).associate { it.line() to DiscoverSong.from(it) },
     )
 }
 
@@ -326,13 +470,53 @@ internal fun discoverPrompt(
         appendLine("- Most played songs, last 30 days: ${list(profile.songsMonth)}")
         appendLine("- Recently liked: ${list(profile.recentLikes)}")
         appendLine("- Played most in the $period: ${list(profile.songsThisTimeOfDay)}")
+        appendLine("- Played most in the last few days: ${list(profile.recentSongs)}")
         appendLine()
         if (webSearch) {
-            appendLine("Use Google Search to find what these artists and artists close to them released in recent months, and to make sure every song you pick really exists.")
+            appendLine("Use Google Search to find what these artists and artists close to them released in recent months, and to make sure every song and album you pick really exists.")
         }
-        appendLine("Build 4 or 5 sections of 6 to 8 songs each. One section suits this $period. ${if (webSearch) "One section is recent releases. " else ""}The rest each follow one clear idea drawn from the profile. Do not pick any song listed above, and use each song once.")
+        appendLine("Build these sections, in this order:")
+        appendLine("- type \"time\": 8 songs that suit this $period.")
+        if (webSearch) appendLine("- type \"new\": 8 songs released in recent months by these artists or artists close to them.")
+        if (profile.recentSongs.isNotEmpty()) {
+            appendLine("- Two sections of type \"because\", each starting from a different song of \"Played most in the last few days\": put that song in \"seed\" exactly as listed (title and artist) and pick 8 songs that go with it. The title names the seed song.")
+        }
+        appendLine("- type \"history\": 8 songs that follow a pattern in their listening (an artist they keep coming back to, a sound they play again and again); the reason names the pattern.")
+        appendLine("- Two sections of type \"mix\": each blends two or three of their most played artists with new names into one flowing mix of 10 songs, in playing order. The title is a short mix name such as \"Artist A × Artist B\".")
+        appendLine("- type \"albums\": 6 full albums (no singles) they have not played, listed in \"albums\" instead of \"songs\".")
+        appendLine("Do not pick any song listed in the profile, and use each song once across the page.")
         appendLine("Reply with this JSON only, no other text:")
-        append("""{"intro": "one short sentence about today's page", "sections": [{"title": "...", "reason": "one sentence on why this fits the listener", "songs": [{"title": "...", "artist": "...", "why": "a few words"}]}]}""")
+        append(DiscoverReplyFormat)
+    }
+}
+
+private const val DiscoverReplyFormat =
+    """{"intro": "one short, vivid sentence about the page", "sections": [{"type": "...", "title": "...", "reason": "one sentence on why this fits the listener", "seed": {"title": "...", "artist": "..."}, "songs": [{"title": "...", "artist": "...", "why": "a few words"}], "albums": [{"title": "...", "artist": "...", "why": "a few words"}]}]}"""
+
+/** For "More like this": a page built around one song. */
+internal fun seedPrompt(
+    seed: DiscoverSong,
+    profile: TasteProfile,
+    language: String,
+    webSearch: Boolean,
+): String {
+    fun list(items: List<String>) = if (items.isEmpty()) "(none yet)" else items.joinToString("; ")
+    return buildString {
+        appendLine("The listener asked for more music like \"${seed.title}\" by ${seed.artistNames.ifBlank { "an unknown artist" }}.")
+        appendLine("Write the intro, section titles, reasons and \"why\" notes in $language. Keep song titles and artist names exactly as officially released.")
+        appendLine()
+        appendLine("Artists they play most: ${list(profile.artistsMonth.ifEmpty { profile.artistsYear })}")
+        appendLine("Songs they already know (do not pick these): ${list(profile.songsMonth + profile.recentLikes)}")
+        appendLine()
+        if (webSearch) appendLine("Use Google Search to learn about this song and its artist, and to make sure every song and album you pick really exists.")
+        appendLine("Build these sections, in this order:")
+        appendLine("- type \"because\": 10 songs that go with this song (mood, sound, era), with the song itself in \"seed\".")
+        appendLine("- type \"mix\": a flowing mix of 10 songs, in playing order, that starts from this song's sound and drifts toward the artists they play most. The title is a short mix name.")
+        appendLine("- type \"songs\": 8 more songs by this artist or the people they work with.")
+        appendLine("- type \"albums\": 5 full albums for someone who loves this song, listed in \"albums\" instead of \"songs\".")
+        appendLine("Do not pick the song itself, and use each song once.")
+        appendLine("Reply with this JSON only, no other text:")
+        append(DiscoverReplyFormat)
     }
 }
 
@@ -444,7 +628,8 @@ private const val TAG = "SounDiscover"
  */
 object SounDiscover {
     private const val FILE = "soun_discover.json"
-    private const val SEARCH_PARALLELISM = 4
+    private const val SEARCH_PARALLELISM = 6
+    private const val MAX_SEED_PAGES = 6
 
     private val state = MutableStateFlow(DiscoverState())
     private val lock = Mutex()
@@ -457,6 +642,51 @@ object SounDiscover {
     }
 
     fun hasKey(context: Context): Boolean = context.dataStore.get(DiscoverGeminiApiKey, "").isNotBlank()
+
+    /* "More like this": pages made around one song, kept for the session */
+
+    private val seedStates = MutableStateFlow<Map<String, DiscoverState>>(emptyMap())
+    private val seedSongs = java.util.concurrent.ConcurrentHashMap<String, DiscoverSong>()
+
+    /** The song a "More like this" page was asked for in this session. */
+    fun seedSong(songId: String): DiscoverSong? = seedSongs[songId]
+
+    fun seedState(songId: String): Flow<DiscoverState> = seedStates.map { it[songId] ?: DiscoverState() }
+
+    /** Makes a page around [seed], unless a recent one exists or one is on its way. */
+    fun discoverFrom(
+        context: Context,
+        seed: DiscoverSong,
+        force: Boolean = false,
+    ) {
+        val app = context.applicationContext
+        seedSongs[seed.id] = seed
+        val current = seedStates.value[seed.id]
+        if (!force && current != null) {
+            val fresh = current.page?.let { Duration.ofMillis(System.currentTimeMillis() - it.generatedAt) < Duration.ofHours(6) } == true
+            if (current.refreshing || fresh) return
+        }
+        updateSeed(seed.id) { (it ?: DiscoverState()).copy(step = DiscoverStep.PROFILE, error = null, errorDetail = null) }
+        scope.launch {
+            runCatching { makePage(app, seed) { step -> updateSeed(seed.id) { state -> (state ?: DiscoverState()).copy(step = step) } } }
+                .onSuccess { page -> updateSeed(seed.id) { DiscoverState(page = page) } }
+                .onFailure { e ->
+                    val error = (e as? DiscoverException)?.error ?: DiscoverError.SERVICE
+                    Timber.tag(TAG).w(e, "More like %s failed: %s", seed.id, error)
+                    updateSeed(seed.id) { state -> (state ?: DiscoverState()).copy(step = null, error = error, errorDetail = e.message) }
+                }
+        }
+    }
+
+    private fun updateSeed(
+        songId: String,
+        change: (DiscoverState?) -> DiscoverState,
+    ) {
+        seedStates.update { states ->
+            val others = (states - songId).entries.toList().takeLast(MAX_SEED_PAGES - 1).associate { it.key to it.value }
+            others + (songId to change(states[songId]))
+        }
+    }
 
     private fun ensureLoaded(context: Context) {
         if (loaded) return
@@ -503,26 +733,37 @@ object SounDiscover {
         }
     }
 
-    private suspend fun build(context: Context): DiscoverPage {
+    private suspend fun build(context: Context): DiscoverPage =
+        makePage(context, seed = null) { step -> state.update { it.copy(step = step, error = null, errorDetail = null) } }
+
+    /** Makes the main page, or with a [seed] a "More like this" page. */
+    private suspend fun makePage(
+        context: Context,
+        seed: DiscoverSong?,
+        onStep: (DiscoverStep) -> Unit,
+    ): DiscoverPage {
         val prefs = context.dataStore.data.first()
         val apiKey = prefs[DiscoverGeminiApiKey].orEmpty()
         if (apiKey.isBlank()) throw DiscoverException(DiscoverError.NO_KEY)
         val model = prefs[DiscoverModelKey]?.takeIf { it.isNotBlank() } ?: DiscoverDefaultModel
         val webSearch = prefs[DiscoverWebSearchKey] ?: true
 
-        state.update { it.copy(step = DiscoverStep.PROFILE, error = null, errorDetail = null) }
+        onStep(DiscoverStep.PROFILE)
         val dao = EntryPointAccessors.fromApplication(context, ReleaseWatcherEntryPoint::class.java).databaseDao()
         val now = LocalDateTime.now()
         val profile = buildTasteProfile(dao, now)
         val language = Locale.getDefault().getDisplayLanguage(Locale.ENGLISH).ifBlank { "English" }
 
-        state.update { it.copy(step = DiscoverStep.ASKING) }
-        val asked = ask(context, apiKey, model, webSearch) { search -> discoverPrompt(profile, now, language, search) }
+        onStep(DiscoverStep.ASKING)
+        val asked =
+            ask(context, apiKey, model, webSearch) { search ->
+                if (seed == null) discoverPrompt(profile, now, language, search) else seedPrompt(seed, profile, language, search)
+            }
         val reply = asked.reply
         val curated = parseCuratedPage(reply.text) ?: throw DiscoverException(DiscoverError.BAD_REPLY, reply.text.take(200))
 
-        state.update { it.copy(step = DiscoverStep.FINDING) }
-        val sections = findSongs(curated, profile.knownSongIds)
+        onStep(DiscoverStep.FINDING)
+        val sections = findAll(curated, profile, seed)
         if (sections.isEmpty()) throw DiscoverException(DiscoverError.NOTHING_FOUND)
         return DiscoverPage(
             generatedAt = System.currentTimeMillis(),
@@ -532,6 +773,7 @@ object SounDiscover {
             model = asked.model,
             searchSuggestionsHtml = reply.searchSuggestionsHtml,
             madeWithoutSearch = webSearch && !asked.searched,
+            seed = seed,
         )
     }
 
@@ -573,39 +815,101 @@ object SounDiscover {
         throw lastError ?: DiscoverException(DiscoverError.BAD_MODEL)
     }
 
-    private suspend fun findSongs(curated: CuratedPage, known: Set<String>): List<DiscoverSection> {
-        val wanted = curated.sections.flatMap { section -> section.songs }
-        val found = HashMap<CuratedSong, DiscoverSong?>()
-        coroutineScope {
-            wanted.distinct().chunked(SEARCH_PARALLELISM).forEach { batch ->
-                batch.map { song -> async { song to find(song) } }.awaitAll().forEach { (song, match) -> found[song] = match }
-            }
-        }
-        val used = HashSet<String>(known)
+    /** Looks every pick up on YouTube Music; sections left with too few found are dropped. */
+    private suspend fun findAll(
+        curated: CuratedPage,
+        profile: TasteProfile,
+        pageSeed: DiscoverSong?,
+    ): List<DiscoverSection> {
+        val songs = resolve(curated.sections.flatMap { it.songs }) { findSong(it) }
+        val albums = resolve(curated.sections.flatMap { it.albums }) { findAlbum(it) }
+        val usedSongs = HashSet(profile.knownSongIds).apply { pageSeed?.let { add(it.id) } }
+        val usedAlbums = HashSet<String>()
         return curated.sections.mapNotNull { section ->
-            val picks =
-                section.songs.mapNotNull { pick ->
-                    val song = found[pick] ?: return@mapNotNull null
-                    if (!used.add(song.id)) null else DiscoverPick(song, pick.why)
-                }
-            if (picks.size < 2) null else DiscoverSection(section.title, section.reason, picks)
+            if (section.kind == DiscoverKind.ALBUMS) {
+                val picks =
+                    section.albums.mapNotNull { pick ->
+                        val album = albums[pick] ?: return@mapNotNull null
+                        if (usedAlbums.add(album.browseId)) DiscoverAlbumPick(album, pick.why) else null
+                    }
+                if (picks.size < 2) null else DiscoverSection(section.title, section.reason, kind = DiscoverKind.ALBUMS, albums = picks)
+            } else {
+                val picks =
+                    section.songs.mapNotNull { pick ->
+                        val song = songs[pick] ?: return@mapNotNull null
+                        if (usedSongs.add(song.id)) DiscoverPick(song, pick.why) else null
+                    }
+                val seed = if (section.kind == DiscoverKind.BECAUSE) pageSeed ?: section.seed?.let { seedFor(it, profile) } else null
+                if (picks.size < 3) null else DiscoverSection(section.title, section.reason, picks, section.kind, seed)
+            }
         }
     }
 
-    private suspend fun find(song: CuratedSong): DiscoverSong? {
+    private suspend fun <T> resolve(
+        picks: List<CuratedSong>,
+        find: suspend (CuratedSong) -> T?,
+    ): Map<CuratedSong, T?> =
+        coroutineScope {
+            picks.distinct().chunked(SEARCH_PARALLELISM).flatMap { batch ->
+                batch.map { pick -> async { pick to runCatching { find(pick) }.getOrNull() } }.awaitAll()
+            }.toMap()
+        }
+
+    /** The song a "Because you played" section starts from: one of yours, else found online. */
+    private suspend fun seedFor(
+        wanted: CuratedSong,
+        profile: TasteProfile,
+    ): DiscoverSong? {
+        val title = normalizeForMatch(wanted.title)
+        val artist = normalizeForMatch(wanted.artist)
+        val sameTitle = profile.songsByLine.values.filter { song -> titleVariants(song.title).any { looselyEqual(it, title) } }
+        val yours =
+            sameTitle.firstOrNull { song -> song.artists.any { normalizeForMatch(it.name).let { name -> name.isNotEmpty() && (looselyEqual(name, artist) || artist.contains(name)) } } }
+                ?: sameTitle.firstOrNull()
+        return yours ?: runCatching { findSong(wanted) }.getOrNull()
+    }
+
+    /** Songs first; music videos (titled "Artist - Title") only from the right artist. */
+    private suspend fun findSong(song: CuratedSong): DiscoverSong? {
+        val query = "${song.title} ${song.artist}"
+        for (filter in listOf(YouTube.SearchFilter.FILTER_SONG, YouTube.SearchFilter.FILTER_VIDEO)) {
+            val videos = filter == YouTube.SearchFilter.FILTER_VIDEO
+            val results = YouTube.search(query, filter).getOrNull()?.items?.filterIsInstance<SongItem>().orEmpty()
+            val index =
+                bestMatch(
+                    song.title,
+                    song.artist,
+                    results.map { item -> SongCandidate(item.title, item.artists.map { it.name }, videos || item.isVideoSong) },
+                    requireArtist = videos,
+                )
+            results.getOrNull(index)?.let { return DiscoverSong.from(it) }
+        }
+        return null
+    }
+
+    private suspend fun findAlbum(pick: CuratedSong): DiscoverAlbum? {
         val results =
-            YouTube.search("${song.title} ${song.artist}", YouTube.SearchFilter.FILTER_SONG)
+            YouTube.search("${pick.title} ${pick.artist}", YouTube.SearchFilter.FILTER_ALBUM)
                 .getOrNull()
                 ?.items
-                ?.filterIsInstance<SongItem>()
+                ?.filterIsInstance<AlbumItem>()
                 .orEmpty()
         val index =
             bestMatch(
-                song.title,
-                song.artist,
-                results.map { item -> SongCandidate(item.title, item.artists.map { it.name }, item.isVideoSong) },
+                pick.title,
+                pick.artist,
+                results.map { item -> SongCandidate(item.title, item.artists.orEmpty().map { it.name }, isVideo = false) },
+                requireArtist = true,
             )
-        return results.getOrNull(index)?.let(DiscoverSong::from)
+        val album = results.getOrNull(index) ?: return null
+        return DiscoverAlbum(
+            browseId = album.browseId,
+            playlistId = album.playlistId.takeIf { it.isNotBlank() },
+            title = album.title,
+            artists = album.artists.orEmpty().joinToString { it.name },
+            year = album.year,
+            thumbnailUrl = album.thumbnail,
+        )
     }
 
     /* Automatic refreshes */

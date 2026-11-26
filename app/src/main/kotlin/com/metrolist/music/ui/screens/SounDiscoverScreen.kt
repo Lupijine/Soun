@@ -37,6 +37,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -89,7 +92,10 @@ import com.metrolist.music.constants.DiscoverMorningRefreshKey
 import com.metrolist.music.constants.DiscoverWebSearchKey
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.playback.queues.ListQueue
+import com.metrolist.music.LocalDatabase
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.SounGradientText
+import com.metrolist.music.ui.component.SounPlaylistCover
 import com.metrolist.music.ui.component.discoverLabel
 import com.metrolist.music.ui.component.sounLavenderInk
 import com.metrolist.music.ui.menu.YouTubeSongMenu
@@ -98,7 +104,10 @@ import com.metrolist.music.ui.theme.SounGlassDialog
 import com.metrolist.music.ui.theme.sounPanel
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.DayPeriod
+import com.metrolist.music.utils.DiscoverAlbum
 import com.metrolist.music.utils.DiscoverError
+import com.metrolist.music.utils.DiscoverKind
+import com.metrolist.music.utils.DiscoverState
 import com.metrolist.music.utils.DiscoverEveningTime
 import com.metrolist.music.utils.DiscoverMorningTime
 import com.metrolist.music.utils.DiscoverPage
@@ -191,62 +200,16 @@ fun SounDiscoverScreen() {
                 apiKey.isBlank() -> item(key = "setup") { SetupPanel(onSetUp = { showSettings = true }) }
                 page == null && state.refreshing -> item(key = "progress") { ProgressPanel(state.step) }
                 page == null -> item(key = "error") { ErrorPanel(state.error, onRetry = { SounDiscover.refreshInBackground(context) }, onSettings = { showSettings = true }) }
-                else -> {
-                    item(key = "intro") {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(14.dp),
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                        ) {
-                            if (page.intro.isNotBlank()) {
-                                Text(page.intro, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                            }
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Pill(stringResource(R.string.soun_discover_play_all), R.drawable.play, primary = true, modifier = Modifier.weight(1f)) {
-                                    play(page.songs, context.getString(R.string.soun_discover))
-                                }
-                                Pill(stringResource(R.string.shuffle), R.drawable.shuffle, primary = false, modifier = Modifier.weight(1f)) {
-                                    play(page.songs, context.getString(R.string.soun_discover), shuffle = true)
-                                }
-                            }
-                            // A refresh running over the current page, or one that failed.
-                            if (page.madeWithoutSearch) {
-                                Text(
-                                    stringResource(R.string.soun_discover_without_search),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            AnimatedVisibility(state.refreshing || state.error != null) {
-                                Text(
-                                    if (state.refreshing) stepText(state.step) else errorText(state.error),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = if (state.refreshing) sounLavenderInk() else MaterialTheme.colorScheme.error,
-                                )
-                            }
-                        }
-                    }
-                    itemsIndexed(page.sections, key = { index, section -> "section_${index}_${section.title}" }) { _, section ->
-                        SectionPanel(
-                            section = section,
-                            currentId = mediaMetadata?.id,
-                            onPlay = { start -> play(section.picks.map { it.song }, section.title, start) },
-                            onMenu = { song ->
-                                menuState.show { YouTubeSongMenu(song = song.toSongItem(), onDismiss = menuState::dismiss) }
-                            },
-                        )
-                    }
-                    page.searchSuggestionsHtml?.let { html ->
-                        item(key = "search_suggestions") { SearchSuggestions(html) }
-                    }
-                    item(key = "made_by") {
-                        Text(
-                            stringResource(R.string.soun_discover_made_by, page.model),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-                        )
-                    }
-                }
+                else ->
+                    discoverPageItems(
+                        page = page,
+                        state = state,
+                        typingKey = "discover_${page.generatedAt}",
+                        currentId = mediaMetadata?.id,
+                        onPlay = ::play,
+                        onMenu = { song -> menuState.show { YouTubeSongMenu(song = song.toSongItem(), onDismiss = menuState::dismiss) } },
+                        onAlbum = { album -> nav.navigate("album/${album.browseId}") },
+                    )
             }
         }
     }
@@ -361,90 +324,453 @@ private fun ErrorPanel(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun SectionPanel(
-    section: DiscoverSection,
+/** A page's intro and sections; shared by Discover and "More like this". */
+private fun LazyListScope.discoverPageItems(
+    page: DiscoverPage,
+    state: DiscoverState,
+    typingKey: String,
     currentId: String?,
-    onPlay: (Int) -> Unit,
+    onPlay: (songs: List<DiscoverSong>, title: String, start: Int, shuffle: Boolean) -> Unit,
+    onMenu: (DiscoverSong) -> Unit,
+    onAlbum: (DiscoverAlbum) -> Unit,
+) {
+    item(key = "intro") {
+        val title = stringResource(if (page.seed != null) R.string.soun_discover_more_like_this else R.string.soun_discover)
+        Column(
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+        ) {
+            if (page.intro.isNotBlank()) {
+                SounGradientText(
+                    text = page.intro,
+                    typingKey = typingKey,
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
+                    flowing = true,
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Pill(stringResource(R.string.soun_discover_play_all), R.drawable.play, primary = true, modifier = Modifier.weight(1f)) {
+                    onPlay(page.songs, title, 0, false)
+                }
+                Pill(stringResource(R.string.shuffle), R.drawable.shuffle, primary = false, modifier = Modifier.weight(1f)) {
+                    onPlay(page.songs, title, 0, true)
+                }
+            }
+            if (page.madeWithoutSearch) {
+                Text(
+                    stringResource(R.string.soun_discover_without_search),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            // A refresh running over the current page, or one that failed.
+            AnimatedVisibility(state.refreshing || state.error != null) {
+                Text(
+                    if (state.refreshing) stepText(state.step) else errorText(state.error),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (state.refreshing) sounLavenderInk() else MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+    }
+    itemsIndexed(page.sections, key = { index, section -> "section_${index}_${section.kind}_${section.title}" }) { _, section ->
+        val eyebrow = kindLabel(section.kind, page)
+        when (section.kind) {
+            DiscoverKind.ALBUMS -> AlbumsPanel(section, eyebrow, onAlbum)
+            DiscoverKind.MIX -> MixPanel(section, eyebrow, currentId, onPlay, onMenu)
+            else -> SongsPanel(section, eyebrow, currentId, onPlay, onMenu)
+        }
+    }
+    page.searchSuggestionsHtml?.let { html ->
+        item(key = "search_suggestions") { SearchSuggestions(html) }
+    }
+    item(key = "made_by") {
+        Text(
+            stringResource(R.string.soun_discover_made_by, page.model),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+        )
+    }
+}
+
+@Composable
+private fun kindLabel(
+    kind: DiscoverKind,
+    page: DiscoverPage,
+): String? =
+    when (kind) {
+        DiscoverKind.TIME -> {
+            val period = runCatching { DayPeriod.valueOf(page.period) }.getOrNull()
+            period?.let { stringResource(R.string.soun_discover_kind_time, stringResource(it.discoverLabel())) }
+        }
+        DiscoverKind.NEW -> stringResource(R.string.soun_discover_kind_new)
+        DiscoverKind.HISTORY -> stringResource(R.string.soun_discover_kind_history)
+        DiscoverKind.BECAUSE ->
+            stringResource(if (page.seed != null) R.string.soun_discover_kind_goes_with else R.string.soun_discover_kind_because)
+        DiscoverKind.MIX -> stringResource(R.string.soun_discover_kind_mix)
+        DiscoverKind.ALBUMS -> stringResource(R.string.soun_discover_kind_albums)
+        DiscoverKind.SONGS -> null
+    }
+
+@Composable
+private fun Eyebrow(text: String) {
+    Text(
+        text.uppercase(),
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 1.2.sp,
+        color = sounLavenderInk(),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
+@Composable
+private fun PlayCircle(onClick: () -> Unit) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier =
+            Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(SounAccent)
+                .clickable(onClickLabel = stringResource(R.string.play), onClick = onClick),
+    ) {
+        Icon(painterResource(R.drawable.play), stringResource(R.string.play), tint = OnAccent, modifier = Modifier.size(22.dp))
+    }
+}
+
+@Composable
+private fun SongsPanel(
+    section: DiscoverSection,
+    eyebrow: String?,
+    currentId: String?,
+    onPlay: (songs: List<DiscoverSong>, title: String, start: Int, shuffle: Boolean) -> Unit,
     onMenu: (DiscoverSong) -> Unit,
 ) {
+    val songs = section.picks.map { it.song }
     Panel {
         Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            section.seed?.let { seed ->
+                AsyncImage(
+                    model = seed.thumbnailUrl?.resize(240, 240),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(60.dp).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
+                )
+            }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                eyebrow?.let { Eyebrow(it) }
                 Text(section.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 if (section.reason.isNotBlank()) {
                     Text(section.reason, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier =
-                    Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(SounAccent)
-                        .clickable(onClickLabel = stringResource(R.string.play)) { onPlay(0) },
-            ) {
-                Icon(painterResource(R.drawable.play), stringResource(R.string.play), tint = OnAccent, modifier = Modifier.size(22.dp))
+            PlayCircle { onPlay(songs, section.title, 0, false) }
+        }
+        PickList(section, currentId, collapsedCount = 5, onPlay = { start -> onPlay(songs, section.title, start, false) }, onMenu = onMenu)
+    }
+}
+
+@Composable
+private fun MixPanel(
+    section: DiscoverSection,
+    eyebrow: String?,
+    currentId: String?,
+    onPlay: (songs: List<DiscoverSong>, title: String, start: Int, shuffle: Boolean) -> Unit,
+    onMenu: (DiscoverSong) -> Unit,
+) {
+    val songs = section.picks.map { it.song }
+    Panel {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            SounPlaylistCover(
+                name = section.title,
+                thumbnails = songs.take(2).mapNotNull { it.thumbnailUrl },
+                shape = RoundedCornerShape(22.dp),
+                modifier = Modifier.size(104.dp),
+            )
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                eyebrow?.let { Eyebrow(it) }
+                Text(section.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(
+                    pluralStringResource(R.plurals.soun_card_songs, songs.size, songs.size),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            section.picks.forEachIndexed { index, pick ->
-                val active = pick.song.id == currentId
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(if (active) SounAccent.copy(alpha = 0.12f) else Color.Transparent)
-                            .combinedClickable(onClick = { onPlay(index) }, onLongClick = { onMenu(pick.song) })
-                            .padding(6.dp),
+        if (section.reason.isNotBlank()) {
+            Text(section.reason, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Pill(stringResource(R.string.play), R.drawable.play, primary = true, modifier = Modifier.weight(1f)) { onPlay(songs, section.title, 0, false) }
+            Pill(stringResource(R.string.shuffle), R.drawable.shuffle, primary = false, modifier = Modifier.weight(1f)) { onPlay(songs, section.title, 0, true) }
+        }
+        PickList(section, currentId, collapsedCount = 3, onPlay = { start -> onPlay(songs, section.title, start, false) }, onMenu = onMenu)
+    }
+}
+
+@Composable
+private fun AlbumsPanel(
+    section: DiscoverSection,
+    eyebrow: String?,
+    onAlbum: (DiscoverAlbum) -> Unit,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier =
+            Modifier
+                .padding(vertical = 8.dp)
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .sounPanel(PanelShape)
+                .padding(vertical = 18.dp),
+    ) {
+        Column(Modifier.padding(horizontal = 18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            eyebrow?.let { Eyebrow(it) }
+            Text(section.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            if (section.reason.isNotBlank()) {
+                Text(section.reason, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp),
+        ) {
+            items(section.albums, key = { it.album.browseId }) { pick ->
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.widthIn(max = 150.dp).clip(RoundedCornerShape(18.dp)).clickable { onAlbum(pick.album) },
                 ) {
                     AsyncImage(
-                        model = pick.song.thumbnailUrl?.resize(240, 240),
+                        model = pick.album.thumbnailUrl?.resize(544, 544),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
+                        modifier = Modifier.size(150.dp).clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
                     )
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            pick.song.title,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (active) sounLavenderInk() else MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            pick.song.artistNames,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        if (pick.why.isNotBlank()) {
-                            Text(
-                                pick.why,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = sounLavenderInk(),
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                    IconButton(onClick = { onMenu(pick.song) }) {
-                        Icon(
-                            painterResource(R.drawable.more_vert),
-                            stringResource(R.string.soun_discover_more),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        )
+                    Text(pick.album.title, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+                    Text(
+                        listOfNotNull(pick.album.artists.takeIf { it.isNotBlank() }, pick.album.year?.toString()).joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (pick.why.isNotBlank()) {
+                        Text(pick.why, style = MaterialTheme.typography.labelMedium, color = sounLavenderInk(), maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
         }
     }
+}
+
+/** The songs of a section; long lists open with a few and the rest one tap away. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun PickList(
+    section: DiscoverSection,
+    currentId: String?,
+    collapsedCount: Int,
+    onPlay: (Int) -> Unit,
+    onMenu: (DiscoverSong) -> Unit,
+) {
+    var expanded by rememberSaveable(section.title) { mutableStateOf(false) }
+    val collapsible = section.picks.size > collapsedCount + 1
+    val shown = if (collapsible && !expanded) section.picks.take(collapsedCount) else section.picks
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        shown.forEachIndexed { index, pick ->
+            val active = pick.song.id == currentId
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(if (active) SounAccent.copy(alpha = 0.12f) else Color.Transparent)
+                        .combinedClickable(onClick = { onPlay(index) }, onLongClick = { onMenu(pick.song) })
+                        .padding(6.dp),
+            ) {
+                AsyncImage(
+                    model = pick.song.thumbnailUrl?.resize(240, 240),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
+                )
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        pick.song.title,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (active) sounLavenderInk() else MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        pick.song.artistNames,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (pick.why.isNotBlank()) {
+                        Text(
+                            pick.why,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = sounLavenderInk(),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                IconButton(onClick = { onMenu(pick.song) }) {
+                    Icon(
+                        painterResource(R.drawable.more_vert),
+                        stringResource(R.string.soun_discover_more),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    )
+                }
+            }
+        }
+        if (collapsible) {
+            Text(
+                if (expanded) {
+                    stringResource(R.string.soun_discover_show_less)
+                } else {
+                    pluralStringResource(R.plurals.soun_discover_show_more, section.picks.size - collapsedCount, section.picks.size - collapsedCount)
+                },
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = sounLavenderInk(),
+                modifier =
+                    Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { expanded = !expanded }
+                        .padding(horizontal = 6.dp, vertical = 8.dp),
+            )
+        }
+    }
+}
+
+/* More like this ----------------------------------------------------------------------------- */
+
+/** A page of songs, a mix and albums made around one song. */
+@Composable
+fun SounDiscoverSongScreen(songId: String) {
+    val nav = LocalNavController.current
+    val context = LocalContext.current
+    val database = LocalDatabase.current
+    val menuState = LocalMenuState.current
+    val playerConnection = LocalPlayerConnection.current ?: return
+    val state by remember(songId) { SounDiscover.seedState(songId) }.collectAsStateWithLifecycle(DiscoverState())
+    val apiKey by rememberPreference(DiscoverGeminiApiKey, "")
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
+    var showSettings by rememberSaveable { mutableStateOf(false) }
+    val page = state.page
+    val seed = page?.seed ?: SounDiscover.seedSong(songId)
+
+    // Opened again after the app was closed: start over from the song in the library.
+    LaunchedEffect(songId, apiKey) {
+        if (apiKey.isNotBlank() && state.page == null && !state.refreshing && state.error == null) {
+            val known = SounDiscover.seedSong(songId) ?: withContext(Dispatchers.IO) { database.getSongById(songId) }?.let(DiscoverSong::from)
+            if (known != null) SounDiscover.discoverFrom(context, known)
+        }
+    }
+
+    fun play(songs: List<DiscoverSong>, title: String, start: Int = 0, shuffle: Boolean = false) {
+        if (songs.isEmpty()) return
+        val items = (if (shuffle) songs.shuffled() else songs).map { it.toMediaMetadata().toMediaItem() }
+        playerConnection.playQueue(ListQueue(title = title, items = items, startIndex = if (shuffle) 0 else start))
+    }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top).asPaddingValues()),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(start = 4.dp, end = 8.dp, top = 4.dp),
+        ) {
+            IconButton(onClick = { nav.navigateUp() }) {
+                Icon(painterResource(R.drawable.arrow_back), stringResource(R.string.back))
+            }
+            Text(
+                stringResource(R.string.soun_discover_more_like_this),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier.weight(1f).padding(start = 4.dp),
+            )
+            if (apiKey.isNotBlank() && seed != null) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(48.dp)) {
+                    if (state.refreshing) {
+                        CircularProgressIndicator(strokeWidth = 2.dp, color = SounAccent, modifier = Modifier.size(22.dp))
+                    } else {
+                        IconButton(onClick = { SounDiscover.discoverFrom(context, seed, force = true) }) {
+                            Icon(painterResource(R.drawable.refresh), stringResource(R.string.soun_discover_refresh))
+                        }
+                    }
+                }
+            }
+        }
+
+        LazyColumn(
+            contentPadding = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom).asPaddingValues(),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            seed?.let { song ->
+                item(key = "seed") {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                    ) {
+                        AsyncImage(
+                            model = song.thumbnailUrl?.resize(544, 544),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(96.dp).clip(RoundedCornerShape(24.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
+                        )
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Eyebrow(stringResource(R.string.soun_discover_kind_goes_with))
+                            Text(song.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text(song.artistNames, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+            when {
+                apiKey.isBlank() -> item(key = "setup") { SetupPanel(onSetUp = { showSettings = true }) }
+                page == null && state.refreshing -> item(key = "progress") { ProgressPanel(state.step) }
+                page == null && state.error != null ->
+                    item(key = "error") {
+                        ErrorPanel(state.error, onRetry = { seed?.let { SounDiscover.discoverFrom(context, it, force = true) } }, onSettings = { showSettings = true })
+                    }
+                page == null ->
+                    item(key = "missing") {
+                        Text(
+                            stringResource(R.string.soun_discover_seed_missing),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(24.dp),
+                        )
+                    }
+                else ->
+                    discoverPageItems(
+                        page = page,
+                        state = state,
+                        typingKey = "seed_${songId}_${page.generatedAt}",
+                        currentId = mediaMetadata?.id,
+                        onPlay = ::play,
+                        onMenu = { song -> menuState.show { YouTubeSongMenu(song = song.toSongItem(), onDismiss = menuState::dismiss) } },
+                        onAlbum = { album -> nav.navigate("album/${album.browseId}") },
+                    )
+            }
+        }
+    }
+
+    if (showSettings) DiscoverSettingsDialog(onDismiss = { showSettings = false })
 }
 
 /** Google's search suggestions, which Google asks to be shown with any answer that used its search. */
